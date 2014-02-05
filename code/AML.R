@@ -47,6 +47,8 @@ mtext(side=4, at=12:10, c("P > 0.05", "BH < 0.1", "Bf. < 0.05"), cex=.5, line=0.
 dev.off()
 
 clinicalData <- read.table("data/AML.clin.prelim4.txt", sep="\t", header=TRUE, na.strings = "na")
+clinicalData$BM.blasts <- as.numeric(as.character(clinicalData$BM.blasts))
+
 library(survival)
 surv <- Surv(clinicalData$efs, clinicalData$efsstat)
 
@@ -71,19 +73,33 @@ plot(survfit(surv[m] ~ TP53 + TPL, data=X), col=rep(set1[1:2],each=2), lty=1:2, 
 
 X <- list(G = data.frame(oncogenics), 
 		T = cbind(makeInteger(clinicalData$Study[m]), clinicalData$TPL[m]),
-		C = clinicalData[m, c("TPL","Age", "gender")])
+		C = clinicalData[m, c("Age", "gender","BM.blasts","wbc","LDH_")])
 X$GG <- makeInteractions(data.frame(oncogenics), data.frame(oncogenics))
 X$GG <- X$GG[,-seq(1,ncol(X$GG), ncol(oncogenics)+1)] 
 X$GG <- X$GG[,colSums(X$GG)>0] 
 X$GT <- makeInteractions(X$G, X$T)
-X$GT <- X$GT[,colSums(X$GT) > 0]
+X$GT <- X$GT[,colSums(X$GT, na.rm=TRUE) > 0]
 
-c <- mecoxph(do.call(cbind,X), surv[m], groups=unlist(sapply(names(X), function(x) rep(x, ncol(X[[x]])))))
+
+c <- coxRFX(do.call(cbind,X), surv[m], groups=unlist(sapply(names(X), function(x) rep(x, ncol(X[[x]])))))
 
 library(Hmisc)
+rcorr.cens(-rowSums(partialRisk(c)), surv[m])
+risk <- rowSums(partialRisk(c))
+AUC.uno(surv[m][!is.na(risk)], surv[m][!is.na(risk)], risk[!is.na(risk)], 5000)
 
-rcorr.cens(-predict(c), na.omit(surv[m]))
+plot(survfit(surv[m][!is.na(risk)] ~ cut(risk[!is.na(risk)], 5)), col=rep(set1[1:2],each=2), lty=1:2, mark=16)
 
-plot(survfit(na.omit(surv[m]) ~ cut(predict(c), 3)), col=rep(set1[1:2],each=2), lty=1:2, mark=16)
+barplot(partialC(c))
+
+set.seed(42)
+testIx <- sample(c(TRUE,FALSE), length(m), replace=TRUE, prob=c(0.66,0.34))
+d <- coxRFX(do.call(cbind,X)[testIx,], surv[m][testIx], groups=unlist(sapply(names(X), function(x) rep(x, ncol(X[[x]])))))
+
+p <- as.matrix(do.call(cbind,X)[!testIx,]) %*% d$coefficients
+rcorr.cens(- na.omit(p), na.omit(surv[m][!testIx]))
+AUC.uno(na.omit(surv[m]), na.omit(surv[m][!testIx]), na.omit(p), 1000)
+
+
 
 
