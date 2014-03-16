@@ -110,7 +110,7 @@ trialArms <- data.frame(makeInteger(clinicalData$Study),
 #' Prepating data
 dataList <-list(Genetics = data.frame(oncogenics[,colSums(oncogenics)>0]),
 		Cytogenetics = clinicalData[,43:78],
-		Treatment = cbind(trialArms[,-1], TPL=clinicalData$TPL),
+		Treatment = cbind(trialArms[,2:3], ATRA = trialArms$tr0704_ATRA | trialArms$tr98B_ATRA, VPA=trialArms$tr0704_VPA, TPL=clinicalData$Time_Diag_TPL < survival[,1] & !is.na(clinicalData$Time_Diag_TPL)),
 		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet")], makeInteger(clinicalData$TypeAML)[,-1]))#,
 		#MolRisk = makeInteger(clinicalData$M_Risk))
 dataList$Genetics$CEBPA <- clinicalData$CEBPA > 0
@@ -150,7 +150,7 @@ w <- which(p.adjust(univP,"BH") < 0.1 | groups %in% c("Genetics","Treatment","Cl
 coxRFXFit <- CoxRFX(dataFrame[,w], survival, groups=groups[w], sigma0=0.1)
 
 #' Coefficients
-boxplot(coxRFXFit$coefficients ~ groups[w], las=2)
+boxplot(coxRFXFit$coefficients ~ groups[w], las=2, border=set1)
 abline(h=0)
 
 #+ fig.width=14, fig.height=5
@@ -246,7 +246,7 @@ library(glmnet)
 set.seed(42)
 source("/Users/mg14/Projects/CoxHD/CoxHD/R/stacoxph.R")
 w <- TRUE
-stabCox <- stacoxph(dataFrame[!is.na(survival),w], survival[!is.na(survival)], bootstrap.samples = 100)
+stabCox <- stacoxph(dataFrame[!is.na(survival),w], survival[!is.na(survival)], bootstrap.samples = 50, control="BH", level=.1)
 
 plot(stabCox)
 
@@ -269,40 +269,52 @@ legend("topright", bty="n",  lty=1, col=c("grey",brewer.pal(3,"Set1")), c("WT/TP
  
 #' ### Time-dependent survival effects (TPL)
 #' Construct a time-dependent Surv() object by splitting TPL patients into pre and post
-survWOTpl = Surv(time = rep(0, nrow(clinicalData)), time2=as.numeric(clinicalData$Date_LF -  clinicalData$ERDate), event=clinicalData$Status )
-survWOTpl[clinicalData$TPL == 1] = Surv(rep(0, sum(clinicalData$TPL)), as.numeric(clinicalData$TPL_date - clinicalData$ERDate)[clinicalData$TPL == 1], rep(0, sum(clinicalData$TPL)))
-t = rbind(survWOTpl, Surv(time = as.numeric(clinicalData$TPL_date - clinicalData$ERDate)[clinicalData$TPL == 1], time2 = as.numeric(clinicalData$Date_LF -  clinicalData$ERDate)[clinicalData$TPL == 1], clinicalData$Status[clinicalData$TPL == 1]))
-survTD = Surv(t[,1],t[,2],t[,3])
+#survWOTpl = Surv(time = rep(0, nrow(clinicalData)), time2=as.numeric(clinicalData$Date_LF -  clinicalData$ERDate), event=clinicalData$Status )
+#survWOTpl[clinicalData$TPL == 1] = Surv(rep(0, sum(clinicalData$TPL)), as.numeric(clinicalData$TPL_date - clinicalData$ERDate)[clinicalData$TPL == 1], rep(0, sum(clinicalData$TPL)))
+#t = rbind(survWOTpl, Surv(time = as.numeric(clinicalData$TPL_date - clinicalData$ERDate)[clinicalData$TPL == 1], time2 = as.numeric(clinicalData$Date_LF -  clinicalData$ERDate)[clinicalData$TPL == 1], clinicalData$Status[clinicalData$TPL == 1]))
+t <- clinicalData$Time_Diag_TPL
+t[is.na(t)] <- Inf
+e <- clinicalData$efs
+tplIndex <-  t < e
+survivalTD <-  Surv(time = rep(0, nrow(clinicalData)), time2=pmin(e, t), event=ifelse(tplIndex, 0, clinicalData$EFSSTAT) )
+survivalTD <- rbind(survivalTD, 
+		Surv(time=t[which(tplIndex)],
+				time2=e[which(tplIndex)], 
+				event=clinicalData$EFSSTAT[which(tplIndex)])
+		)
+survivalTD = Surv(survivalTD[,1],survivalTD[,2],survivalTD[,3])
+rm(e,t)
+tplSplit <- c(1:nrow(clinicalData), which(tplIndex))
 #t = c(clinicalData$TPL, rep(1, sum(clinicalData$TPL)))
-t = c(rep(0,nrow(clinicalData)), rep(1, sum(clinicalData$TPL)))
-plot(survfit(survTD ~ t), col=1:2)
-d = data.frame(risk=clinicalData$M_Risk, study=clinicalData$Study, I = survival[,1] > 257)
-d <- cbind(rbind(d, d[clinicalData$TPL==1,]), TPL=t==1)
-m <- factor(c(clinicalData$M_Risk, clinicalData$M_Risk[clinicalData$TPL==1]), labels=levels(clinicalData$M_Risk))
-coxph(survTD ~ TPL + I, data=d)
-
-s = Surv(time = rep(0, nrow(clinicalData)), time2=as.numeric(clinicalData$Date_LF -  clinicalData$ERDate), event=clinicalData$Status )
-plot(survfit(s ~ clinicalData$TPL + (survival[,1] > 257)), col=1:2, lty=rep(c(1:2), each=2))
-
-survAfterTpl <- Surv(time = as.numeric(clinicalData$Date_LF - clinicalData$TPL_date )[clinicalData$TPL == 1], clinicalData$Status[clinicalData$TPL == 1])
-
-s = Surv(c(survWOTpl[,2], survAfterTpl[,1]), c(survWOTpl[,3], survAfterTpl[,2]))
-
-trialArm = factor(paste(clinicalData$Study, clinicalData$Randomisation_Arm, sep="."))
-
-coxph(survival ~. +tr0704_ATRA:tr0704_VPA + clinicalData$AOD + clinicalData$gender+clinicalData$M_Risk, data=trialArms[,-1])		
-	
-simpleRisk <- data.frame()
+#t = c(rep(0,nrow(clinicalData)), rep(1, length(which(tplIndex))))
+#plot(survfit(survivalTD ~ t), col=1:2)
+#d = data.frame(risk=clinicalData$M_Risk, study=clinicalData$Study, I = survival[,1] > 257)
+#d <- cbind(rbind(d, d[clinicalData$TPL==1,]), TPL=t==1)
+#m <- factor(c(clinicalData$M_Risk, clinicalData$M_Risk[clinicalData$TPL==1]), labels=levels(clinicalData$M_Risk))
+#coxph(survivalTD ~ TPL + I, data=d)
+#
+#s = Surv(time = rep(0, nrow(clinicalData)), time2=as.numeric(clinicalData$Date_LF -  clinicalData$ERDate), event=clinicalData$Status )
+#plot(survfit(s ~ clinicalData$TPL + (survival[,1] > 257)), col=1:2, lty=rep(c(1:2), each=2))
+#
+#survAfterTpl <- Surv(time = as.numeric(clinicalData$Date_LF - clinicalData$TPL_date )[clinicalData$TPL == 1], clinicalData$Status[clinicalData$TPL == 1])
+#
+#s = Surv(c(survWOTpl[,2], survAfterTpl[,1]), c(survWOTpl[,3], survAfterTpl[,2]))
+#
+#trialArm = factor(paste(clinicalData$Study, clinicalData$Randomisation_Arm, sep="."))
+#
+#coxph(survival ~. +tr0704_ATRA:tr0704_VPA + clinicalData$AOD + clinicalData$gender+clinicalData$M_Risk, data=trialArms[,-1])		
+#	
+#simpleRisk <- data.frame()
 
 #' TD Cox RFX model
-dataFrameTD <- dataFrame[c(1:nrow(clinicalData), which(clinicalData$TPL==1)),]
-dataFrameTD$Treatment.TPL <- c(rep(0,nrow(oncogenics)), rep(1, sum(clinicalData$TPL==1)))
+dataFrameTD <- dataFrame[tplSplit,]
+dataFrameTD$Treatment.TPL <- c(rep(0,nrow(clinicalData)), rep(1, length(which(tplIndex))))
 w <- which(p.adjust(univP,"BH") < 0.1 | groups %in% c("Genetics","Treatment","Clinical","Cytogenetics"))
 
-coxRFXFitTD <- CoxRFX(dataFrameTD[,w], survTD, groups[w], sigma0=0.1)
+coxRFXFitTD <- CoxRFX(dataFrameTD[,w], survivalTD, groups[w], sigma0=0.1)
 
-plot(coef(coxRFXFit), coef(coxRFXFitTD), col=groups[w]) # Note the sign change for TPL..
-boxplot(coef(coxRFXFitTD)~groups[w])
+plot(coef(coxRFXFit), coef(coxRFXFitTD), col=set1[groups[w]]) # Note the sign change for TPL..
+boxplot(coef(coxRFXFitTD)~groups[w], border=set1)
 
 #' Germline polymorphisms
 #' ----------------------
