@@ -7,6 +7,7 @@ options(width=120)
 
 #' Libraries
 library(RColorBrewer)
+set1 <- brewer.pal(8, "Set1")
 
 #' Clinical data
 #' -------------
@@ -28,7 +29,7 @@ mutationData$SAMPLE_NAME <- factor(as.character(mutationData$SAMPLE_NAME), level
 oncogenics <- (table(mutationData[mutationData$Result %in% c("ONCOGENIC","POSSIBLE"),c("SAMPLE_NAME","GENE")]) > 0)+0
 
 #' Compute gene-gene interactions
-#+ cache=TRUE
+#+ interactions, cache=TRUE
 interactions <- sapply(1:ncol(oncogenics), function(i) sapply(1:ncol(oncogenics), function(j) {f<- try(fisher.test(oncogenics[,i], oncogenics[,j]), silent=TRUE); if(class(f)=="try-error") 0 else ifelse(f$estimate>1, -log10(f$p.val),log10(f$p.val))} ))
 odds <- sapply(1:ncol(oncogenics), function(i) sapply(1:ncol(oncogenics), function(j) {f<- try(fisher.test(oncogenics[,i] + .5, oncogenics[,j] +.5), silent=TRUE); if(class(f)=="try-error") f=NA else f$estimate} ))
 diag(interactions) <- 0
@@ -86,7 +87,7 @@ phTest
 par(mfrow=c(1,4), bty="n")
 for(i in 1:4) plot(phTest[i])
 
-source("~/Projects/CoxHD/CoxHD/R/ecoxph.R")
+source("~/Git/Projects/CoxHD/CoxHD/R/ecoxph.R")
 
 #' #### A few functions
 makeInteractions <- function(X,Y){
@@ -106,8 +107,7 @@ trialArms <- data.frame(makeInteger(clinicalData$Study),
 		check.names=FALSE
 ) + 0
 
-#' ### Anova with CoxRFX
-#' Prepating data
+#' ## Prepating data
 dataList <-list(Genetics = data.frame(oncogenics[,colSums(oncogenics)>0]),
 		Cytogenetics = clinicalData[,43:78],
 		Treatment = cbind(trialArms[,2:3], ATRA = trialArms$tr0704_ATRA | trialArms$tr98B_ATRA, VPA=trialArms$tr0704_VPA, TPL=clinicalData$Time_Diag_TPL < survival[,1] & !is.na(clinicalData$Time_Diag_TPL)),
@@ -119,7 +119,7 @@ dataList$Genetics$FLT3_TKD <- clinicalData$FLT3_TKD > 0
 dataList$Genetics$IDH2_p172 <- clinicalData$IDH2 == "172"
 dataList$Genetics$NPM1 <- clinicalData$NPM1
 dataList$Genetics = dataList$Genetics + 0
-dataList$GeneGene <- makeInteractions(data.frame(oncogenics), data.frame(oncogenics))[,as.vector(upper.tri(matrix(0,ncol=ncol(oncogenics), nrow=ncol(oncogenics))))] 
+dataList$GeneGene <- makeInteractions(data.frame(oncogenics), data.frame(oncogenics))[,as.vector(upper.tri(matrix(0,ncol=ncol(oncogenics), nrow=ncol(oncogenics))))] ## TODO: Fixme
 dataList$GeneGene <- dataList$GeneGene[,colSums(dataList$GeneGene)>0] 
 dataList$GeneCyto <- makeInteractions(dataList$Genetics, dataList$Cytogenetics)
 dataList$GeneCyto <- dataList$GeneCyto[,colSums(dataList$GeneCyto, na.rm=TRUE) > 0]
@@ -141,34 +141,71 @@ set1 <- brewer.pal(9, "Set1")
 plot(survfit(survival ~ Genetics.TP53 + Treatment.TPL, data=dataFrame), col=rep(set1[1:2],each=2), lty=1:2, mark=16)
 
 
-#' ### Fit model
-#+ warning=FALSE
+#' ### Fit static model
+#+ coxRFXFit, warning=FALSE, cache=TRUE
 ## Pre-select based on univariate test
 univP <- sapply(dataFrame, function(x){summary(coxph(survival~x))$logtest[3]})
-w <- which(p.adjust(univP,"BH") < 0.1 | groups %in% c("Genetics","Treatment","Clinical","Cytogenetics"))
+whichRFX <- which(p.adjust(univP,"BH") < 0.1 | groups %in% c("Genetics","Treatment","Clinical","Cytogenetics"))
 ## Fit Cox model
-coxRFXFit <- CoxRFX(dataFrame[,w], survival, groups=groups[w], sigma0=0.1)
+coxRFXFit <- CoxRFX(dataFrame[,whichRFX], survival, groups=groups[whichRFX], sigma0=0.1)
 
 #' Coefficients
-boxplot(coxRFXFit$coefficients ~ groups[w], las=2, border=set1)
-abline(h=0)
+boxplot(coxRFXFit$coefficients ~ groups[whichRFX], las=2, border=set1, horizontal=TRUE)
+abline(v=0)
 
+#' ### Time-dependent survival effects (TPL)
+#' Construct a time-dependent Surv() object by splitting TPL patients into pre and post
+t <- clinicalData$Time_Diag_TPL
+t[is.na(t)] <- Inf
+e <- clinicalData$efs
+tplIndex <-  t < e
+survivalTD <-  Surv(time = rep(0, nrow(clinicalData)), time2=pmin(e, t), event=ifelse(tplIndex, 0, clinicalData$EFSSTAT) )
+survivalTD <- rbind(survivalTD, 
+		Surv(time=t[which(tplIndex)],
+				time2=e[which(tplIndex)], 
+				event=clinicalData$EFSSTAT[which(tplIndex)])
+)
+survivalTD = Surv(survivalTD[,1],survivalTD[,2],survivalTD[,3])
+rm(e,t)
+tplSplit <- c(1:nrow(clinicalData), which(tplIndex))
+
+#' Data frame
+dataFrameTD <- dataFrame[tplSplit,]
+dataFrameTD[which(tplIndex), grep("TPL", colnames(dataFrameTD), value=TRUE)] <- 0 ## Set pre-tpl variables to zero 
+
+patientTD <- c(clinicalData$PDID, clinicalData$PDID[which(tplIndex)])
+
+#' Fit TD Cox RFX model
+#+ coxRFXFitTD, cache=TRUE
+whichRFX <- which(p.adjust(univP,"BH") < 0.1 | groups %in% c("Genetics","Treatment","Clinical","Cytogenetics"))
+coxRFXFitTD <- CoxRFX(dataFrameTD[,whichRFX], survivalTD, groups[whichRFX], sigma0=0.1)
+
+plot(coef(coxRFXFit), coef(coxRFXFitTD), col=set1[groups[whichRFX]]) # Note the sign change for TPL..
+abline(0,1)
+
+boxplot(coef(coxRFXFitTD)~groups[whichRFX], border=set1, horizontal=TRUE, las=2)
+abline(v=0)
+
+
+#' ## Performance metrics
 #+ fig.width=14, fig.height=5
 for(g in levels(groups)){
 	par(mar=c(7,4,2,0))
-	x <- sort(coxRFXFit$coefficients[groups[w]==g])
-	v <- diag(coxRFXFit$var)[groups[w]==g][ order(coxRFXFit$coefficients[groups[w]==g])]
-	plot(x, las=2, pch=16, xaxt="n", main=g, cex = .5+pmin(3,-log10(pchisq((x-coxRFXFit$mu[g])^2/v, 1, lower.tail=FALSE))))
+	x <- sort(coxRFXFitTD$coefficients[groups[whichRFX]==g])
+	v <- diag(coxRFXFitTD$var)[groups[whichRFX]==g][ order(coxRFXFitTD$coefficients[groups[whichRFX]==g])]
+	plot(x, las=2, pch=16, xaxt="n", main=g, cex = .5+pmin(3,-log10(pchisq((x-coxRFXFitTD$mu[g])^2/v, 1, lower.tail=FALSE))))
 	segments(1:length(x),x - 2*sqrt(v) ,1:length(x), x+2*sqrt(v))
 	axis(side=1, at = 1:length(x), labels = names(x), las=2, cex.axis=.6)
 	abline(v=1:length(x), lty=3, col="grey")
-	abline(h=coxRFXFit$mu[g])
-	abline(h = coxRFXFit$mu[g] + c(-1,1)*sqrt(coxRFXFit$sigma2[g]), lty=2)
+	abline(h=coxRFXFitTD$mu[g])
+	abline(h = coxRFXFitTD$mu[g] + c(-1,1)*sqrt(coxRFXFitTD$sigma2[g]), lty=2)
 }
 
 #' ### Partial risk contributions
-partRisk <- PartialRisk(coxRFXFit)
-pie(rowSums(cov(partRisk, use="complete")), col=brewer.pal(8,"Set1"))
+partRisk <- PartialRisk(coxRFXFitTD)
+varianceComponents <- rowSums(cov(partRisk, use="complete"))
+varianceComponents
+pie(abs(varianceComponents), col=brewer.pal(8,"Set1"))
 title("Risk contributions")
 
 #' #### Stars
@@ -176,17 +213,18 @@ title("Risk contributions")
 library(HilbertVis)
 nStars <- 32
 locations <- 1.5*hilbertCurve(log2(nStars)) #2*expand.grid(1:nStars,1:nStars)
-h <- hclust(dist(partRisk[1:(nStars^2),]))
-stars(exp(-(partRisk[1:(nStars^2),][h$order,] - rep(colMeans(partRisk), each=nStars^2)))/2, scale=FALSE, locations=locations, key.loc=c(-1.5,-1.5), col.lines=rep(1,(nStars^2)), col.stars = brewer.pal(11,'RdBu')[cut(survival[1:(nStars^2),1][h$order], quantile(survival[,1], seq(0,1,0.1), na.rm=TRUE))])
+s <- sample(nrow(partRisk),nStars^2) #1:(nStars^2)
+h <- hclust(dist(partRisk[s,]))
+stars(exp(-(partRisk[s,][h$order,] - rep(colMeans(partRisk), each=nStars^2)))/2, scale=FALSE, locations=locations, key.loc=c(-1.5,-1.5), col.lines=rep(1,(nStars^2)), col.stars = brewer.pal(11,'RdBu')[cut(survivalTD[s,2][h$order], quantile(survivalTD[,2], seq(0,1,0.1), na.rm=TRUE))])
 symbols(locations[,1], locations[,2], circles=rep(.5,(nStars^2)), inches=FALSE, fg="grey", add=TRUE, lty=3)
 
 #' ### A few performance measures
 #' Harrel's C
-library(Hmisc)
-totalRisk <- na.omit(rowSums(partRisk))
-rcorr.cens(-totalRisk, survival)
+#library(Hmisc)
+totalRisk <- rowSums(partRisk)
+survConcordance( survivalTD~totalRisk)
 predictiveRisk <- rowSums(partRisk[,-which(colnames(partRisk) %in% c("Treatment","GT"))])
-rcorr.cens(-predictiveRisk, survival)
+survConcordance( survivalTD~predictiveRisk)
 
 #' AUC
 library(survAUC)
@@ -198,66 +236,75 @@ legend("bottomright",c("w/o treatment","w treatment"), col=2:1, lty=1)
 
 #' Risk quartiles
 predictiveRiskGroups <-  cut(predictiveRisk[!is.na(predictiveRisk)], quantile(predictiveRisk, seq(0,1,0.25)), labels = c("very low","low","high","very high"))
-rcorr.cens(-as.numeric(predictiveRiskGroups), survival)
-plot(survfit(survival[!is.na(predictiveRisk)] ~ predictiveRiskGroups), col=brewer.pal(4,"Spectral"), mark=16)
-table(clinicalData$M_Risk, predictiveRiskGroups)[c(2,3,4,1),]
+survConcordance( survivalTD~as.numeric(predictiveRiskGroups))
+plot(survfit(survivalTD[!is.na(predictiveRisk)] ~ predictiveRiskGroups), col=brewer.pal(4,"Spectral")[4:1], mark=16)
+table(clinicalData$M_Risk, predictiveRiskGroups[1:nrow(clinicalData)])[c(2,3,4,1),]
 
-#' Partical values of Harrel's C
-barplot(PartialC(coxRFXFit), col=brewer.pal(8,"Set1"), las=2)
+#' Partial values of Harrel's C
+c <- PartialC(coxRFXFitTD)
+b <- barplot(c[1,], col=set1, las=2)
+segments(b, c[1,]-c[2,], b, c[1,]+c[2,])
 abline(h=.5)
 
-#' ## Holding out a test set.
+#' Cross-validation
+#' ----------------
 set.seed(42)
 testIx <- sample(c(TRUE,FALSE), nrow(dataFrame), replace=TRUE, prob=c(0.66,0.34))
+testIxTD <- testIx[tplSplit]
 
 #' Pre-select based on univariate test
 #+ warning=FALSE
-p <- sapply(dataFrame, function(x){summary(coxph(survival[testIx]~x[testIx]))$logtest[3]})
-w <- which(p.adjust(p,"BH") < 0.1 | groups %in% c("Genetics","Treatment","Clinical","Cytogenetics"))
+p <- sapply(dataFrame, function(x){summary(coxph(survivalTD[testIxTD]~x[testIxTD]))$logtest[3]})
+whichTrain <- which(p.adjust(p,"BH") < 0.1 | groups %in% c("Genetics","Treatment","Clinical","Cytogenetics"))
 
 #' Fit Cox model
-coxRFXFitTrain <- CoxRFX(dataFrame[testIx,w], survival[testIx], groups=groups[w], sigma0 = 0.1)
+#+ coxRFXFitTDTrain, cache=TRUE
+coxRFXFitTDTrain <- CoxRFX(dataFrameTD[testIxTD,whichTrain], survivalTD[testIxTD], groups=groups[whichTrain], sigma0 = 0.1)
 
 #' Partial contributions
-partialRiskTest <- PartialRisk(coxRFXFitTrain, newX=dataFrame[!testIx, w])
-barplot(PartialC(coxRFXFitTrain, newX = dataFrame[!testIx, w], newSurv = survival[!testIx]), col=brewer.pal(8,"Set1"), las=2)
+partialRiskTest <- PartialRisk(coxRFXFitTDTrain, newX=dataFrameTD[!testIxTD, whichTrain])
+c <- PartialC(coxRFXFitTDTrain, newX = dataFrameTD[!testIxTD, whichTrain], newSurv = survivalTD[!testIxTD])
+b <- barplot(c[1,], col=set1, las=2)
+segments(b, c[1,]-c[2,], b, c[1,]+c[2,])
 abline(h=.5)
 
 #' Overall
 totalRiskTest <- rowSums(partialRiskTest)
-rcorr.cens(- totalRiskTest, survival[!testIx])
+survConcordance(survivalTD[!testIxTD]~totalRiskTest )
 
 #' Compared to molecular risk
 predictiveRiskTest <- rowSums(partialRiskTest[,-which(colnames(partRisk) %in% c("Treatment","GeneTreatment"))])
-rcorr.cens(- predictiveRiskTest, survival[!testIx])
+survConcordance(survivalTD[!testIxTD] ~ predictiveRiskTest)
 
-barplot(c(CGP=rcorr.cens(- predictiveRiskTest, survival[!testIx])[1], MolecularRisk = rcorr.cens(c(Favourable=1, Adverse=4, `inter-1`=2, `inter-2`=3)[clinicalData$M_Risk[!testIx]], survival[!testIx])[1]))
+#barplot(c(CGP=survConcordance(survivalTD[!testIxTD] ~ predictiveRiskTest)$concordance, MolecularRisk = survConcordance(survivalTD[!testIxTD] ~ c(Favourable=1, Adverse=4, `inter-1`=2, `inter-2`=3)[clinicalData$M_Risk[tplSplit][!testIxTD]])[[1]]))
 
-s <- survival[!testIx]
+s <- survivalTD[!testIxTD]
 plot(AUC.uno(s[!is.na(s)],s[!is.na(s)], predictiveRiskTest[!is.na(s)], seq(0,5000,100)))
 plot(AUC.uno(s[!is.na(s)],s[!is.na(s)], totalRiskTest[!is.na(s)], seq(0,5000,100)), add=TRUE, col="black")
 legend("bottomright",c("w/o treatment","w treatment"), col=2:1, lty=1)
 
 
-#' Stabilitiy selection
+#' Stability selection
 #' --------------------
 library(parallel)
 library(glmnet)
 set.seed(42)
-source("/Users/mg14/Projects/CoxHD/CoxHD/R/stacoxph.R")
-w <- TRUE
-stabCox <- stacoxph(dataFrame[!is.na(survival),w], survival[!is.na(survival)], bootstrap.samples = 50, control="BH", level=.1)
+source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/stacoxph.R")
+source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/r_concave_tail.R")
+
+#' Fit model
+#+ stabCox, cache=TRUE
+stabCox <- stacoxph(dataFrame[!is.na(survival),], survival[!is.na(survival)], bootstrap.samples = 50, control="BH", level=.1)
 
 plot(stabCox)
 
 selected <- which(stabCox$Pi > .8)
 selected
-X <- as.matrix(dataFrame[testIx,names(selected)]) + 0
-coxFit <- coxph(survival[testIx] ~ ., data=dataFrame[testIx,w][,names(selected)])
+coxFit <- coxph(survival[testIx] ~ ., data=dataFrame[testIx,][,names(selected)])
 summary(coxFit)
 
-totalRiskStabTest <- as.matrix(dataFrame[!testIx,w][,names(selected)]) %*% coxFit$coefficients
-rcorr.cens(- totalRiskStabTest, survival[!testIx])
+totalRiskStabTest <- as.matrix(dataFrame[!testIx,][,names(selected)]) %*% coxFit$coefficients
+survConcordance(survival[!testIx] ~ totalRiskStabTest)
 
 plot(survfit(survival ~ FLT3_ITD + DNMT3A, data = dataList$Genetics), col=c("grey",brewer.pal(3,"Set1")))
 legend("topright", bty="n",  lty=1, col=c("grey",brewer.pal(3,"Set1")), c("WT/WT","WT/DNMT3A-","FLT3-/WT","FLT3-/DNMT3A-"))
@@ -266,58 +313,104 @@ legend("topright", bty="n",  lty=1, col=c("grey",brewer.pal(3,"Set1")), c("WT/WT
 plot(survfit(survival ~ `Genetics.TP53` + `Treatment.TPL`, data = dataFrame), col=c("grey",brewer.pal(3,"Set1")))
 legend("topright", bty="n",  lty=1, col=c("grey",brewer.pal(3,"Set1")), c("WT/TPL-","WT/TPL+","TP53-/TPL-","TP53-/TPL+"))
 
- 
-#' ### Time-dependent survival effects (TPL)
-#' Construct a time-dependent Surv() object by splitting TPL patients into pre and post
-#survWOTpl = Surv(time = rep(0, nrow(clinicalData)), time2=as.numeric(clinicalData$Date_LF -  clinicalData$ERDate), event=clinicalData$Status )
-#survWOTpl[clinicalData$TPL == 1] = Surv(rep(0, sum(clinicalData$TPL)), as.numeric(clinicalData$TPL_date - clinicalData$ERDate)[clinicalData$TPL == 1], rep(0, sum(clinicalData$TPL)))
-#t = rbind(survWOTpl, Surv(time = as.numeric(clinicalData$TPL_date - clinicalData$ERDate)[clinicalData$TPL == 1], time2 = as.numeric(clinicalData$Date_LF -  clinicalData$ERDate)[clinicalData$TPL == 1], clinicalData$Status[clinicalData$TPL == 1]))
-t <- clinicalData$Time_Diag_TPL
-t[is.na(t)] <- Inf
-e <- clinicalData$efs
-tplIndex <-  t < e
-survivalTD <-  Surv(time = rep(0, nrow(clinicalData)), time2=pmin(e, t), event=ifelse(tplIndex, 0, clinicalData$EFSSTAT) )
-survivalTD <- rbind(survivalTD, 
-		Surv(time=t[which(tplIndex)],
-				time2=e[which(tplIndex)], 
-				event=clinicalData$EFSSTAT[which(tplIndex)])
-		)
-survivalTD = Surv(survivalTD[,1],survivalTD[,2],survivalTD[,3])
-rm(e,t)
-tplSplit <- c(1:nrow(clinicalData), which(tplIndex))
-#t = c(clinicalData$TPL, rep(1, sum(clinicalData$TPL)))
-#t = c(rep(0,nrow(clinicalData)), rep(1, length(which(tplIndex))))
-#plot(survfit(survivalTD ~ t), col=1:2)
-#d = data.frame(risk=clinicalData$M_Risk, study=clinicalData$Study, I = survival[,1] > 257)
-#d <- cbind(rbind(d, d[clinicalData$TPL==1,]), TPL=t==1)
-#m <- factor(c(clinicalData$M_Risk, clinicalData$M_Risk[clinicalData$TPL==1]), labels=levels(clinicalData$M_Risk))
-#coxph(survivalTD ~ TPL + I, data=d)
-#
-#s = Surv(time = rep(0, nrow(clinicalData)), time2=as.numeric(clinicalData$Date_LF -  clinicalData$ERDate), event=clinicalData$Status )
-#plot(survfit(s ~ clinicalData$TPL + (survival[,1] > 257)), col=1:2, lty=rep(c(1:2), each=2))
-#
-#survAfterTpl <- Surv(time = as.numeric(clinicalData$Date_LF - clinicalData$TPL_date )[clinicalData$TPL == 1], clinicalData$Status[clinicalData$TPL == 1])
-#
-#s = Surv(c(survWOTpl[,2], survAfterTpl[,1]), c(survWOTpl[,3], survAfterTpl[,2]))
-#
-#trialArm = factor(paste(clinicalData$Study, clinicalData$Randomisation_Arm, sep="."))
-#
-#coxph(survival ~. +tr0704_ATRA:tr0704_VPA + clinicalData$AOD + clinicalData$gender+clinicalData$M_Risk, data=trialArms[,-1])		
-#	
-#simpleRisk <- data.frame()
+#' Simulation study
+#' ----------------
+source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/functions.R")
+simSurvNonp
 
-#' TD Cox RFX model
-dataFrameTD <- dataFrame[tplSplit,]
-dataFrameTD$Treatment.TPL <- c(rep(0,nrow(clinicalData)), rep(1, length(which(tplIndex))))
-w <- which(p.adjust(univP,"BH") < 0.1 | groups %in% c("Genetics","Treatment","Clinical","Cytogenetics"))
+#' ### Survival only
+set.seed(42)
+simSurvival <- simSurvNonp(rowSums(PartialRisk(coxRFXFit)), basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
+plot(survfit(simSurvival ~ 1))
+survConcordance(simSurvival[testIx] ~ rowSums(PartialRisk(coxRFXFit))[testIx])
+survConcordance(simSurvival[testIx][-na.action(coxFit)] ~ predict(coxFit))
 
-coxRFXFitTD <- CoxRFX(dataFrameTD[,w], survivalTD, groups[w], sigma0=0.1)
+#+ simCoxRFXFit, cache=TRUE
+simCoxRFXFit <- CoxRFX(dataFrame[,whichRFX], simSurvival, groups=groups[whichRFX], sigma0 = 0.1)
 
-plot(coef(coxRFXFit), coef(coxRFXFitTD), col=set1[groups[w]]) # Note the sign change for TPL..
-boxplot(coef(coxRFXFitTD)~groups[w], border=set1)
+boxplot(coef(simCoxRFXFit)~groups[whichRFX], border=set1, horizontal=TRUE, las=2)
+abline(v=0)
+
+#+ simStabCox, cache=TRUE
+s <- simSurvival
+s[s[,1]==0,1] <- .Machine$double.eps
+simStabCox <- stacoxph(dataFrame[!is.na(survival),], s[!is.na(survival)], bootstrap.samples = 50, control="BH", level=.1)
+
+#' Plots
+plot(simStabCox)
+plot(simStabCox$Pi, stabCox$Pi)
+
+#' Selected variables
+selected <- which(simStabCox$Pi > .8)
+selected
+simCoxFit <- coxph(simSurvival[testIx] ~ ., data=dataFrame[testIx,][,names(selected)])
+summary(simCoxFit)
+
+#' ### Survival and covariates
+#' Simulate data 
+#+ simData, cache=TRUE
+set.seed(42)
+simDataNonp
+data <- data.frame(Clinical=dataList$Clinical, Genetics=dataList$Genetics, Cytogenetics=dataList$Cytogenetics, Treatment=dataList$Treatment)
+simData <- simDataNonp(data, nData = nrow(data))
+g <- sub("\\..+","", colnames(data))
+simDataFrame <- data.frame(simData,
+		GeneGene=makeInteractions(simData[,g=="Genetics"], simData[,g=="Genetics"])[,as.vector(upper.tri(matrix(0,ncol=sum(g=="Genetics"), nrow=sum(g=="Genetics"))))],
+		GeneCyto=makeInteractions(simData[,g=="Genetics"], simData[,g=="Cytogenetics"]),
+		GeneTreatment=makeInteractions(simData[,g=="Genetics"], simData[,g=="Treatment"])
+)
+colnames(simDataFrame) <- gsub("\\.(Genetics|Treatment|Cytogenetics)","", colnames(simDataFrame))
+simDataFrame <- simDataFrame[,colnames(dataFrame)]
+simDataFrame <- as.data.frame(sapply(simDataFrame, poorMansImpute))
+simDataFrame <- StandardizeMagnitude(simDataFrame)
+
+#simDataFrameTD <- simDataFrame[tplSplit,]
+#simDataFrameTD[which(tplIndex), grep("TPL", colnames(simDataFrameTD), value=TRUE)] <- 0 ## Set pre-tpl variables to zero 
+
+#' Coefficients
+set.seed(42)
+v <- coxRFXFit$sigma2 * coxRFXFit$df[-8] / (table(groups[whichRFX])-1)
+simCoef <- numeric(ncol(simDataFrame))
+names(simCoef) <- colnames(simDataFrame)
+simCoef[whichRFX] <- rnorm(length(groups[whichRFX]), coxRFXFit$mu[groups[whichRFX]], sqrt(v[groups[whichRFX]]))
+
+#' Survival
+set.seed(42)
+simDataRisk <- (as.matrix(simDataFrame) %*% simCoef)[,1] 
+simDataSurvival <- simSurvNonp(simDataRisk, basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
+plot(survfit(simDataSurvival ~ Genetics.TP53, data=simDataFrame))
+
+#' ### RFX model
+#+ simDataCoxRFXFit, cache=TRUE
+simDataCoxRFXFit <- CoxRFX(simDataFrame[, names(coef(coxRFXFit))], simDataSurvival, groups = groups[whichRFX], sigma0 = 0.1)
+plot(coef(simDataCoxRFXFit), simCoef[whichRFX], col=set1[groups[whichRFX]])
+plot(simDataCoxRFXFit$sigma2, v, col=set1, pch=19)
+
+
+#' ### Stability selection
+#+ simDataStabCox, cache=TRUE
+set.seed(42)
+s <- simDataSurvival
+s[s[,1]==0,1] <- .Machine$double.eps
+simDataStabCox <- stacoxph(simDataFrame[!is.na(survival),], s[!is.na(survival)], bootstrap.samples = 50, control="BH", level=.1)
+
+#' Plots
+plot(simDataStabCox)
+plot(simDataStabCox$Pi, stabCox$Pi)
+plot(simCoef, simDataStabCox$Pi)
+plot(colMeans(simDataFrame), simDataStabCox$Pi, cex=sqrt(abs(simCoef))*2+.1, log="x")
+
+
+#' Selected variables
+selected <- which(simDataStabCox$Pi > .8)
+selected
+simDataCoxFit <- coxph(simDataSurvival[testIx] ~ ., data=simDataFrame[testIx,][,names(selected)])
+summary(simDataCoxFit)
+
 
 #' Germline polymorphisms
 #' ----------------------
+#+ eval=FALSE
 load("/Volumes/mg14/subclones/snps.RData")
 getSNPs <- function(samples){
 	isCoding = function(subs){
@@ -368,3 +461,9 @@ for(vcf in allCaveOut){
 			s[i, colnames(s) %in% genes] <- 1
 			i <- i+1
 		}
+		
+#' Todo's
+#' ------
+#' * TODO: MI
+#' * TODO: Latest data
+#' * TODO: Simulation study
