@@ -13,16 +13,16 @@ opts_chunk$set(dev=c('png','pdf'), fig.ext=c('png','pdf'), fig.width=4, fig.heig
 library(RColorBrewer)
 set1 <- brewer.pal(8, "Set1")
 col1 <- brewer.pal(9, "Set1")[c(1,4,3,5,7,8,2,9)]
-source("../../CoxHD/CoxHD/R/ecoxph.R")
+source("../../CoxHD/CoxHD/R/CoxRFX.R")
 source("../../CoxHD/CoxHD/R/functions.R")
-source("../../../../Projects/sandbox/mg14.R")
+source("../../mg14/R/mg14.R")
 
 
 #' 1. Load data
 #' -------------
 #' ### Clinical
 #' Loading
-clinicalData <- read.table("../data/Ulm1.8_sm_Clinical.txt", sep="\t", header=TRUE, na.strings = "na", comment.char = "", quote="\"")
+clinicalData <- read.table("../data/Ulm1.9_sm_Clinical.txt", sep="\t", header=TRUE, na.strings = "na", comment.char = "", quote="\"")
 clinicalData <- clinicalData[order(clinicalData$PDID),]
 clinicalData$ERDate <- as.Date(as.character(clinicalData$ERDate), "%d-%b-%y")
 clinicalData$CR_date <- as.Date(as.character(clinicalData$CR_date), "%d-%b-%y")
@@ -36,7 +36,7 @@ colnames(clinicalData) <- gsub('\\.',"",colnames(clinicalData))
 dim(clinicalData)
 
 #' ### Mutation data
-mutationData = read.table("../data/Ulm1.8_sm_Genetic.txt", sep="\t", header=TRUE, strip.white = TRUE)
+mutationData = read.table("../data/Ulm1.9_sm_Genetic.txt", sep="\t", header=TRUE, strip.white = TRUE)
 mutationData$SAMPLE_NAME <- factor(as.character(mutationData$SAMPLE_NAME), levels = levels(clinicalData$PDID)) ## Refactor
 mutationTable <- (table(mutationData[mutationData$Result %in% c("ONCOGENIC","POSSIBLE") & mutationData$FINAL_CALL == "OK"  ,c("SAMPLE_NAME","GENE")]) > 0)+0
 dim(mutationTable)
@@ -44,10 +44,10 @@ dim(mutationTable)
 all(rownames(mutationTable)==clinicalData$PDID)
 
 #' #### A few functions
-makeInteractions
-makeInteger
+MakeInteractions
+MakeInteger
 
-trialArms <- makeInteger(clinicalData$Study)
+trialArms <- MakeInteger(clinicalData$Study)
 
 #' 2. Preparing data
 #' ------------------
@@ -60,7 +60,7 @@ tplIdx <- (clinicalData$Time_Diag_TPL < clinicalData$efs & !is.na(clinicalData$T
 dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
 		Cytogenetics = clinicalData[,c(47:53,55:71)],
 		Treatment = cbind(trialArms[,2:3], ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL=tplIdx),
-		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], makeInteger(clinicalData$TypeAML)[,-1]))#,
+		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH","HB","platelet","Splenomegaly")], MakeInteger(clinicalData$TypeAML)[,-1]))#,
 #MolRisk = makeInteger(clinicalData$M_Risk))
 #dataList$Genetics$CEBPA <-  clinicalData$CEBPA # encoded as 0,1,2
 dataList$Genetics$CEBPA_mono <-  clinicalData$CEBPA == 1 # encoded as 0,1,2
@@ -74,19 +74,19 @@ dataList$Genetics$NPM1 <- clinicalData$NPM1
 dataList$Genetics$MLL_PTD <- clinicalData$MLL_PTD
 dataList$Cytogenetics$MLL_PTD <- NULL
 dataList$Genetics = dataList$Genetics + 0
-dataList$GeneGene <- makeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
+dataList$GeneGene <- MakeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
 dataList$GeneGene <- dataList$GeneGene[,colSums(dataList$GeneGene, na.rm=TRUE)>0] 
-dataList$GeneCyto <- makeInteractions(dataList$Genetics, dataList$Cytogenetics)
+dataList$GeneCyto <- MakeInteractions(dataList$Genetics, dataList$Cytogenetics)
 dataList$GeneCyto <- dataList$GeneCyto[,colSums(dataList$GeneCyto, na.rm=TRUE) > 0]
-dataList$GeneTreat <- makeInteractions(dataList$Genetics, dataList$Treatment[c("TPL","ATRA","VPA")])
+dataList$GeneTreat <- MakeInteractions(dataList$Genetics, dataList$Treatment[c("TPL","ATRA","VPA")])
 dataList$GeneTreat <- dataList$GeneTreat[,colSums(dataList$GeneTreat, na.rm=TRUE) > 0]
-dataList$CytoTreat <- makeInteractions(dataList$Cytogenetics, dataList$Treatment[c("TPL","ATRA","VPA")])
+dataList$CytoTreat <- MakeInteractions(dataList$Cytogenetics, dataList$Treatment[c("TPL","ATRA","VPA")])
 dataList$CytoTreat <- dataList$CytoTreat[,colSums(dataList$CytoTreat, na.rm=TRUE) > 0]
 
 #' #### Condensing to a data.frame
 dataFrame <- do.call(cbind,dataList)
-dataFrame <- StandardizeMagnitude(dataFrame)
 names(dataFrame) <- unlist(sapply(dataList, names))
+dataFrame <- StandardizeMagnitude(dataFrame)
 dim(dataFrame)
 
 groups <- factor(unlist(sapply(names(dataList), function(x) rep(x, ncol(dataList[[x]])))))
@@ -283,8 +283,8 @@ survConcordance( survivalTD~genomicRiskTD)
 #' #### AUC
 library(survAUC)
 s <- survival
-plot(AUC.uno(s[!is.na(s)],s[!is.na(s)], genomicRiskTD[!is.na(s)], seq(0,5000,100)))
-plot(AUC.uno(s[!is.na(s)],s[!is.na(s)], totalRiskTD[!is.na(s)], seq(0,5000,100)), add=TRUE, col="black")
+plot(AUC.uno(s[!is.na(s)],s[!is.na(s)], genomicRiskTD[!is.na(s)], seq(0,1000,10)))
+plot(AUC.uno(s[!is.na(s)],s[!is.na(s)], totalRiskTD[!is.na(s)], seq(0,1000,10)), add=TRUE, col="black")
 legend("bottomright",c("w/o treatment","w treatment"), col=2:1, lty=1)
 
 #' #### Genomic risk groups
@@ -383,17 +383,17 @@ survConcordance(survival[!trainIdx]~ p$predicted)
 #' ### 4. Stability selection: All terms
 library(parallel)
 library(glmnet)
-source("../../CoxHD/CoxHD/R/stacoxph.R")
+source("../../CoxHD/CoxHD/R/CoxCPSS.R")
 source("../../CoxHD/CoxHD/R/r_concave_tail.R")
 
 #' Fit model
-#+ stabCox, cache=TRUE
+#+ coxCPSS, cache=TRUE
 set.seed(42)
-stabCox <- StabCox(dataFrame[!is.na(survival),], survival[!is.na(survival)], bootstrap.samples = 50, control="BH", level=.1)
+coxCPSS <- CoxCPSS(dataFrame[!is.na(survival),], survival[!is.na(survival)], bootstrap.samples = 50, control="BH", level=.1)
 
-plot(stabCox)
+plot(coxCPSS)
 
-selected <- which(stabCox$Pi > .8)
+selected <- which(coxCPSS$Pi > .8)
 selected
 coxFit <- coxph(survival[trainIdx] ~ ., data=dataFrame[trainIdx,][,names(selected)])
 summary(coxFit)
@@ -405,14 +405,14 @@ survConcordance(survival[!trainIdx] ~ totalRiskStabTest)
 #' ### 5. Stability selection with interactions
 #' Only include interaction terms when main effects are present. 
 #' On the other hand, the exclusive selection of a product term could mean that the most likely explanation is that the two main terms are zero and only the interaction is non-zero..
-StabCoxInteractions
+CoxCPSSInteractions
 
 #' #### Fit model to entire data set
-#+ stabCoxInt, cache=TRUE
+#+ CoxCPSSInt, cache=TRUE
 set.seed(42)
-stabCoxInt <- StabCoxInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
-selectedInt <- names(which(stabCoxInt$Pi > 0.8))
-selectedInt[21] <- "TPL:NPM1"
+coxCPSSInt <- CoxCPSSInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
+selectedInt <- names(which(coxCPSSInt$Pi > 0.8))
+selectedInt[selectedInt=="NPM1:TPL"] <- "TPL:NPM1"
 
 #' Concordance of the resulting static coxph model
 coxFit <- coxph(survival[trainIdx] ~ ., data=dataFrame[trainIdx, selectedInt])
@@ -425,7 +425,7 @@ summary(coxFitTD)
 survConcordance(survivalTD[!trainIdxTD] ~ predict(coxFitTD, newdata = dataFrameTD[!trainIdxTD, selectedInt]))
 
 #' KM plots of interaction terms
-#+ stabCoxIntPlot
+#+ CoxCPSSIntPlot
 for(i in grep(":", selectedInt, value=TRUE)){
 	j <- strsplit(i, ":")[[1]]
 	plot(survfit(as.formula(paste("survivalTD ~ ", paste( j, collapse="+"))), data=dataFrameTD), col=set1)
@@ -433,14 +433,14 @@ for(i in grep(":", selectedInt, value=TRUE)){
 }
 
 #' Plots of the stability selection: No large difference between when interaction terms are enforce to only occur after main effects are included
-plot(stabCoxInt)
-plot(stabCoxInt$Pi, stabCox$Pi[match(names(stabCoxInt$Pi), names(stabCox$Pi))])
+plot(coxCPSSInt)
+plot(coxCPSSInt$Pi, coxCPSS$Pi[match(names(coxCPSSInt$Pi), names(coxCPSS$Pi))])
 
-#' Partial risk for stabCoxInt
+#' Partial risk for c
 names(groups) <- colnames(dataFrame)
 X <- as.matrix(dataFrameTD[selectedInt])
 X <- X - rep(colMeans(X), each=nrow(X))
-partRiskStabCoxInt <- sapply(levels(groups), function(l) {
+partRiskCoxCPSSInt <- sapply(levels(groups), function(l) {
 			w <- groups[selectedInt] == l
 			if(length(w)>0)
 				X[,w, drop=FALSE] %*% coef(coxFitTD)[w]
@@ -449,30 +449,30 @@ partRiskStabCoxInt <- sapply(levels(groups), function(l) {
 		})
 			
 #' Genomic risk 
-whichGenomicStabCoxInt <- which(!colnames(partRiskStabCoxInt) %in% c("Treatment","GeneTreat","CytoTreat","Clinical"))
-genomicRiskStabCoxInt <- rowSums(partRiskStabCoxInt[,whichGenomicStabCoxInt])
-survConcordance( survivalTD~genomicRiskStabCoxInt)
+whichGenomicCoxCPSSInt <- which(!colnames(partRiskCoxCPSSInt) %in% c("Treatment","GeneTreat","CytoTreat","Clinical"))
+genomicRiskCoxCPSSInt <- rowSums(partRiskCoxCPSSInt[,whichGenomicCoxCPSSInt])
+survConcordance( survivalTD~genomicRiskCoxCPSSInt)
 
 #' #### Genomic risk groups
-genomicRiskGroupsStabCoxInt <-  cut(genomicRiskStabCoxInt[!is.na(genomicRiskStabCoxInt)], quantile(genomicRiskStabCoxInt, seq(0,1,0.25)), labels = c("very low","low","high","very high"))
+genomicRiskGroupsCoxCPSSInt <-  cut(genomicRiskCoxCPSSInt[!is.na(genomicRiskCoxCPSSInt)], quantile(genomicRiskCoxCPSSInt, seq(0,1,0.25)), labels = c("very low","low","high","very high"))
 
-survConcordance( survivalTD~as.numeric(genomicRiskGroupsStabCoxInt))
-plot(survfit(survivalTD[!is.na(genomicRiskStabCoxInt)] ~ genomicRiskGroupsStabCoxInt), col=brewer.pal(4,"Spectral")[4:1], mark=16)
-table(clinicalData$M_Risk, genomicRiskGroupsStabCoxInt[1:nrow(clinicalData)])[c(2,3,4,1),]
+survConcordance( survivalTD~as.numeric(genomicRiskGroupsCoxCPSSInt))
+plot(survfit(survivalTD[!is.na(genomicRiskCoxCPSSInt)] ~ genomicRiskGroupsCoxCPSSInt), col=brewer.pal(4,"Spectral")[4:1], mark=16)
+table(clinicalData$M_Risk, genomicRiskGroupsCoxCPSSInt[1:nrow(clinicalData)])[c(2,3,4,1),]
 
 #' Risk Plots
-#+ genomicRiskStabCoxInt, fig.width=6, fig.height=6
+#+ genomicRiskCoxCPSSInt, fig.width=6, fig.height=6
 par(mfrow=c(4,1))
 i <- 1
 for(l in levels(clinicalData$M_Risk)[c(2,3,4,1)]){
-	barplot(sapply(split(as.data.frame(partRiskStabCoxInt[1:nrow(clinicalData),whichGenomicStabCoxInt][clinicalData$M_Risk ==l,]), genomicRiskGroupsStabCoxInt[1:nrow(clinicalData)][clinicalData$M_Risk ==l] ), colMeans), beside=TRUE, legend=i==4, col=col1[whichGenomicStabCoxInt], main=l, xlim=c(1,30))
+	barplot(sapply(split(as.data.frame(partRiskCoxCPSSInt[1:nrow(clinicalData),whichGenomicCoxCPSSInt][clinicalData$M_Risk ==l,]), genomicRiskGroupsCoxCPSSInt[1:nrow(clinicalData)][clinicalData$M_Risk ==l] ), colMeans), beside=TRUE, legend=i==4, col=col1[whichGenomicCoxCPSSInt], main=l, xlim=c(1,30))
 	i <- i+1
 }
 
 #' #### Fit model to the training subset only
-#+ stabCoxIntCV, cache=TRUE
-stabCoxIntCV <- StabCoxInteractions(dataFrame[!is.na(survival) & trainIdx,groups %in% mainGroups], na.omit(survival[trainIdx]), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
-selectedIntCV <- names(which(stabCoxIntCV$Pi > 0.8))
+#+ CoxCPSSIntCV, cache=TRUE
+CoxCPSSIntCV <- CoxCPSSInteractions(dataFrame[!is.na(survival) & trainIdx,groups %in% mainGroups], na.omit(survival[trainIdx]), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
+selectedIntCV <- names(which(CoxCPSSIntCV$Pi > 0.8))
 survConcordance(survival[!trainIdx] ~ predict(coxph(survival[trainIdx] ~ ., data=dataFrame[trainIdx, selectedIntCV]), newdata = dataFrame[!trainIdx, selectedIntCV]))
 
 tmp <- CoxRFX(dataFrame[trainIdx, selectedInt], survival[trainIdx], nu=0)
@@ -508,9 +508,10 @@ predictedRiskCV <- data.frame(
 #+ concordanceCV
 concordanceCV <- sapply(predictedRiskCV, function(x) {c <- survConcordance(survival[!trainIdx] ~ x); c(c$concordance, c$std.err)})
 concordanceCV
-barplot(concordanceCV[1,], border=NA, col= set1, las=2, xaxt="n", ylab="Concordance") -> b
-segments(b,concordanceCV[1,]-concordanceCV[2,],b,concordanceCV[1,]+concordanceCV[2,])
-rotatedLabel(b, rep(0,length(b)), colnames(concordanceCV), srt=45)
+o <- order(concordanceCVTD[1,])
+barplot(concordanceCV[1,o], border=NA, col= set1, las=2, xaxt="n", ylab="Concordance") -> b
+segments(b,concordanceCV[1,o]-concordanceCV[2,o],b,concordanceCV[1,o]+concordanceCV[2,o])
+rotatedLabel(b, rep(0,length(b)), colnames(concordanceCV)[o], srt=45)
 
 #+ aucCV
 aucCV <- sapply(predictedRiskCV, function(x) survivalROC(Stime=survival[!is.na(survival) & !trainIdx,1], status=survival[!is.na(survival) &  !trainIdx,2], marker = x[!is.na(survival[!trainIdx])], predict.time = 278, method="KM", cut.values=seq(-5,5,0.1))$AUC)
@@ -531,89 +532,11 @@ predictedRiskCVTD <- data.frame(
 #+ concordanceCVTD
 concordanceCVTD <- sapply(predictedRiskCVTD, function(x) {c <- survConcordance(survivalTD[!trainIdxTD] ~ x); c(c$concordance, c$std.err)})
 concordanceCVTD
-barplot(concordanceCVTD[1,], border=NA, col= set1, las=2, xaxt="n", ylab="Concordance") -> b
-segments(b,concordanceCVTD[1,]-concordanceCVTD[2,],b,concordanceCVTD[1,]+concordanceCVTD[2,])
-rotatedLabel(b, rep(0,length(b)), colnames(concordanceCVTD), srt=45)
+o <- order(concordanceCVTD[1,])
+barplot(concordanceCVTD[1,o], border=NA, col= set1, las=2, xaxt="n", ylab="Concordance") -> b
+segments(b,concordanceCVTD[1,o]-concordanceCVTD[2,o],b,concordanceCVTD[1,o]+concordanceCVTD[2,o])
+rotatedLabel(b, rep(0,length(b)), colnames(concordanceCVTD)[o], srt=45)
 
-#' 5. Subsets and predictive power
-#' ---------------------------
-#' We subset and compute the predictive power of the model
-#+ subsetConcordance, cache=TRUE, warning=FALSE, collapse=TRUE
-library(survivalROC)
-set.seed(42)
-subsets <- c(300,600,900,1200,1500)
-subsetConcordance <- lapply(subsets, function(s){
-			lapply(1:5, function(i){
-						trn <- 1:nrow(dataFrame) %in% sample(nrow(dataFrame), s)
-						tst <-  !trn #1:nrow(dataFrame) %in% sample(setdiff(1:nrow(dataFrame), trn), 300)
-						stbCx <- StabCox(dataFrame[!is.na(survival) & trn,mainIdx], survival[!is.na(survival) & trn], bootstrap.samples = 50, control="BH") ## Only main effects
-						slctd <- which(stbCx$Pi > .8)
-						cxFt <- coxph(as.formula(paste("survival[!is.na(survival) & trn] ~ ", paste(names(slctd), collapse="+"))), data=dataFrame[!is.na(survival) & trn,mainIdx])
-						prdRsk <- predict(cxFt, newdata = dataFrame[!is.na(survival) & tst,mainIdx])
-						C <- survConcordance(survival[!is.na(survival) & tst] ~ prdRsk)
-						ROC <- survivalROC(Stime=survival[!is.na(survival) & tst,1], status=survival[!is.na(survival) & tst,2], marker = prdRsk, predict.time = 278, method="KM", cut.values=seq(-5,5,0.1))
-						list(C, ROC, trn, tst, slctd)})
-		})
-
-#+ subsetConcordancePlot, fig.width=4, fig.height=4
-#pdf("subsetConcordance.pdf", 2.5,2.5, pointsize=8)
-par(mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0))
-plot(NA,NA, xlim=c(0,1),ylim=c(0,1), xlab="FPR",ylab="TPR")
-abline(0,1, lty=3)
-for(i in seq_along(subsets)){
-	x <- sapply(subsetConcordance[[i]], function(x) x[[2]]$FP)
-	y <- sapply(subsetConcordance[[i]], function(x) x[[2]]$TP)
-	lines(rowMeans(x),rowMeans(y), col=col1[i], type="l")
-}
-legend("bottomright", legend=rev(subsets), lty=1, col=col1[5:1], bty="n")
-
-rangeplot <- function(x, y, col = 1, pch = 19, lty = 1, ...){
-	plot(x, colMeans(y), col = col, pch=pch, ylim = range(y), ..., xaxt="n")
-	axis(at = x, labels=x, side=1)
-	segments(x,apply(y,2,min),x,apply(y,2,max), col=col, lty = lty)
-}
-
-rangeplot(x=subsets, y = sapply(subsetConcordance, function(x) sapply(1:5, function(i) x[[i]][[2]]$AUC)) , col=col1, xlab="Cohort", ylab="AUC", lty=1)
-rangeplot(x=subsets, y = sapply(subsetConcordance, function(x) sapply(1:5, function(i) x[[i]][[1]]$concordance)) , col=col1, xlab="Cohort", ylab="Concordance", lty=1)
-rangeplot(x=subsets, y = sapply(subsetConcordance, function(x) sapply(1:5, function(i) length(x[[i]][[5]]))) , col=col1, xlab="Cohort", ylab="Selected variables", lty=1)
-
-#boxplot(as.numeric(sapply(subsetConcordance, function(x) sapply(1:5, function(i) x[[i]][[2]]$AUC))) ~ rep(subsets, each=5), border=col1, xlab="Cohort", ylab="AUC", boxwex=.66, staplewex=0, lty=1, pch=16)
-#boxplot(as.numeric(sapply(subsetConcordance, function(x) sapply(1:5, function(i) x[[i]][[1]]$concordance))) ~ rep(subsets, each=5), border=col1, xlab="Cohort", ylab="Concordance", boxwex=.66, staplewex=0, lty=1, pch=16)
-#boxplot(as.numeric(sapply(subsetConcordance, function(x) sapply(1:5, function(i) length(x[[i]][[5]])))) ~ rep(subsets, each=5), border=col1, xlab="Cohort", ylab="Selected variables", boxwex=.66, staplewex=0, lty=1, pch=16)
-#dev.off()
-
-#' Assuming an oracle told us the variables selected on the entire cohort..
-#+ subsetOracle
-subsetOracle <- lapply(subsetConcordance, function(x) lapply(x, function(y){
-						trn <- y[[3]]
-						tst <- y[[4]]
-						cxFt <- coxph(as.formula(paste("survival[!is.na(survival) & trn] ~ ", paste(selectedInt, collapse="+"))), data=dataFrame[!is.na(survival) & trn,mainIdx])
-						prdRsk <- predict(cxFt, newdata = dataFrame[!is.na(survival) & tst,mainIdx])
-						C <- survConcordance(survival[!is.na(survival) & tst] ~ prdRsk)
-						ROC <- survivalROC(Stime=survival[!is.na(survival) & tst,1], status=survival[!is.na(survival) & tst,2], marker = prdRsk, predict.time = 278, method="KM", cut.values=seq(-5,5,0.1))
-						list(C, ROC, trn, tst, selectedInt)})
-)
-
-#+ subsetOraclePlot, fig.width=4, fig.height=4
-#pdf("subsetOracle.pdf", 2.5,2.5, pointsize=8)
-par(mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0))
-plot(NA,NA, xlim=c(0,1),ylim=c(0,1), xlab="FPR",ylab="TPR")
-abline(0,1, lty=3)
-for(i in seq_along(subsets)){
-	x <- sapply(subsetOracle[[i]], function(x) x[[2]]$FP)
-	y <- sapply(subsetOracle[[i]], function(x) x[[2]]$TP)
-	lines(rowMeans(x),rowMeans(y), col=col1[i], type="l")
-}
-legend("bottomright", legend=rev(subsets), lty=1, col=col1[5:1], bty="n")
-
-rangeplot(x=subsets, y = sapply(subsetOracle, function(x) sapply(1:5, function(i) x[[i]][[2]]$AUC)) , col=col1, xlab="Cohort", ylab="AUC", lty=1)
-rangeplot(x=subsets, y = sapply(subsetOracle, function(x) sapply(1:5, function(i) x[[i]][[1]]$concordance)) , col=col1, xlab="Cohort", ylab="Concordance", lty=1)
-rangeplot(x=subsets, y = sapply(subsetOracle, function(x) sapply(1:5, function(i) length(x[[i]][[5]]))) , col=col1, xlab="Cohort", ylab="Selected variables", lty=1)
-
-#boxplot(as.numeric(sapply(subsetOracle, function(x) sapply(1:5, function(i) x[[i]][[2]]$AUC))) ~ rep(subsets, each=5), border=col1, xlab="Cohort", ylab="AUC", boxwex=.66, staplewex=0, lty=1, pch=16)
-#boxplot(as.numeric(sapply(subsetOracle, function(x) sapply(1:5, function(i) x[[i]][[1]]$concordance))) ~ rep(subsets, each=5), border=col1, xlab="Cohort", ylab="Concordance", boxwex=.66, staplewex=0, lty=1, pch=16)
-#boxplot(as.numeric(sapply(subsetOracle, function(x) sapply(1:5, function(i) length(x[[i]][[5]])))) ~ rep(subsets, each=5), border=col1, xlab="Cohort", ylab="Selected variables", boxwex=.66, staplewex=0, lty=1, pch=16)
-#dev.off()
 
 #+ save
 save(list = ls(), file=paste(Sys.Date(), "-AML.RData", sep=""))
@@ -673,7 +596,10 @@ for(vcf in allCaveOut){
 			i <- i+1
 		}
 		
-
+#' Session
+#' -----
+#+ sessionInfo, eval=TRUE
+sessionInfo()
 		
 #' TODO's
 #' ------

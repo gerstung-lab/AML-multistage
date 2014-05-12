@@ -100,7 +100,7 @@ colnames(clinicalData)
 dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
 		Cytogenetics = clinicalData[,c(47:53,55:71)],
 		Treatment = cbind(trialArms[,2:3], ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL=clinicalData$Time_Diag_TPL < survival[,1] & !is.na(clinicalData$Time_Diag_TPL)),
-		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], makeInteger(clinicalData$TypeAML)[,-1]))#,
+		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], MakeInteger(clinicalData$TypeAML)[,-1]))#,
 		#MolRisk = makeInteger(clinicalData$M_Risk))
 dataList$Genetics$CEBPA <-  clinicalData$CEBPA # encoded as 0,1,2
 dataList$Genetics$FLT3 <- NULL
@@ -111,21 +111,21 @@ dataList$Genetics$NPM1 <- clinicalData$NPM1
 dataList$Genetics$MLL_PTD <- clinicalData$MLL_PTD
 dataList$Cytogenetics$MLL_PTD <- NULL
 dataList$Genetics = dataList$Genetics + 0
-dataList$GeneGene <- makeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
+dataList$GeneGene <- MakeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
 dataList$GeneGene <- dataList$GeneGene[,colSums(dataList$GeneGene, na.rm=TRUE)>0] 
-dataList$GeneCyto <- makeInteractions(dataList$Genetics, dataList$Cytogenetics)
+dataList$GeneCyto <- MakeInteractions(dataList$Genetics, dataList$Cytogenetics)
 dataList$GeneCyto <- dataList$GeneCyto[,colSums(dataList$GeneCyto, na.rm=TRUE) > 0]
-dataList$GeneTreat <- makeInteractions(dataList$Genetics, dataList$Treatment)
+dataList$GeneTreat <- MakeInteractions(dataList$Genetics, dataList$Treatment)
 dataList$GeneTreat <- dataList$GeneTreat[,colSums(dataList$GeneTreat, na.rm=TRUE) > 0]
-dataList$CytoTreat <- makeInteractions(dataList$Cytogenetics, dataList$Treatment)
+dataList$CytoTreat <- MakeInteractions(dataList$Cytogenetics, dataList$Treatment)
 dataList$CytoTreat <- dataList$CytoTreat[,colSums(dataList$CytoTreat, na.rm=TRUE) > 0]
-trialArms <- makeInteger(clinicalData$Study)
+trialArms <- MakeInteger(clinicalData$Study)
 
 #' ## Prepating data
 dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
 		Cytogenetics = clinicalData[,c(47:53,55:71)],
 		Treatment = cbind(trialArms[,2:3], ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL=clinicalData$Time_Diag_TPL < survival[,1] & !is.na(clinicalData$Time_Diag_TPL)),
-		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], makeInteger(clinicalData$TypeAML)[,-1]))#,
+		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], MakeInteger(clinicalData$TypeAML)[,-1]))#,
 		#MolRisk = makeInteger(clinicalData$M_Risk))
 dataList$Genetics$CEBPA <-  clinicalData$CEBPA # encoded as 0,1,2
 dataList$Genetics$FLT3 <- NULL
@@ -136,34 +136,34 @@ dataList$Genetics$NPM1 <- clinicalData$NPM1
 dataList$Genetics$MLL_PTD <- clinicalData$MLL_PTD
 dataList$Cytogenetics$MLL_PTD <- NULL
 dataList$Genetics = dataList$Genetics + 0
-dataList$GeneGene <- makeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
+dataList$GeneGene <- MakeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
 dataList$GeneGene <- dataList$GeneGene[,colSums(dataList$GeneGene, na.rm=TRUE)>0] 
-dataList$GeneCyto <- makeInteractions(dataList$Genetics, dataList$Cytogenetics)
+dataList$GeneCyto <- MakeInteractions(dataList$Genetics, dataList$Cytogenetics)
 dataList$GeneCyto <- dataList$GeneCyto[,colSums(dataList$GeneCyto, na.rm=TRUE) > 0]
-dataList$GeneTreat <- makeInteractions(dataList$Genetics, dataList$Treatment)
+dataList$GeneTreat <- MakeInteractions(dataList$Genetics, dataList$Treatment)
 dataList$GeneTreat <- dataList$GeneTreat[,colSums(dataList$GeneTreat, na.rm=TRUE) > 0]
-dataList$CytoTreat <- makeInteractions(dataList$Cytogenetics, dataList$Treatment)
+dataList$CytoTreat <- MakeInteractions(dataList$Cytogenetics, dataList$Treatment)
 dataList$CytoTreat <- dataList$CytoTreat[,colSums(dataList$CytoTreat, na.rm=TRUE) > 0]
 source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/functions.R", echo=FALSE, encoding="ISO-8859-1")
 #' #### A few functions
-makeInteractions <- function(X,Y){
+MakeInteractions <- function(X,Y){
 	Z <- do.call(cbind, lapply(X, `*`, Y))
 	colnames(Z) <- apply(expand.grid(colnames(X), colnames(Y)),1,paste, collapse=":")
 	return(Z)
 }
 
-makeInteger <- function(F){
+MakeInteger <- function(F){
 	res <- as.data.frame(lapply(levels(F), `==`, F))
 	colnames(res) <- levels(F)
 	res + 0
 }
 
-trialArms <- makeInteger(clinicalData$Study)
+trialArms <- MakeInteger(clinicalData$Study)
 #' ## Prepating data
 dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
 		Cytogenetics = clinicalData[,c(47:53,55:71)],
 		Treatment = cbind(trialArms[,2:3], ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL=clinicalData$Time_Diag_TPL < survival[,1] & !is.na(clinicalData$Time_Diag_TPL)),
-		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], makeInteger(clinicalData$TypeAML)[,-1]))#,
+		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], MakeInteger(clinicalData$TypeAML)[,-1]))#,
 		#MolRisk = makeInteger(clinicalData$M_Risk))
 dataList$Genetics$CEBPA <-  clinicalData$CEBPA # encoded as 0,1,2
 dataList$Genetics$FLT3 <- NULL
@@ -174,18 +174,18 @@ dataList$Genetics$NPM1 <- clinicalData$NPM1
 dataList$Genetics$MLL_PTD <- clinicalData$MLL_PTD
 dataList$Cytogenetics$MLL_PTD <- NULL
 dataList$Genetics = dataList$Genetics + 0
-dataList$GeneGene <- makeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
+dataList$GeneGene <- MakeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
 dataList$GeneGene <- dataList$GeneGene[,colSums(dataList$GeneGene, na.rm=TRUE)>0] 
-dataList$GeneCyto <- makeInteractions(dataList$Genetics, dataList$Cytogenetics)
+dataList$GeneCyto <- MakeInteractions(dataList$Genetics, dataList$Cytogenetics)
 dataList$GeneCyto <- dataList$GeneCyto[,colSums(dataList$GeneCyto, na.rm=TRUE) > 0]
-dataList$GeneTreat <- makeInteractions(dataList$Genetics, dataList$Treatment)
+dataList$GeneTreat <- MakeInteractions(dataList$Genetics, dataList$Treatment)
 dataList$GeneTreat <- dataList$GeneTreat[,colSums(dataList$GeneTreat, na.rm=TRUE) > 0]
-dataList$CytoTreat <- makeInteractions(dataList$Cytogenetics, dataList$Treatment)
+dataList$CytoTreat <- MakeInteractions(dataList$Cytogenetics, dataList$Treatment)
 dataList$CytoTreat <- dataList$CytoTreat[,colSums(dataList$CytoTreat, na.rm=TRUE) > 0]
 dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
 		Cytogenetics = clinicalData[,c(47:53,55:71)],
 		Treatment = cbind(trialArms[,2:3], ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL=clinicalData$Time_Diag_TPL < survival[,1] & !is.na(clinicalData$Time_Diag_TPL)),
-		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], makeInteger(clinicalData$TypeAML)[,-1]))#,
+		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], MakeInteger(clinicalData$TypeAML)[,-1]))#,
 		#MolRisk = makeInteger(clinicalData$M_Risk))
 dataList$Genetics$CEBPA <-  clinicalData$CEBPA # encoded as 0,1,2
 dataList$Genetics$FLT3 <- NULL
@@ -196,13 +196,13 @@ dataList$Genetics$NPM1 <- clinicalData$NPM1
 dataList$Genetics$MLL_PTD <- clinicalData$MLL_PTD
 dataList$Cytogenetics$MLL_PTD <- NULL
 dataList$Genetics = dataList$Genetics + 0
-dataList$GeneGene <- makeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
+dataList$GeneGene <- MakeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
 dataList$GeneGene <- dataList$GeneGene[,colSums(dataList$GeneGene, na.rm=TRUE)>0] 
-dataList$GeneCyto <- makeInteractions(dataList$Genetics, dataList$Cytogenetics)
+dataList$GeneCyto <- MakeInteractions(dataList$Genetics, dataList$Cytogenetics)
 dataList$GeneCyto <- dataList$GeneCyto[,colSums(dataList$GeneCyto, na.rm=TRUE) > 0]
-dataList$GeneTreat <- makeInteractions(dataList$Genetics, dataList$Treatment)
+dataList$GeneTreat <- MakeInteractions(dataList$Genetics, dataList$Treatment)
 dataList$GeneTreat <- dataList$GeneTreat[,colSums(dataList$GeneTreat, na.rm=TRUE) > 0]
-dataList$CytoTreat <- makeInteractions(dataList$Cytogenetics, dataList$Treatment)
+dataList$CytoTreat <- MakeInteractions(dataList$Cytogenetics, dataList$Treatment)
 dataList$CytoTreat <- dataList$CytoTreat[,colSums(dataList$CytoTreat, na.rm=TRUE) > 0]
 sapply(dataList$Cytogenetics, class)
 table(dataList$Cytogenetics$X7q)
@@ -229,7 +229,7 @@ dim(mutationTable)
 dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
 		Cytogenetics = clinicalData[,c(47:53,55:71)],
 		Treatment = cbind(trialArms[,2:3], ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL=clinicalData$Time_Diag_TPL < survival[,1] & !is.na(clinicalData$Time_Diag_TPL)),
-		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], makeInteger(clinicalData$TypeAML)[,-1]))#,
+		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], MakeInteger(clinicalData$TypeAML)[,-1]))#,
 		#MolRisk = makeInteger(clinicalData$M_Risk))
 dataList$Genetics$CEBPA <-  clinicalData$CEBPA # encoded as 0,1,2
 dataList$Genetics$FLT3 <- NULL
@@ -240,13 +240,13 @@ dataList$Genetics$NPM1 <- clinicalData$NPM1
 dataList$Genetics$MLL_PTD <- clinicalData$MLL_PTD
 dataList$Cytogenetics$MLL_PTD <- NULL
 dataList$Genetics = dataList$Genetics + 0
-dataList$GeneGene <- makeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
+dataList$GeneGene <- MakeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
 dataList$GeneGene <- dataList$GeneGene[,colSums(dataList$GeneGene, na.rm=TRUE)>0] 
-dataList$GeneCyto <- makeInteractions(dataList$Genetics, dataList$Cytogenetics)
+dataList$GeneCyto <- MakeInteractions(dataList$Genetics, dataList$Cytogenetics)
 dataList$GeneCyto <- dataList$GeneCyto[,colSums(dataList$GeneCyto, na.rm=TRUE) > 0]
-dataList$GeneTreat <- makeInteractions(dataList$Genetics, dataList$Treatment)
+dataList$GeneTreat <- MakeInteractions(dataList$Genetics, dataList$Treatment)
 dataList$GeneTreat <- dataList$GeneTreat[,colSums(dataList$GeneTreat, na.rm=TRUE) > 0]
-dataList$CytoTreat <- makeInteractions(dataList$Cytogenetics, dataList$Treatment)
+dataList$CytoTreat <- MakeInteractions(dataList$Cytogenetics, dataList$Treatment)
 dataList$CytoTreat <- dataList$CytoTreat[,colSums(dataList$CytoTreat, na.rm=TRUE) > 0]
 
 dataFrame <- do.call(cbind,dataList)
@@ -295,7 +295,7 @@ logodds=log10(odds)
 dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
 		Cytogenetics = clinicalData[,c(47:53,55:71)],
 		Treatment = cbind(trialArms[,2:3], ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL=clinicalData$Time_Diag_TPL < survival[,1] & !is.na(clinicalData$Time_Diag_TPL)),
-		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], makeInteger(clinicalData$TypeAML)[,-1]))#,
+		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], MakeInteger(clinicalData$TypeAML)[,-1]))#,
 		#MolRisk = makeInteger(clinicalData$M_Risk))
 dataList$Genetics$CEBPA <-  clinicalData$CEBPA # encoded as 0,1,2
 dataList$Genetics$FLT3 <- NULL
@@ -306,13 +306,13 @@ dataList$Genetics$NPM1 <- clinicalData$NPM1
 dataList$Genetics$MLL_PTD <- clinicalData$MLL_PTD
 dataList$Cytogenetics$MLL_PTD <- NULL
 dataList$Genetics = dataList$Genetics + 0
-dataList$GeneGene <- makeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
+dataList$GeneGene <- MakeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
 dataList$GeneGene <- dataList$GeneGene[,colSums(dataList$GeneGene, na.rm=TRUE)>0] 
-dataList$GeneCyto <- makeInteractions(dataList$Genetics, dataList$Cytogenetics)
+dataList$GeneCyto <- MakeInteractions(dataList$Genetics, dataList$Cytogenetics)
 dataList$GeneCyto <- dataList$GeneCyto[,colSums(dataList$GeneCyto, na.rm=TRUE) > 0]
-dataList$GeneTreat <- makeInteractions(dataList$Genetics, dataList$Treatment)
+dataList$GeneTreat <- MakeInteractions(dataList$Genetics, dataList$Treatment)
 dataList$GeneTreat <- dataList$GeneTreat[,colSums(dataList$GeneTreat, na.rm=TRUE) > 0]
-dataList$CytoTreat <- makeInteractions(dataList$Cytogenetics, dataList$Treatment)
+dataList$CytoTreat <- MakeInteractions(dataList$Cytogenetics, dataList$Treatment)
 dataList$CytoTreat <- dataList$CytoTreat[,colSums(dataList$CytoTreat, na.rm=TRUE) > 0]
 
 dataFrame <- do.call(cbind,dataList)
@@ -433,7 +433,7 @@ coef(coxRFXFitTD)[groups[whichRFX]=="GeneTreat"]
 dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
 		Cytogenetics = clinicalData[,c(47:53,55:71)],
 		Treatment = cbind(trialArms[,2:3], ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL=clinicalData$Time_Diag_TPL < survival[,1] & !is.na(clinicalData$Time_Diag_TPL)),
-		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], makeInteger(clinicalData$TypeAML)[,-1]))#,
+		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], MakeInteger(clinicalData$TypeAML)[,-1]))#,
 		#MolRisk = makeInteger(clinicalData$M_Risk))
 dataList$Genetics$CEBPA <-  clinicalData$CEBPA # encoded as 0,1,2
 dataList$Genetics$FLT3 <- NULL
@@ -444,13 +444,13 @@ dataList$Genetics$NPM1 <- clinicalData$NPM1
 dataList$Genetics$MLL_PTD <- clinicalData$MLL_PTD
 dataList$Cytogenetics$MLL_PTD <- NULL
 dataList$Genetics = dataList$Genetics + 0
-dataList$GeneGene <- makeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
+dataList$GeneGene <- MakeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
 dataList$GeneGene <- dataList$GeneGene[,colSums(dataList$GeneGene, na.rm=TRUE)>0] 
-dataList$GeneCyto <- makeInteractions(dataList$Genetics, dataList$Cytogenetics)
+dataList$GeneCyto <- MakeInteractions(dataList$Genetics, dataList$Cytogenetics)
 dataList$GeneCyto <- dataList$GeneCyto[,colSums(dataList$GeneCyto, na.rm=TRUE) > 0]
-dataList$GeneTreat <- makeInteractions(dataList$Genetics, dataList$Treatment[c("TPL","ATRA","VPA")])
+dataList$GeneTreat <- MakeInteractions(dataList$Genetics, dataList$Treatment[c("TPL","ATRA","VPA")])
 dataList$GeneTreat <- dataList$GeneTreat[,colSums(dataList$GeneTreat, na.rm=TRUE) > 0]
-dataList$CytoTreat <- makeInteractions(dataList$Cytogenetics, dataList$Treatment[c("TPL","ATRA","VPA")])
+dataList$CytoTreat <- MakeInteractions(dataList$Cytogenetics, dataList$Treatment[c("TPL","ATRA","VPA")])
 dataList$CytoTreat <- dataList$CytoTreat[,colSums(dataList$CytoTreat, na.rm=TRUE) > 0]
 
 dataFrame <- do.call(cbind,dataList)
@@ -763,7 +763,7 @@ table(dataFrame$SH2B3, dataFrame$VPA)
 dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
 		Cytogenetics = clinicalData[,c(47:53,55:71)],
 		Treatment = cbind(trialArms[,2:3], ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL=tplIdx),
-		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], makeInteger(clinicalData$TypeAML)[,-1]))#,
+		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], MakeInteger(clinicalData$TypeAML)[,-1]))#,
 		#MolRisk = makeInteger(clinicalData$M_Risk))
 dataList$Genetics$CEBPA <-  clinicalData$CEBPA # encoded as 0,1,2
 dataList$Genetics$FLT3 <- NULL
@@ -774,13 +774,13 @@ dataList$Genetics$NPM1 <- clinicalData$NPM1
 dataList$Genetics$MLL_PTD <- clinicalData$MLL_PTD
 dataList$Cytogenetics$MLL_PTD <- NULL
 dataList$Genetics = dataList$Genetics + 0
-dataList$GeneGene <- makeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
+dataList$GeneGene <- MakeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
 dataList$GeneGene <- dataList$GeneGene[,colSums(dataList$GeneGene, na.rm=TRUE)>0] 
-dataList$GeneCyto <- makeInteractions(dataList$Genetics, dataList$Cytogenetics)
+dataList$GeneCyto <- MakeInteractions(dataList$Genetics, dataList$Cytogenetics)
 dataList$GeneCyto <- dataList$GeneCyto[,colSums(dataList$GeneCyto, na.rm=TRUE) > 0]
-dataList$GeneTreat <- makeInteractions(dataList$Genetics, dataList$Treatment[c("TPL","ATRA","VPA")])
+dataList$GeneTreat <- MakeInteractions(dataList$Genetics, dataList$Treatment[c("TPL","ATRA","VPA")])
 dataList$GeneTreat <- dataList$GeneTreat[,colSums(dataList$GeneTreat, na.rm=TRUE) > 0]
-dataList$CytoTreat <- makeInteractions(dataList$Cytogenetics, dataList$Treatment[c("TPL","ATRA","VPA")])
+dataList$CytoTreat <- MakeInteractions(dataList$Cytogenetics, dataList$Treatment[c("TPL","ATRA","VPA")])
 dataList$CytoTreat <- dataList$CytoTreat[,colSums(dataList$CytoTreat, na.rm=TRUE) > 0]
 
 dataFrame <- do.call(cbind,dataList)
@@ -792,7 +792,7 @@ table(dataFrame$SH2B3, dataFrame$VPA)
 table(dataFrame$SH2B3, dataFrame$VPA, dataFrame$`SH2B3:VPA`)
 unlist(sapply(dataList, names))
 table(dataFrame$VPA, dataFrame$`SH2B3:VPA`)
-makeInteractions <- function(X,Y){
+MakeInteractions <- function(X,Y){
 	Z <- do.call(cbind, lapply(X, `*`, Y))
 	colnames(Z) <- apply(expand.grid(colnames(Y), colnames(X)),1,paste, collapse=":")
 	return(Z)
@@ -800,7 +800,7 @@ makeInteractions <- function(X,Y){
 dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
 		Cytogenetics = clinicalData[,c(47:53,55:71)],
 		Treatment = cbind(trialArms[,2:3], ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL=tplIdx),
-		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], makeInteger(clinicalData$TypeAML)[,-1]))#,
+		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], MakeInteger(clinicalData$TypeAML)[,-1]))#,
 		#MolRisk = makeInteger(clinicalData$M_Risk))
 dataList$Genetics$CEBPA <-  clinicalData$CEBPA # encoded as 0,1,2
 dataList$Genetics$FLT3 <- NULL
@@ -811,13 +811,13 @@ dataList$Genetics$NPM1 <- clinicalData$NPM1
 dataList$Genetics$MLL_PTD <- clinicalData$MLL_PTD
 dataList$Cytogenetics$MLL_PTD <- NULL
 dataList$Genetics = dataList$Genetics + 0
-dataList$GeneGene <- makeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
+dataList$GeneGene <- MakeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
 dataList$GeneGene <- dataList$GeneGene[,colSums(dataList$GeneGene, na.rm=TRUE)>0] 
-dataList$GeneCyto <- makeInteractions(dataList$Genetics, dataList$Cytogenetics)
+dataList$GeneCyto <- MakeInteractions(dataList$Genetics, dataList$Cytogenetics)
 dataList$GeneCyto <- dataList$GeneCyto[,colSums(dataList$GeneCyto, na.rm=TRUE) > 0]
-dataList$GeneTreat <- makeInteractions(dataList$Genetics, dataList$Treatment[c("TPL","ATRA","VPA")])
+dataList$GeneTreat <- MakeInteractions(dataList$Genetics, dataList$Treatment[c("TPL","ATRA","VPA")])
 dataList$GeneTreat <- dataList$GeneTreat[,colSums(dataList$GeneTreat, na.rm=TRUE) > 0]
-dataList$CytoTreat <- makeInteractions(dataList$Cytogenetics, dataList$Treatment[c("TPL","ATRA","VPA")])
+dataList$CytoTreat <- MakeInteractions(dataList$Cytogenetics, dataList$Treatment[c("TPL","ATRA","VPA")])
 dataList$CytoTreat <- dataList$CytoTreat[,colSums(dataList$CytoTreat, na.rm=TRUE) > 0]
 
 dataFrame <- do.call(cbind,dataList)
@@ -836,7 +836,7 @@ tplIdx <- (clinicalData$Time_Diag_TPL < clinicalData$efs & !is.na(clinicalData$T
 dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
 		Cytogenetics = clinicalData[,c(47:53,55:71)],
 		Treatment = cbind(trialArms[,2:3], ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL=tplIdx),
-		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], makeInteger(clinicalData$TypeAML)[,-1]))#,
+		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH_","HB","platelet","Splenomegaly")], MakeInteger(clinicalData$TypeAML)[,-1]))#,
 		#MolRisk = makeInteger(clinicalData$M_Risk))
 dataList$Genetics$CEBPA <-  clinicalData$CEBPA # encoded as 0,1,2
 dataList$Genetics$FLT3 <- NULL
@@ -847,13 +847,13 @@ dataList$Genetics$NPM1 <- clinicalData$NPM1
 dataList$Genetics$MLL_PTD <- clinicalData$MLL_PTD
 dataList$Cytogenetics$MLL_PTD <- NULL
 dataList$Genetics = dataList$Genetics + 0
-dataList$GeneGene <- makeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
+dataList$GeneGene <- MakeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
 dataList$GeneGene <- dataList$GeneGene[,colSums(dataList$GeneGene, na.rm=TRUE)>0] 
-dataList$GeneCyto <- makeInteractions(dataList$Genetics, dataList$Cytogenetics)
+dataList$GeneCyto <- MakeInteractions(dataList$Genetics, dataList$Cytogenetics)
 dataList$GeneCyto <- dataList$GeneCyto[,colSums(dataList$GeneCyto, na.rm=TRUE) > 0]
-dataList$GeneTreat <- makeInteractions(dataList$Genetics, dataList$Treatment[c("TPL","ATRA","VPA")])
+dataList$GeneTreat <- MakeInteractions(dataList$Genetics, dataList$Treatment[c("TPL","ATRA","VPA")])
 dataList$GeneTreat <- dataList$GeneTreat[,colSums(dataList$GeneTreat, na.rm=TRUE) > 0]
-dataList$CytoTreat <- makeInteractions(dataList$Cytogenetics, dataList$Treatment[c("TPL","ATRA","VPA")])
+dataList$CytoTreat <- MakeInteractions(dataList$Cytogenetics, dataList$Treatment[c("TPL","ATRA","VPA")])
 dataList$CytoTreat <- dataList$CytoTreat[,colSums(dataList$CytoTreat, na.rm=TRUE) > 0]
 
 dataFrame <- do.call(cbind,dataList)
@@ -1128,24 +1128,24 @@ rowSums(cov(partRiskTD))
 diag(cov(partRiskTD))
 barplot(diag(cov(partRiskTD)))
 barplot(rowSums(cov(partRiskTD)))
-cov(makeInteger(rep(1:10,each=10))
+cov(MakeInteger(rep(1:10,each=10))
 )
-cov(makeInteger(factor(rep(1:10,each=10))))
-cov(makeInteger(factor(rep(1:10,each=10)))[,-1])
-cov(makeInteger(factor(rep(1:10,each=10))))
-(1:10) %*% cov(makeInteger(factor(rep(1:10,each=10)))) %*% (1:10)
+cov(MakeInteger(factor(rep(1:10,each=10))))
+cov(MakeInteger(factor(rep(1:10,each=10)))[,-1])
+cov(MakeInteger(factor(rep(1:10,each=10))))
+(1:10) %*% cov(MakeInteger(factor(rep(1:10,each=10)))) %*% (1:10)
 var(1:10)
 var(rep(1:10,each=10))
 var(2:10)
 var(1:10)
-tr(cov(makeInteger(factor(rep(1:10,each=10)))))
-trace(cov(makeInteger(factor(rep(1:10,each=10)))))
-diag(cov(makeInteger(factor(rep(1:10,each=10)))))
-sum(diag(cov(makeInteger(factor(rep(1:10,each=10))))))
-sum(diag(cov(makeInteger(factor(rep(1:10,each=10)))))) * var(1:10)
-rowSums(cov(makeInteger(factor(rep(1:10,each=10))))))
-rowSums(cov(makeInteger(factor(rep(1:10,each=10)))))
-(1:10) %*% cov(makeInteger(factor(rep(1:10,each=10)))) %*% (1:10)
+tr(cov(MakeInteger(factor(rep(1:10,each=10)))))
+trace(cov(MakeInteger(factor(rep(1:10,each=10)))))
+diag(cov(MakeInteger(factor(rep(1:10,each=10)))))
+sum(diag(cov(MakeInteger(factor(rep(1:10,each=10))))))
+sum(diag(cov(MakeInteger(factor(rep(1:10,each=10)))))) * var(1:10)
+rowSums(cov(MakeInteger(factor(rep(1:10,each=10))))))
+rowSums(cov(MakeInteger(factor(rep(1:10,each=10)))))
+(1:10) %*% cov(MakeInteger(factor(rep(1:10,each=10)))) %*% (1:10)
 require(knitr)
 spin( "/Users/mg14/Git/Projects/CoxHD/test/coxRFXTest.R")
 source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/ecoxph.R", echo=FALSE, encoding="ISO-8859-1")
@@ -1353,19 +1353,19 @@ survConcordance(survival[!trainIdx] ~  as.matrix(dataFrame[!trainIdx,whichRFX])%
 selected
 source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/functions.R", echo=FALSE, encoding="ISO-8859-1")
 set.seed(42)
-stabCoxInt <- StabCoxInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
+stabCoxInt <- CoxCPSSInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
 source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/stacoxph.R", echo=FALSE, encoding="ISO-8859-1")
 source("/Users/mg14/Git/Projects/AML/code/AML.R", echo=FALSE, encoding="ISO-8859-1")
 source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/stacoxph.R", echo=FALSE, encoding="ISO-8859-1")
 set.seed(42)
-stabCoxInt <- StabCoxInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
+stabCoxInt <- CoxCPSSInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
 library(glmnet)
-stabCoxInt <- StabCoxInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
+stabCoxInt <- CoxCPSSInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
 	a_vec <- rep(MAXa,B)
 		num / denom - etaB
 source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/r_concave_tail.R", echo=FALSE, encoding="ISO-8859-1")
 set.seed(42)
-simStabCoxInt <- StabCoxInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
+simStabCoxInt <- CoxCPSSInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
 plot(simStabCoxInt)
 which(simStabCoxInt$Pi > 0.8)
 plot(simStabCoxInt)
@@ -1378,21 +1378,21 @@ plot(survfit(na.omit(survival) ~ simStabCoxInt$X$`R.NPM1:t_15_17`))
 simStabCoxInt$penalty.factor
 source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/functions.R", echo=FALSE, encoding="ISO-8859-1")
 set.seed(42)
-simStabCoxInt <- StabCoxInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
+simStabCoxInt <- CoxCPSSInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
 which(simStabCoxInt$Pi > 0.8)
 colnames(simStabCoxInt$X)
 source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/stacoxph.R", echo=FALSE, encoding="ISO-8859-1")
 source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/functions.R", echo=FALSE, encoding="ISO-8859-1")
 set.seed(42)
-simStabCoxInt <- StabCoxInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
+simStabCoxInt <- CoxCPSSInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
 source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/stacoxph.R", echo=FALSE, encoding="ISO-8859-1")
 set.seed(42)
-simStabCoxInt <- StabCoxInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
+simStabCoxInt <- CoxCPSSInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
 source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/stacoxph.R", echo=FALSE, encoding="ISO-8859-1")
 set.seed(42)
-simStabCoxInt <- StabCoxInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
+simStabCoxInt <- CoxCPSSInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
 options(error=recover)
-simStabCoxInt <- StabCoxInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
+simStabCoxInt <- CoxCPSSInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
 ls()
 M
 any(is.na(theta))
@@ -1405,7 +1405,7 @@ which.error
 Q
 source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/functions.R", echo=FALSE, encoding="ISO-8859-1")
 set.seed(42)
-simStabCoxInt <- StabCoxInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
+simStabCoxInt <- CoxCPSSInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
 12 * 1800
 plot(simStabCoxInt)
 which(simStabCoxInt$Pi > 0.8)
@@ -1447,36 +1447,36 @@ ncol(NULL) + 1
 1:numeric(0)
 source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/functions.R", echo=FALSE, encoding="ISO-8859-1")
 set.seed(42)
-stabCoxInt <- StabCoxInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
+stabCoxInt <- CoxCPSSInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
 source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/functions.R", echo=FALSE, encoding="ISO-8859-1")
 set.seed(42)
-stabCoxInt <- StabCoxInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
+stabCoxInt <- CoxCPSSInteractions(dataFrame[!is.na(survival),groups %in% mainGroups], na.omit(survival), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
 plot(stabCoxInt)
 which(stabCoxInt$Pi > 0.8)
 stabCoxInt$Pi[which(stabCoxInt$Pi > 0.8)]
 stabCoxInt$Pi[which(stabCoxInt$Pi > 0.8)]
 sort(stabCoxInt$Pi)
 set.seed(42)
-simStabCoxInt <- StabCoxInteractions(dataFrame[groups %in% mainGroups], simSurvival, bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
+simStabCoxInt <- CoxCPSSInteractions(dataFrame[groups %in% mainGroups], simSurvival, bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
 simSurvival
-simSurvival <- simSurvNonp(totalRisk, basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
+simSurvival <- SimSurvNonp(totalRisk, basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
 partRisk <- PartialRisk(coxRFXFit)
 totalRisk <- rowSums(partRisk)
-simSurvival <- simSurvNonp(totalRisk, basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
+simSurvival <- SimSurvNonp(totalRisk, basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
 options(error=NULL)
 plot(survfit(simSurvival ~ 1))
 lines(survfit(survival ~ 1), col="red")
-simSurvival <- simSurvNonp(totalRisk, basehaz(coxRFXFit, centered=TRUE), survival, span=.1)
+simSurvival <- SimSurvNonp(totalRisk, basehaz(coxRFXFit, centered=TRUE), survival, span=.1)
 plot(survfit(simSurvival ~ 1))
 lines(survfit(survival ~ 1), col="red")
 mean(totalRisk)
 set.seed(42)
 partRisk <- PartialRisk(coxRFXFit)
 totalRisk <- rowSums(partRisk)
-simSurvival <- simSurvNonp(totalRisk, basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
+simSurvival <- SimSurvNonp(totalRisk, basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
 plot(survfit(simSurvival ~ 1))
 lines(survfit(survival ~ 1), col="red")
-simSurvival <- simSurvNonp(totalRisk-mean(totalRisk), basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
+simSurvival <- SimSurvNonp(totalRisk-mean(totalRisk), basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
 plot(survfit(simSurvival ~ 1))
 lines(survfit(survival ~ 1), col="red")
 survConcordance(simSurvival[trainIdx] ~ totalRisk[trainIdx])
@@ -1487,7 +1487,7 @@ boxplot(coef(coxRFXFit)/log(2) ~ factor(coxRFXFit$groups, levels=levels(groups)[
 abline(v=0)
 partRisk <- PartialRisk(coxRFXFit)
 totalRisk <- rowSums(partRisk)
-simSurvival <- simSurvNonp(totalRisk, basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
+simSurvival <- SimSurvNonp(totalRisk, basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
 plot(survfit(simSurvival ~ 1))
 lines(survfit(survival ~ 1), col="red")
 plot(basehaz(coxRFXFit))
@@ -1499,15 +1499,15 @@ plot(survfit(simSurvival ~ 1))
 lines(survfit(survival ~ 1), col="red")
 lines(b$time, 1-b$hazard, col="blue")
 mean(totalRisk)
-simSurvival <- simSurvNonp(totalRisk+1, basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
+simSurvival <- SimSurvNonp(totalRisk+1, basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
 plot(survfit(simSurvival ~ 1))
-simSurvNonp
+SimSurvNonp
 surv = Surv(time = pmax(0,pmin(deathTimes, censTimes)), event=(deathTimes < censTimes)+0)
 	
 surv = Surv(time = pmax(0,pmin(deathTimes, censTimes)), event=(deathTimes < censTimes)+0)
 	
 source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/functions.R", echo=FALSE, encoding="ISO-8859-1")
-simSurvival <- simSurvNonp(totalRisk+1, basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
+simSurvival <- SimSurvNonp(totalRisk+1, basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
 plot(survfit(simSurvival ~ 1))
 lines(survfit(survival ~ 1), col="red")
 source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/functions.R", echo=FALSE, encoding="ISO-8859-1")
@@ -2046,26 +2046,26 @@ plot(H0)
 simStabCoxInt
 which(simStabCoxInt$Pi > 0.8)
 which(stabCoxInt$Pi > 0.8)
-simSurvival <- simSurvNonp(totalRisk+1, basehaz(coxph(survival ~ totalRisk)), survival, span=.1)
+simSurvival <- SimSurvNonp(totalRisk+1, basehaz(coxph(survival ~ totalRisk)), survival, span=.1)
 plot(survfit(simSurvival ~ 1))
 lines(survfit(survival ~ 1), col="red")
 survConcordance(simSurvival[trainIdx] ~ totalRisk[trainIdx])
 survConcordance(simSurvival[trainIdx][-na.action(coxFit)] ~ predict(coxFit))
-simSurvival <- simSurvNonp(totalRisk+1, basehaz(coxph(survival ~ totalRisk), centered=FALSE), survival, span=.1)
+simSurvival <- SimSurvNonp(totalRisk+1, basehaz(coxph(survival ~ totalRisk), centered=FALSE), survival, span=.1)
 plot(survfit(simSurvival ~ 1))
-simSurvival <- simSurvNonp(totalRisk+1, basehaz(coxph(survival ~ totalRisk), centered=TRUE), survival, span=.1)
-plot(survfit(simSurvival ~ 1))
-lines(survfit(survival ~ 1), col="red")
-simSurvival <- simSurvNonp(totalRisk, basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
+simSurvival <- SimSurvNonp(totalRisk+1, basehaz(coxph(survival ~ totalRisk), centered=TRUE), survival, span=.1)
 plot(survfit(simSurvival ~ 1))
 lines(survfit(survival ~ 1), col="red")
-simSurvival <- simSurvNonp(totalRisk, basehaz(coxRFXFit, centered=TRUE), survival, span=.1)
+simSurvival <- SimSurvNonp(totalRisk, basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
 plot(survfit(simSurvival ~ 1))
 lines(survfit(survival ~ 1), col="red")
-simSurvival <- simSurvNonp(totalRisk, basehaz(coxph(survival ~ totalRisk), centered=TRUE), survival, span=.1)
+simSurvival <- SimSurvNonp(totalRisk, basehaz(coxRFXFit, centered=TRUE), survival, span=.1)
 plot(survfit(simSurvival ~ 1))
 lines(survfit(survival ~ 1), col="red")
-simSurvival <- simSurvNonp(totalRisk, basehaz(coxph(survival ~ totalRisk), centered=FALSE), survival, span=.1)
+simSurvival <- SimSurvNonp(totalRisk, basehaz(coxph(survival ~ totalRisk), centered=TRUE), survival, span=.1)
+plot(survfit(simSurvival ~ 1))
+lines(survfit(survival ~ 1), col="red")
+simSurvival <- SimSurvNonp(totalRisk, basehaz(coxph(survival ~ totalRisk), centered=FALSE), survival, span=.1)
 plot(survfit(simSurvival ~ 1))
 lines(survfit(survival ~ 1), col="red")
 selectedInt <- names(which(stabCoxInt$Pi > 0.8))
@@ -2226,7 +2226,7 @@ survConcordance(na.omit(survival[!trainIdx])~ p$predicted)
 survConcordance(survival[!trainIdx]~ p$predicted)
 survConcordance(survivalTD[!trainIdxTD]~totalRiskTest )
 survConcordance(survival[!trainIdx] ~ predict(coxph(survival[trainIdx] ~ ., data=dataFrame[trainIdx, selectedInt]), newdata = dataFrame[!trainIdx, selectedInt]))
-stabCoxIntCV <- StabCoxInteractions(dataFrame[!is.na(survival) & trainIdx,groups %in% mainGroups], na.omit(survival[trainIdx]), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
+stabCoxIntCV <- CoxCPSSInteractions(dataFrame[!is.na(survival) & trainIdx,groups %in% mainGroups], na.omit(survival[trainIdx]), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
 selectedIntCV <- names(which(stabCoxInt$Pi > 0.8))
 selectedIntCV <- names(which(stabCoxIntCV$Pi > 0.8))
 survConcordance(survival[!trainIdx] ~ predict(coxph(survival[trainIdx] ~ ., data=dataFrame[trainIdx, selectedIntCV]), newdata = dataFrame[!trainIdx, selectedInt]))
