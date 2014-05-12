@@ -16,7 +16,7 @@ library(glmnet)
 set1 <- brewer.pal(8, "Set1")
 
 #+ load
-load("2014-04-29-AML.RData", envir = globalenv())
+load("2014-05-12-AML.RData", envir = globalenv())
 library(CoxHD)
 source("../../CoxHD/CoxHD/R/functions.R")
 ls()
@@ -198,11 +198,10 @@ simDataFrame <- data.frame(simData,
 		MakeInteractions(simData[,g=="Genetics"], simData[,g=="Treatment"]),
 		MakeInteractions(simData[,g=="Cytogenetics"], simData[,g=="Treatment"]), check.names = FALSE
 )
-simDataFrame <- simDataFrame[,colnames(dataFrame)]
-for(n in names(simDataFrame))
-	if(any(is.na(simDataFrame[[n]])))
-		simDataFrame[[n]] <- poorMansImpute(simDataFrame[[n]])
+for(n in unique(which(is.na(simDataFrame), arr.ind = TRUE)[,2]))
+	simDataFrame[[n]] <- poorMansImpute(simDataFrame[[n]])
 simDataFrame <- StandardizeMagnitude(simDataFrame)
+simDataFrame <- simDataFrame[,colnames(dataFrame)]
 
 #simDataFrameTD <- simDataFrame[tplSplit,]
 #simDataFrameTD[which(tplIndex), grep("TPL", colnames(simDataFrameTD), value=TRUE)] <- 0 ## Set pre-tpl variables to zero 
