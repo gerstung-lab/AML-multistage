@@ -514,6 +514,7 @@ segments(b,concordanceCV[1,o]-concordanceCV[2,o],b,concordanceCV[1,o]+concordanc
 rotatedLabel(b, rep(0,length(b)), colnames(concordanceCV)[o], srt=45)
 
 #+ aucCV
+library(survivalROC)
 aucCV <- sapply(predictedRiskCV, function(x) survivalROC(Stime=survival[!is.na(survival) & !trainIdx,1], status=survival[!is.na(survival) &  !trainIdx,2], marker = x[!is.na(survival[!trainIdx])], predict.time = 278, method="KM", cut.values=seq(-5,5,0.1))$AUC)
 aucCV
 barplot(aucCV, border=NA, col= set1, las=2, xaxt="n", ylab="AUC (median EFS)") -> b
