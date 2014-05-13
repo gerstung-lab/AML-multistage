@@ -218,7 +218,7 @@ simCoef[whichRFXTD] <- rnorm(length(groups[whichRFXTD]), coxRFXFit$mu[groups[whi
 set.seed(42)
 simDataRisk <- (as.matrix(simDataFrame) %*% simCoef)[,1] 
 simDataRisk <- simDataRisk #- mean(simDataRisk)
-simDataSurvival <- SimSurvNonp(simDataRisk, basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
+simDataSurvival <- SimSurvNonp(simDataRisk, basehaz(coxph(survival ~ totalRisk), centered=FALSE), survival, span=.1)
 f <- as.formula(paste("simDataSurvival ~", names(which.max(simCoef))))
 f
 plot(survfit(f, data=simDataFrame))
@@ -253,72 +253,68 @@ simDataCoxFit <- coxph(simDataSurvival[trainIdx] ~ ., data=simDataFrame[trainIdx
 summary(simDataCoxFit)
 
 
-#' ### Test interactions
-X <- cbind(dataList$Genetics, dataList$Cytogenetics,dataList$Treatment,dataList$Clinical)
-scope <- sub("(GeneGene|GeneTreat|CytoTreat|GeneCyto).","",colnames(dataFrame)[grep("(GeneGene|GeneTreat|CytoTreat|GeneCyto)", names(dataFrame))])
-pInt <- TestInteractions(X, survival, scope)
-
-simPInt <- TestInteractions(X, simSurvival, scope)
-
-simDataPInt <- TestInteractions(simDataFrame[,groups %in% c("Clinical","Genetics","Treatment","Cytogenetics")], simDataSurvival, scope)
-simDataPInt <- TestInteractions(simDataFrame[1:1000,groups %in% c("Clinical","Genetics","Treatment","Cytogenetics")], simDataSurvival[1:1000], scope)
-
-
+#' ### Test interactions without main effects
+#+ simDataPIntNoMain, cache=TRUE
 set.seed(42)
-v <- coxRFXFit$sigma2 * coxRFXFit$df[-8] / as.numeric(table(groups[whichRFXTD])-1)
-#v["GeneGene"] <- v["GeneTreat"] <- v["CytoTreat"] <- v["GeneCyto"] <-  0.1
-mainIdx <- groups %in% c("Clinical","Genetics","Treatment","Cytogenetics")
-pairs <- GetPairs(names(simDataFrame)[mainIdx], scope)
-#simulations <- list()
-#for(size in c(100,1000, 10000)){
-#	simulations[[as.character(size)]] <- list()
-#	for(i in 1:3){
-#		cat(".")
-simCoef <- numeric(ncol(simDataFrame))
-names(simCoef) <- colnames(simDataFrame)
-w <- c(which(mainIdx), sample(which(!mainIdx), 500))
-simCoef[w] <- rnorm(length(groups[w]), 0, sqrt(v[groups[w]]))	
+intIdx <- groups %in% c("GeneGene","GeneTreat","GeneCyto")
+scope <- strsplit(colnames(dataFrame)[intIdx],":")
+
+simCoefInt <- simCoef
+simCoefInt[sample(which(!mainIdx), 500)] <- 0
+size <- 10000#nrow(dataFrame)
 s <- sample(10000, size)
-simDataRisk <- (as.matrix(simDataFrame[s,]) %*% simCoef)
-simDataRisk <- simDataRisk - mean(simDataRisk)
-simDataSurvival <- SimSurvNonp(simDataRisk, basehaz(coxRFXFit, centered=FALSE), survival)
-simDataPInt <- TestInteractions(simDataFrame[s,mainIdx], simDataSurvival, pairs)
-#		simulations[[as.character(size)]][[i]] <- list(simCoef=simCoef, simDataRisk=simDataRisk, simDataSurvival=simDataSurvival, simDataPInt=simDataPInt, s=s, w=w)
-#	}
-#}
+simDataRiskInt <- (as.matrix(simDataFrame[s,]) %*% simCoefInt)
+simDataRiskInt <- simDataRiskInt - mean(simDataRiskInt)
+simDataSurvivalInt <- SimSurvNonp(simDataRiskInt, basehaz(coxph(survival ~ totalRisk), centered=FALSE), survival, span=.1)
+simDataPIntNoMain <- TestInteractions(simDataFrame[s,mainIdx], simDataSurvivalInt, scope, whichMain=NULL)
 
-plot( simCoef[!mainIdx], simDataPInt$pWald, log='y', col=ifelse(simCoef[!mainIdx]==0,2,1))
-idx <- simCoef[!mainIdx] == 0; qqplot(simDataPInt$pWald[idx], simDataPInt$pWald[!idx], log='xy', xlab="Coef == 0", ylab="Coef != 0")
+idx <- simCoefInt[intIdx] == 0;
+
+#+ simCoefIntWald
+plot( simCoefInt[intIdx], simDataPIntNoMain$pWald, log='y', col=ifelse(idx,2,1))
+abline(h=max(simDataPIntNoMain$pWald[p.adjust(simDataPIntNoMain$pWald, "BH")<0.1], na.rm=TRUE))
+qqplot(simDataPIntNoMain$pWald[idx], simDataPIntNoMain$pWald[!idx], log='xy', xlab="Coef == 0", ylab="Coef != 0")
 abline(0,1)
 title("QQ-plot")
 
-which.min(simDataPInt$pWald)
-simDataPInt[41,]
-plot(survfit(simDataSurvival ~ Genetics.GATA2 + Genetics.EZH2, data=simDataFrame[s,] ), col=col1)
-plot(survfit(simDataSurvival ~ Genetics.GATA2 + Genetics.TP53, data=simDataFrame[s,] ), col=col1)
+#+ redHerring
+redHerring <- rownames(simDataPIntNoMain)[idx][head(order(simDataPIntNoMain$pWald[idx]))]
+redHerring
+par(mfrow=c(3,2))
+for(h in redHerring)
+	plot(survfit(as.formula(paste("simDataSurvivalInt ~", sub(":","+", h))), data=simDataFrame[s,] ), col=col1)
 
-plot( simCoef[!mainIdx], simDataPInt$pLR, log='y', col=ifelse(simCoef[!mainIdx]==0,2,1))
-idx <- simCoef[!mainIdx] == 0; qqplot(simDataPInt$pLR[idx], simDataPInt$pLR[!idx], log='xy', xlab="Coef == 0", ylab="Coef != 0")
+#+ simCoefIntLR
+par(mfrow=c(1,1))
+plot( simCoefInt[intIdx], simDataPIntNoMain$pLR, log='y', col=ifelse(simCoefInt[intIdx]==0,2,1))
+qqplot(simDataPIntNoMain$pLR[idx], simDataPIntNoMain$pLR[!idx], log='xy', xlab="Coef == 0", ylab="Coef != 0")
 abline(0,1)
 title("QQ-plot")
 
-meanRisk <- sapply(pairs, function(p) mean(simDataRisk[simDataFrame[s,p[1]] * simDataFrame[s,p[2]]==1]) - simCoef[p[1]] - simCoef[p[2]])
-plot(simCoef[!mainIdx], simDataPInt$coef, xlab="True coefficient", ylab="Est. coefficient")
-legend("topleft", bty="n", paste("rho =", round(cor(simCoef[!mainIdx][simCoef[!mainIdx]!=0], simDataPInt$coef[simCoef[!mainIdx]!=0], use="complete", method="spearman"),2)))
-plot(meanRisk, simDataPInt$coef, xlab="Residual risk", ylab="Est. coefficient")
-legend("topleft", bty="n", paste("rho =", round(cor(meanRisk, simDataPInt$coef, use="complete", method="spearman"),2)))
+#+ simCoefIntRisk
+meanRisk <- sapply(scope, function(p) mean(simDataRiskInt[simDataFrame[s,p[1]] * simDataFrame[s,p[2]]==1]) - simCoefInt[p[1]] - simCoefInt[p[2]])
+plot(simCoefInt[intIdx][simDataPIntNoMain$warn==0], simDataPIntNoMain$coef[simDataPIntNoMain$warn==0], xlab="True coefficient", ylab="Est. coefficient")
+legend("topleft", bty="n", paste("rho =", round(cor(simCoefInt[intIx][simCoefInt[intIx]!=0], simDataPIntNoMain$coef[simCoefInt[intIx]!=0], use="complete", method="spearman"),2)))
+plot(meanRisk[simDataPIntNoMain$warn==0], simDataPIntNoMain$coef[simDataPIntNoMain$warn==0], xlab="Residual risk", ylab="Est. coefficient")
+legend("topleft", bty="n", paste("rho =", round(cor(meanRisk, simDataPIntNoMain$coef, use="complete", method="spearman"),2)))
 
-load("temp.RData")
-plot(simCoef[!mainIdx], simDataPIntAll$coef, xlab="True coefficient", ylab="Est. coefficient")
-legend("topleft", bty="n", paste("rho =", round(cor(simCoef[!mainIdx][simCoef[!mainIdx]!=0], simDataPIntAll$coef[simCoef[!mainIdx]!=0], use="complete", method="spearman"),2)))
-plot(meanRisk, simDataPIntAll$coef, xlab="Residual risk", ylab="Est. coefficient")
-legend("topleft", bty="n", paste("rho =", round(cor(meanRisk, simDataPIntAll$coef, use="complete", method="spearman"),2)))
+#' ### Test interactions with main effects
+#+ simDataPIntMain, cache=TRUE
+simDataPIntMain <- TestInteractions(simDataFrame[s,mainIdx], simDataSurvivalInt, scope, whichMain=colnames(dataFrame)[mainIdx], mc.cores=8)
 
-plot(simCoef[!mainIdx],p.adjust(simDataPInt$pWald,"BH"), log="y", main="Marginal only", col=ifelse(simCoef[!mainIdx]==0,2,1))
-abline(h=0.1)
-plot(simCoef[!mainIdx],p.adjust(simDataPIntAll$pWald,"BH"), log="y", main="Incl. all mains", col=ifelse(simCoef[!mainIdx]==0,2,1))
-abline(h=0.1)
+#load("temp.RData")
+plot(simCoefInt[intIx], simDataPIntMain$coef, xlab="True coefficient", ylab="Est. coefficient")
+legend("topleft", bty="n", paste("rho =", round(cor(simCoefInt[intIx][simCoefInt[intIx]!=0], simDataPIntMain$coef[simCoefInt[intIx]!=0], use="complete", method="spearman"),2)))
+plot(meanRisk, simDataPIntMain$coef, xlab="Residual risk", ylab="Est. coefficient")
+legend("topleft", bty="n", paste("rho =", round(cor(meanRisk, simDataPIntMain$coef, use="complete", method="spearman"),2)))
 
+plot(simCoefInt[intIx],simDataPIntNoMain$pWald, log="y", main="Marginal only", col=ifelse(simCoefInt[intIx]==0,2,1), ylab="P-value")
+abline(h=max(simDataPIntNoMain$pWald[p.adjust(simDataPIntNoMain$pWald, "BH")<0.1], na.rm=TRUE), lty=3)
+abline(h=max(simDataPIntNoMain$pWald[p.adjust(simDataPIntNoMain$pWald, "holm")<0.05], na.rm=TRUE), lty=2)
+
+plot(simCoefInt[intIx],simDataPIntMain$pWald, log="y", main="Incl. all mains", col=ifelse(simCoefInt[intIx]==0,2,1), ylab="P-value")
+abline(h=max(simDataPIntMain$pWald[p.adjust(simDataPIntMain$pWald, "BH")<0.1], na.rm=TRUE), lty=3)
+abline(h=max(simDataPIntMain$pWald[p.adjust(simDataPIntMain$pWald, "holm")<0.05], na.rm=TRUE), lty=2)
 #
 #
 #simResults <- list()
@@ -358,7 +354,7 @@ simulate <- function(X, coxRFXFit, whichGene, treatEffect = -0.5, geneTreatEffec
 	treatment <- rbinom(nrow(X), 1, 0.5) ## assume randomize treatment
 	Y <- cbind(X, Test = treatment)
 	risk <- as.matrix(X) %*% coxRFXFit$coef + treatment * treatEffect +  X[,whichGene] * treatment * geneTreatEffect 
-	simSurvival <-  SimSurvNonp(risk, basehaz(coxRFXFit, centered=FALSE), coxRFXFit$surv)
+	simSurvival <-  SimSurvNonp(risk, basehaz(coxRFXFit$surv ~ predict(coxRFXFit), centered=FALSE), coxRFXFit$surv)
 	TestInteractions(Y, simSurvival, list(c("Test", whichGene)), whichMain=whichMain)
 }
 
