@@ -217,13 +217,15 @@ simCoef[whichRFXTD] <- rnorm(length(groups[whichRFXTD]), coxRFXFit$mu[groups[whi
 #' Survival
 set.seed(42)
 simDataRisk <- (as.matrix(simDataFrame) %*% simCoef)[,1] 
-simDataRisk <- simDataRisk - mean(simDataRisk)
+simDataRisk <- simDataRisk #- mean(simDataRisk)
 simDataSurvival <- SimSurvNonp(simDataRisk, basehaz(coxRFXFit, centered=FALSE), survival, span=.1)
-plot(survfit(simDataSurvival ~ Genetics.EP300, data=simDataFrame))
+f <- as.formula(paste("simDataSurvival ~", names(which.max(simCoef))))
+f
+plot(survfit(f, data=simDataFrame))
 
 #' ### 1. RFX model
 #+ simDataCoxRFXFit, cache=TRUE
-simDataCoxRFXFit <- CoxRFX(simDataFrame[, names(coef(coxRFXFit))], simDataSurvival, groups = groups[whichRFXTD], sigma0 = 0.1)
+simDataCoxRFXFit <- CoxRFX(simDataFrame[whichRFXTD], simDataSurvival, groups = groups[whichRFXTD], sigma0 = 0.1)
 plot(simCoef[whichRFXTD],coef(simDataCoxRFXFit), col=col1[groups[whichRFXTD]])
 plot(sapply(split(simCoef[whichRFXTD], groups[whichRFXTD]), var),simDataCoxRFXFit$sigma2, col=col1, pch=19)
 plot(sapply(split(simCoef[whichRFXTD], groups[whichRFXTD]), mean),simDataCoxRFXFit$mu, col=col1, pch=19)
