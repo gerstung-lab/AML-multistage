@@ -539,6 +539,108 @@ segments(b,concordanceCVTD[1,o]-concordanceCVTD[2,o],b,concordanceCVTD[1,o]+conc
 rotatedLabel(b, rep(0,length(b)), colnames(concordanceCVTD)[o], srt=45)
 
 
+#' 6. Regression of blood counts
+#' ### Prepare data
+#+ clinicalGlmnet
+library(glmnet)
+Y <- StandardizeMagnitude(dataList$Clinical)
+X <- as.matrix(dataFrame[groups %in% c("Genetics","Cytogenetics")])
+set.seed(42)
+clinModels = lapply(Y, function(y){
+
+			if (class(y) %in% c("numeric","integer")){
+				if(all(y %in% c(0,1,NA)))
+					cv.glmnet(X[!is.na(y),], na.omit(y), family = "binomial", alpha=1, standardize=FALSE, nfolds=5)
+				else if(all(y %in% c(0:100,NA)))
+					cv.glmnet(X[!is.na(y),], na.omit(y), family = "poisson", alpha=1, standardize=FALSE, nfolds=5)
+				else
+					cv.glmnet(X[!is.na(y),], na.omit(y), family = "gaussian", alpha=1, standardize=FALSE, nfolds=5)
+			}
+			else if (class(y)=="factor")
+				cv.glmnet(X[!is.na(y),], na.omit(y), family="multinomial",  alpha=1, standardize=FALSE, nfolds=5)
+		})
+
+#' ### Plot
+#+ clinicalGlmnetLolly, fig.width=6, fig.height=3
+par(bty="n", mgp = c(2.5,.5,0), mar=c(3,4,2,4)+.1, las=2, tcl=-.25)
+i = 1
+n <- colnames(X)
+annot <- 1 + grepl("^[A-Z]",n) 
+names(annot) <- n
+for(m in clinModels){
+	plotcvnet(m, X, main=names(clinModels)[i],  col0="black", cex=1, simple.annot = annot, col=set1[c(3,2,4)], xlim=c(0.5,35.5))
+	i = i+1
+	legend("topright", col=c(set1[c(1,3)],"black")[c(1,3,2)], c(expression(paste("Explained variance ",R^2)), expression(paste("Lasso penalty ",lambda)), expression(paste("Model coefficient ", beta))), box.lty=0, bg="#FFFFFF33", pch=c(NA,NA,19), lty=c(1,1,NA), cex=.8, pt.cex = 1)
+}
+
+#' ### Heatmap of GLMs
+j <- 0
+z <- sapply(clinModels,function(x){ ## Creating matrix
+			j <<- j+1
+			w <- which.min(x$cvm)
+			c <- x$glmnet.fit$beta[,w]
+			yj <- sapply(c("Genetics","Cytogenetics"), function(i){
+						w <- names(groups[groups == i])
+						X[,w] %*% c[w] 
+					})
+			cj <- rowSums(cov(yj))
+			y <- Y[,j] - x$glmnet.fit$a0[w]
+			covj <- colMeans((y-mean(y))*(yj - rep(colMeans(yj), each=nrow(yj))))
+			r2 <- cj
+			R2 <- 1 - x$cvm[w]/x$cvm[1]
+			c(c, NA,  r2/sum(r2)*R2, R2=R2)
+		})
+r <- sapply(clinModels, function(x) rank(apply(x$glmnet.fit$beta,1, function(y) which(y!=0)[1]), ties="min")) ## R
+s <- sapply(clinModels, function(x) {
+			w = which.min(x$cvm)
+			w <- rev(which(x$cvm[1:w] > x$cvup[w]))[1] +1
+			if(!is.na(w))
+				sum(x$glmnet.fit$beta[,w]!=0)
+			else
+				0
+		})
+p <- sapply(clinModels, function(x) {w <- which.min(x$cvm); (1 - x$cvup[w]/x$cvm[1]) > 0 })
+R2 <- z[nrow(z) - 2:0,]
+R2[is.na(R2)] <- 0
+z <- z[-(nrow(z) - 0:3),]
+m <- nrow(z) 
+z[1:m,] <- pmin(z[1:m,],0.1)
+z[1:m,] <- pmax(z[1:m,],-.0999)
+z[z==0] <- NA
+
+#' Plot
+#+ clinicalGlmnetHeatmap, fig.width=12, fig.height=3
+layout(matrix(c(1,2),1,2), c(7.5,1.5), c(2,2), TRUE)
+par(bty="n", mgp = c(3,.5,0), mar=c(4,10,2,0)+.1, las=1, tcl=-.25)
+## Heatmap
+w <- order(R2[nrow(R2),])
+o <- order(-annot,rowSums(r, na.rm=TRUE))
+image(y=1:ncol(z)-.5, x=1:nrow(z), z[o,w], breaks=c(-2,seq(-0.1,0.1,l=51)), col=c("grey",colorRampPalette(brewer.pal(9,"RdYlBu"))(50)), xaxt="n", yaxt="n", xlab="", ylab="", ylim=c(0,ncol(z)+1))
+#abline(v=c(18.5,27.5), lwd=0.5)
+rotatedLabel(y0=rep(0.5,nrow(z)), labels=gsub("_","/",rownames(z))[o], x0=1:nrow(z), font=c(rep(3,sum(groups=="Genetics")),rep(1,sum(groups=="Cytogenetics"))), col = set1[c(3,2,4)][annot], cex=0.9)
+mtext(side=2, line=.2, text=colnames(z)[w], las=2, at=1:ncol(z)-.5)
+text(y=rep(1:ncol(z)-.5, each=nrow(r)), x=rep(1:nrow(r), ncol(z)), r[o,w] * (0!=(z[o,w])), cex=0.66, font=ifelse(r[o,w] <= rep(s[ncol(r):1], each=nrow(r)), 2,1))
+points(y=rep(1:ncol(z)-.5, each=nrow(r)), x=rep(1:nrow(r), ncol(z)), pch=ifelse(is.na(z[o,w]) | z[o,w]==0, ".",NA))
+mtext(side=1, at=sum(groups=="Genetics")/2, "Genetics", col=set1[2], line=2.5 )
+mtext(side=1, at=sum(groups=="Cytogenetics")/2 + sum(groups=="Genetics"), "Cytogenetics", col=set1[3], line=2.5 )
+## Legends
+mtext(side=3, "Model coefficients", at = 7, line=0.5)
+clip(-10,50,0,15)
+image(y=dim(z)[2] + c(0.5,1.5), x=1+ 1:7 , matrix(seq(-0.99,1,l=7), ncol=1), breaks=c(-2,seq(-1,1,l=51)), col=c("grey",colorRampPalette(brewer.pal(9,"RdYlBu"))(50)), xaxt="n", yaxt="n", xlab="", ylab="", add=TRUE)
+text(y=dim(z)[2]+1, x=c(1,9), 0.1*c(-1,1))
+points(y=11,x=5, pch=".")
+rect(19.5,ncol(z) +.5,20.5, ncol(z) +1.5, lwd=0.5)
+text(20,ncol(z) +1,1, cex=0.66)
+text(21, ncol(z) +1, "LASSO rank", pos=4)
+## Side panel
+u <- par("usr")
+par(bty="n", mgp = c(3,.5,0), mar=c(4,1,2,1)+.1, las=1, tcl=-.25)
+plot(NA,NA, xlab="", ylab="", xaxt="n", yaxt="n", ylim=c(0,ncol(z)+1), xlim=c(0,.9), yaxs="i")
+barplot(R2[1:2,w], border=NA, col=paste(set1[c(2,3,4)],"88",sep=""), horiz=TRUE, names.arg=rep(NA,ncol(R2)), width=0.95, space=0.0525, add=TRUE) -> b
+points(R2[3,w]+0.1,b, pch=ifelse(p[w],"*",NA))
+mtext(side=3, "Variance components", line=.5)
+mtext(side=1, expression(paste("Explained variance ",R^2)), line=2.5)
+
 #+ save
 save(list = ls(), file=paste(Sys.Date(), "-AML.RData", sep=""))
 

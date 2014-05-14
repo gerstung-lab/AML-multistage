@@ -389,6 +389,13 @@ simResults <- lapply(nData,
 											function(e) sapply(1:nSim, 
 														function(i) simulate(simDataFrame[1:n,whichRFX], coxRFXFit, g, treatEffect = t, geneTreatEffect = e)[1,1]))), mc.cores=14))
 
+
+#' Bigger simulations
+#' ------------------
+#' ### Prepare data
+save("coxRFXFit","simDataFrame","whichRFX", "groups","TestInteractions", "SimSurvNonp","simulate", file="../simulations/simulationData.RData")
+
+
 load("../simResults.RData")
 
 sim <-  array(simResults$pWald[order(simResults$indeces)], dim = (c(length(nData), sum(groups=="Genetics"),length(treatmentEffects), length(interactionEffects), nSim)))
