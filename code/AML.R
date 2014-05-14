@@ -6,7 +6,7 @@ options(width=120)
 knit_hooks$set(smallMar = function(before, options, envir) {
 			if (before) par(mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0)) 
 		})
-opts_chunk$set(dev=c('png','pdf'), fig.ext=c('png','pdf'), fig.width=4, fig.height=4, smallMar=TRUE, dev.args=list(pointsize=8))
+opts_chunk$set(dev=c('png','pdf'), fig.ext=c('png','pdf'), fig.width=4, fig.height=4, smallMar=TRUE)
 #opts_knit$set(root.dir = file.path(getwd(),".."))
 
 #' #### Libraries
@@ -561,7 +561,7 @@ clinModels = lapply(Y, function(y){
 		})
 
 #' ### Plot
-#+ clinicalGlmnetLolly, fig.width=6, fig.height=3
+#+ clinicalGlmnetLolly, fig.width=7.5, fig.height=3.75
 par(bty="n", mgp = c(2.5,.5,0), mar=c(3,4,2,4)+.1, las=2, tcl=-.25)
 i = 1
 n <- colnames(X)
@@ -609,7 +609,7 @@ z[1:m,] <- pmax(z[1:m,],-.0999)
 z[z==0] <- NA
 
 #' Plot
-#+ clinicalGlmnetHeatmap, fig.width=12, fig.height=3
+#+ clinicalGlmnetHeatmap, fig.width=15, fig.height=3.75
 layout(matrix(c(1,2),1,2), c(7.5,1.5), c(2,2), TRUE)
 par(bty="n", mgp = c(3,.5,0), mar=c(4,10,2,0)+.1, las=1, tcl=-.25)
 ## Heatmap
