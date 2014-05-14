@@ -6,7 +6,7 @@ options(width=120)
 knit_hooks$set(smallMar = function(before, options, envir) {
 			if (before) par(mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0)) 
 		})
-opts_chunk$set(dev=c('png','pdf'), fig.ext=c('png','pdf'), fig.width=4, fig.height=4, smallMar=TRUE)
+opts_chunk$set(dev=c('png','pdf'), fig.ext=c('png','pdf'), fig.width=4, fig.height=4, smallMar=TRUE, dev.args=list(pointsize=8))
 #opts_knit$set(root.dir = file.path(getwd(),".."))
 
 #' #### Libraries
