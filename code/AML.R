@@ -540,14 +540,14 @@ rotatedLabel(b, rep(0,length(b)), colnames(concordanceCVTD)[o], srt=45)
 
 
 #' 6. Regression of blood counts
+#' -----------------------------
 #' ### Prepare data
-#+ clinicalGlmnet
+#+ clinicalGlmnet, cache=TRUE
 library(glmnet)
 Y <- StandardizeMagnitude(dataList$Clinical)
 X <- as.matrix(dataFrame[groups %in% c("Genetics","Cytogenetics")])
 set.seed(42)
 clinModels = lapply(Y, function(y){
-
 			if (class(y) %in% c("numeric","integer")){
 				if(all(y %in% c(0,1,NA)))
 					cv.glmnet(X[!is.na(y),], na.omit(y), family = "binomial", alpha=1, standardize=FALSE, nfolds=5)
