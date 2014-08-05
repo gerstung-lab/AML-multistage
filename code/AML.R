@@ -26,7 +26,7 @@ source("../../mg14/R/mg14.R")
 #' -------------
 #' ### Clinical
 #' Loading
-clinicalData <- read.table("../data/Ulm1.9_sm_Clinical.txt", sep="\t", header=TRUE, na.strings = "na", comment.char = "", quote="\"")
+clinicalData <- read.table("../data/Ulm1.14_MG_Clinical.txt", sep="\t", header=TRUE, na.strings = "na", comment.char = "", quote="\"")
 clinicalData <- clinicalData[order(clinicalData$PDID),]
 clinicalData$ERDate <- as.Date(as.character(clinicalData$ERDate), "%d-%b-%y")
 clinicalData$CR_date <- as.Date(as.character(clinicalData$CR_date), "%d-%b-%y")
@@ -40,9 +40,9 @@ colnames(clinicalData) <- gsub('\\.',"",colnames(clinicalData))
 dim(clinicalData)
 
 #' ### Mutation data
-mutationData = read.table("../data/Ulm1.9_sm_Genetic.txt", sep="\t", header=TRUE, strip.white = TRUE)
+mutationData = read.table("../data/Ulm1.14_MG_Genetic.txt", sep="\t", header=TRUE, strip.white = TRUE)
 mutationData$SAMPLE_NAME <- factor(as.character(mutationData$SAMPLE_NAME), levels = levels(clinicalData$PDID)) ## Refactor
-mutationTable <- (table(mutationData[mutationData$Result %in% c("ONCOGENIC","POSSIBLE") & mutationData$FINAL_CALL == "OK"  ,c("SAMPLE_NAME","GENE")]) > 0)+0
+mutationTable <- (table(mutationData[mutationData$Result %in% c("ONCOGENIC","POSSIBLE") & mutationData$FINAL_CALL == "OK" & !mutationData$CONSEQUENCE %in% c("ITD","PTD") ,c("SAMPLE_NAME","GENE")]) > 0)+0
 dim(mutationTable)
 
 all(rownames(mutationTable)==clinicalData$PDID)
@@ -60,7 +60,7 @@ tplIdxOs <- !is.na(clinicalData$TPL_type)
 
 #' #### All data as list
 dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
-		Cytogenetics = clinicalData[,c(47:53,55:71)],
+		Cytogenetics = clinicalData[,46:69],
 		Treatment = cbind(trialArms[,2:3], ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL_efs=tplIdxEfs, TPL_os=tplIdxOs),
 		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH","HB","platelet","Splenomegaly")], MakeInteger(clinicalData$TypeAML)[,-1]))#,
 #MolRisk = makeInteger(clinicalData$M_Risk))
@@ -69,10 +69,10 @@ dataList$Genetics$CEBPA_mono <-  clinicalData$CEBPA == 1 # encoded as 0,1,2
 dataList$Genetics$CEBPA_bi <-  clinicalData$CEBPA == 2 # encoded as 0,1,2
 dataList$Genetics$CEBPA <- NULL
 dataList$Genetics$FLT3 <- NULL
-dataList$Genetics$FLT3_ITD <- clinicalData$ITD != "0"
-dataList$Genetics$FLT3_TKD <- clinicalData$TKD != "0"
-dataList$Genetics$IDH2_p172 <- clinicalData$IDH2 == "172"
-dataList$Genetics$IDH2_p140 <- clinicalData$IDH2 == "140"
+dataList$Genetics$FLT3_ITD <- clinicalData$ITDn != "0"
+dataList$Genetics$FLT3_TKD <- clinicalData$TKDn != "0"
+dataList$Genetics$IDH2_p172 <- table(mutationData$SAMPLE_NAME[mutationData$GENE=='IDH2' & grepl("172", mutationData$AA_CHANGE)])[]
+dataList$Genetics$IDH2_p140 <-  table(mutationData$SAMPLE_NAME[mutationData$GENE=='IDH2' & grepl("140", mutationData$AA_CHANGE)])[]
 dataList$Genetics$IDH2 <- NULL
 dataList$Genetics$NPM1 <- clinicalData$NPM1
 dataList$Genetics$MLL_PTD <- clinicalData$MLL_PTD
