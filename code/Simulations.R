@@ -110,7 +110,7 @@ SimSurvNonp
 set.seed(42)
 partRisk <- PartialRisk(coxRFXFit)
 totalRisk <- rowSums(partRisk)
-simSurvival <- SimSurvNonp(totalRisk, basehaz(coxph(survival ~ totalRisk), centered=FALSE), survival, span=.1)
+simSurvival <- SimSurvNonp(risk=totalRisk, H0=basehaz(coxph(survival ~ totalRisk), centered=FALSE), surv=survival)
 plot(survfit(simSurvival ~ 1))
 lines(survfit(survival ~ 1), col="red")
 survConcordance(simSurvival[trainIdx] ~ totalRisk[trainIdx])
@@ -187,11 +187,14 @@ SimDataNonp
 data <- data.frame(Clinical=dataList$Clinical, Genetics=dataList$Genetics, Cytogenetics=dataList$Cytogenetics, Treatment=dataList$Treatment)
 simData <- SimDataNonp(data, nData = 10000, m=10)
 names(simData) <- names(data)
-save(file="simData.RData", simData)
-#load(file="simData.RData")
 
+#+ simDataFrame
+set.seed(42)
 g <- sub("\\..+","", colnames(data))
 colnames(simData) <- gsub("(Clinical|Genetics|Treatment|Cytogenetics).","", colnames(simData))
+for(w in which(colSums(simData,na.rm=TRUE) == 0))
+	simData[[w]] <- rbinom(nrow(simData),1,mean(data[[w]]))
+all(colSums(simData,na.rm=TRUE) != 0)
 simDataFrame <- data.frame(simData,
 		MakeInteractions(simData[,g=="Genetics"], simData[,g=="Genetics"])[,as.vector(upper.tri(matrix(0,ncol=sum(g=="Genetics"), nrow=sum(g=="Genetics"))))],
 		MakeInteractions(simData[,g=="Genetics"], simData[,g=="Cytogenetics"]),
@@ -218,7 +221,7 @@ simCoef[whichRFXTD] <- rnorm(length(groups[whichRFXTD]), coxRFXFit$mu[groups[whi
 set.seed(42)
 simDataRisk <- (as.matrix(simDataFrame) %*% simCoef)[,1] 
 simDataRisk <- simDataRisk #- mean(simDataRisk)
-simDataSurvival <- SimSurvNonp(simDataRisk, basehaz(coxph(survival ~ totalRisk), centered=FALSE), survival, span=.1)
+simDataSurvival <- SimSurvNonp(simDataRisk, H0=basehaz(coxph(survival ~ totalRisk), centered=FALSE), surv=survival)
 f <- as.formula(paste("simDataSurvival ~", names(which.max(simCoef))))
 f
 plot(survfit(f, data=simDataFrame))
@@ -265,7 +268,7 @@ size <- 10000#nrow(dataFrame)
 s <- sample(10000, size)
 simDataRiskInt <- (as.matrix(simDataFrame[s,]) %*% simCoefInt)
 simDataRiskInt <- simDataRiskInt - mean(simDataRiskInt)
-simDataSurvivalInt <- SimSurvNonp(simDataRiskInt, basehaz(coxph(survival ~ totalRisk), centered=FALSE), survival, span=.1)
+simDataSurvivalInt <- SimSurvNonp(simDataRiskInt, H0=basehaz(coxph(survival ~ totalRisk), centered=FALSE), surv=survival)
 simDataPIntNoMain <- TestInteractions(simDataFrame[s,mainIdx], simDataSurvivalInt, scope, whichMain=NULL)
 
 idx <- simCoefInt[intIdx] == 0;
@@ -277,7 +280,7 @@ qqplot(simDataPIntNoMain$pWald[idx], simDataPIntNoMain$pWald[!idx], log='xy', xl
 abline(0,1)
 title("QQ-plot")
 
-#+ redHerring
+#+ redHerring, fig.width=6, fig.height=8
 redHerring <- rownames(simDataPIntNoMain)[idx][head(order(simDataPIntNoMain$pWald[idx]))]
 redHerring
 par(mfrow=c(3,2))
@@ -350,19 +353,24 @@ abline(h=max(simDataPIntMain$pWald[p.adjust(simDataPIntMain$pWald, "holm")<0.05]
 #lines(sapply(split(p.adjust(simDataPInt$pWald) < 0.1 & simCoef[-(1:ncol(X))]==0, c), mean))
 
 #' ### Newer simulations: Keep all others fixed
-simulate <- function(X, coxRFXFit, whichGene, treatEffect = -0.5, geneTreatEffect = .5, nSim = 1, whichMain = colnames(X)){
+SimTreatmentSurvival <- function(X, coxRFXFit, treatEffect, whichGene, geneTreatEffect) {
 	treatment <- rbinom(nrow(X), 1, 0.5) ## assume randomize treatment
 	Y <- cbind(X, Test = treatment)
 	risk <- as.matrix(X) %*% coxRFXFit$coef + treatment * treatEffect +  X[,whichGene] * treatment * geneTreatEffect 
-	simSurvival <-  SimSurvNonp(risk, basehaz(coxRFXFit$surv ~ predict(coxRFXFit), centered=FALSE), coxRFXFit$surv)
-	TestInteractions(Y, simSurvival, list(c("Test", whichGene)), whichMain=whichMain)
+	simSurvival <-  SimSurvNonp(risk, H0=basehaz(coxph(coxRFXFit$surv ~ predict(coxRFXFit, newdata = as.data.frame(coxRFXFit$X))), centered=FALSE), surv=coxRFXFit$surv)
+	return(list(Y=Y, simSurvival=simSurvival))
+}
+SimAndTest <- function(X, coxRFXFit, whichGene, treatEffect = -0.5, geneTreatEffect = .5, nSim = 1, whichMain = colnames(X)){
+	sim <- SimTreatmentSurvival(X = X, coxRFXFit = coxRFXFit, treatEffect = treatEffect, whichGene = whichGene, geneTreatEffect = geneTreatEffect)
+	TestInteractions(sim$Y, sim$simSurvival, list(c("Test", whichGene)), whichMain=whichMain)
 }
 
-#+ simGenes, cache=TRUE
+#+ simGenes, cache=TRUE, fig.width=6
 set.seed(42)
 effectSizes <- seq(-1,1,0.1)
-simASXL1 <- lapply(c(1000,10000), function(nSim) sapply(effectSizes, function(e) sapply(1:10, function(i) simulate(simDataFrame[1:nSim,whichRFX], coxRFXFit, "Genetics.ASXL1", geneTreatEffect = e)[1,1])))
-simNPM1 <- lapply(c(1000,10000), function(nSim) sapply(effectSizes, function(e) sapply(1:10, function(i) simulate(simDataFrame[1:nSim,whichRFX], coxRFXFit, "Genetics.NPM1", geneTreatEffect = e)[1,1])))
+whichMain <- colnames(simDataFrame)[groups %in% c("Clinical","Genetics","Cytogenetics","Treatment")]
+simASXL1 <- lapply(c(1000,10000), function(nSim) sapply(effectSizes, function(e) sapply(1:10, function(i) SimAndTest(simDataFrame[1:nSim,whichRFX], coxRFXFit, "ASXL1", geneTreatEffect = e, whichMain = whichMain)[1,1])))
+simNPM1 <- lapply(c(1000,10000), function(nSim) sapply(effectSizes, function(e) sapply(1:10, function(i) SimAndTest(simDataFrame[1:nSim,whichRFX], coxRFXFit, "NPM1", geneTreatEffect = e, whichMain = whichMain)[1,1])))
 
 par(mfrow=c(1,2))
 for(x in c("simASXL1","simNPM1")){
@@ -375,76 +383,90 @@ for(x in c("simASXL1","simNPM1")){
 }
 
 
+
+#' 4. Comprehensive simulations
+#' ------------------
+#' In this section we will use comprehensive simulations over a range of parameter values to assses the power for identifying gene-treatment interactions.
+#' The treatment will be assumed to be randomized and given in on of two arm of equal size. Parameters are
+#' * Cohort size 100,1000,10000
+#' * Mutation frequencies as observed
+#' * Baseline treatment effect -2 ... 0
+#' * Gene-treatment interactions -2 ... +2
+#' We run 100 simulations for each case
+#' ### Prepare data
+save("coxRFXFit","simDataFrame","whichRFX", "groups","TestInteractions", "SimSurvNonp","SimAndTest","SimTreatmentSurvival", file="../simulations/simulationData.RData")
+
+#' ### Simulations
+#' The following R code is executed on the farm
+#+ farmulations, eval=FALSE, cache=FALSE
+read_chunk('Farmulations.R')
+
+#' ### Load data 
+#' Now load the data
+#+ simResults, cache=TRUE
+simResults <- do.call("rbind",lapply(dir("../simulations/output-2014-05-20", pattern = "*.RData", full.names = TRUE), function(file){
+			load(file)
+			return(simResults)
+		}))
+simResults <- simResults[order(simResults$indeces),]
+simResults$pWald[simResults$warn==1] <- NA
+
 interactionEffects <- seq(-2,2,0.25)
 nData <- c(100, 1000, 10000)
-treatmentEffects <- seq(0,2,0.25)
-nSim <- 10
+treatmentEffects <- seq(0,-2,-0.25)
+nSim <- 100
 
-#+ eval=FALSE
-set.seed(42)
-simResults <- lapply(nData, 
-		function(n) mclapply(colnames(simDataFrame)[which(groups=="Genetics")], 
-					function(g) lapply(treatmentEffects,
-								function(t) sapply(interactionEffects, 
-											function(e) sapply(1:nSim, 
-														function(i) simulate(simDataFrame[1:n,whichRFX], coxRFXFit, g, treatEffect = t, geneTreatEffect = e)[1,1]))), mc.cores=14))
-
-
-#' Bigger simulations
-#' ------------------
-#' ### Prepare data
-save("coxRFXFit","simDataFrame","whichRFX", "groups","TestInteractions", "SimSurvNonp","simulate", file="../simulations/simulationData.RData")
-
-
-load("../simResults.RData")
-
-sim <-  array(simResults$pWald[order(simResults$indeces)], dim = (c(length(nData), sum(groups=="Genetics"),length(treatmentEffects), length(interactionEffects), nSim)))
-sim <- aperm(sim, 5:1)
-#r <- array(unlist(simResults), dim = rev(c(length(nData), sum(groups=="Genetics"),length(treatmentEffects), length(effectSizes), nSim)))
+simPwaldArray <-  array(simResults$pWald, dim = (c(length(nData), sum(groups=="Genetics"),length(treatmentEffects), length(interactionEffects), nSim)))
+simPwaldArray <- aperm(simPwaldArray, 5:1)
 x <- colMeans(simDataFrame[,groups=="Genetics"])
 o <- order(x)
 l <- (length(interactionEffects) +1)/2
 
+#' The following plot show the P-values as a function of mutations frequency
+#+ frequencyPval
 plot(NA,NA, xlim=range(x), ylim=c(1e-40,1), log="y", xlab="Mutation frequency", ylab="P-value")
 for(n in seq_along(nData))
 	for(e in 1:l){
-		lines(x=x[o],y=colMeans(sim[,2*e-1,,o,n], dims=2, na.rm=TRUE), col=brewer.pal(l,"Spectral")[e], lty=4-n, type="b", pch=n)
+		lines(x=x[o],y=colMeans(simPwaldArray[,2*e-1,,o,n], dims=2, na.rm=TRUE), col=brewer.pal(l,"Spectral")[e], lty=4-n, type="b", pch=n)
 	}
 legend("bottomleft", legend=interactionEffects[seq(1,17,2)], col = brewer.pal(l,"Spectral"), lty=1, bty='n')
 legend("bottom", pch=1:3, legend=nData, bty="n")
 
-loglowess <- function(x,y,...){
-	l <- lowess(log(x),y,...)
-	l$x <- exp(l$x)
-	l
-}
-
-
+#' There are some regularities, which can be collapsed into the invariant quantity mutation frequency x cohort size x effect^2
+#+ effectPval
 plot(NA,NA, xlim=c(1,2500), ylim=c(1e-21,1), log="xy", xlab="Mutation number x effect^2", ylab="P-value")
 for(n in seq_along(nData))
 	for(e in 1:l)
-		points(x=x[o]*nData[n]*abs(interactionEffects[2*e-1])^2,y=(colMeans(sim[,2*e-1,,o,n], dims=2, na.rm=TRUE)), col=brewer.pal(9,"Spectral")[e], lty=4-n, pch=n)
+		points(x=x[o]*nData[n]*abs(interactionEffects[2*e-1])^2,y=(colMeans(simPwaldArray[,2*e-1,,o,n], dims=2, na.rm=TRUE)), col=brewer.pal(9,"Spectral")[e], lty=4-n, pch=n)
 xx <- x[o]*nData[n]*abs(interactionEffects[2*e-1])^2
 lines(xx, 10^-(xx/100))
+legend("bottomleft", legend=interactionEffects[seq(1,17,2)], col = brewer.pal(l,"Spectral"), lty=1, bty='n')
+legend("bottom", pch=1:3, legend=nData, bty="n")
 
-
+#' Power as a function of relative mutation frequency
+#+ frequencyPower
 plot(NA,NA, xlim=range(x)+ 1e-3, ylim=c(0,1), xlab="Mutation frequency", ylab="Power", log="x")
 for(n in seq_along(nData))
 	for(e in 1:l){
-		points(x[o],colMeans(sim[,2*e-1,,o,n] < 5e-2 / (length(x)), dims=2, na.rm=TRUE), col=brewer.pal(l,"Spectral")[e], lty=4-n)
-		s <- smooth.spline(log(x[o]),colMeans(sim[,2*e-1,,o,n] < 5e-2 / (length(x)), dims=2, na.rm=TRUE), spar=.5)
+		y <- colMeans(simPwaldArray[,2*e-1,,o,n] < 5e-2 / (length(x)), dims=2, na.rm=TRUE)
+		points(x[o],y, col=brewer.pal(l,"Spectral")[e], lty=4-n)
+		s <- smooth.spline(log(x[o] + .5/max(nData))[!is.na(y)],na.omit(y), spar=.5)
 		lines(exp(s$x),s$y, col=brewer.pal(11,"Spectral")[e], lty=4-n)
 	}
 legend("topleft", legend=interactionEffects[seq(1,length(interactionEffects),2)], col = brewer.pal(l,"Spectral"), lty=1, bty='n')
 
+#' Power as a function of the invariant effect size
+#+ effectPower
 plot(NA,NA, xlim=c(1,2500), ylim=c(0,1), xlab="Mutation number x effect^2", ylab="Power", log="x")
-for(n in seq_along(nData)[3])
+for(n in seq_along(nData))
 	for(e in 1:l){
-		points(x[o] *nData[n]* abs(interactionEffects[2*e-1])^2,colMeans(sim[,2*e-1,,o,n] < 5e-2 / (length(x)), dims=2, na.rm=TRUE), col=brewer.pal(l,"Spectral")[e], lty=4-n, pch=n)
-		s <- smooth.spline(log(x[o]),colMeans(sim[,2*e-1,,o,n] < 5e-2 / (length(x)), dims=2, na.rm=TRUE), spar=.5)
+		y <- colMeans(simPwaldArray[,2*e-1,,o,n] < 5e-2 / (length(x)), dims=2, na.rm=TRUE)
+		points(x[o] *nData[n]* abs(interactionEffects[2*e-1])^2, y, col=brewer.pal(l,"Spectral")[e], lty=4-n, pch=n)
+		s <- smooth.spline(log(x[o]+ .5/max(nData))[!is.na(y)], na.omit(y), spar=.66)
 		lines(exp(s$x)*nData[n]*abs(interactionEffects[2*e-1])^2,s$y, col=brewer.pal(11,"Spectral")[e], lty=4-n)
 	}
 legend("topleft", legend=interactionEffects[seq(1,length(interactionEffects),2)], col = brewer.pal(11,"Spectral"), lty=1, bty='n')
+legend("bottomleft", pch=1:3, legend=nData, bty="n")
 
 
 #' Effect size vs. mutation freq
@@ -453,13 +475,14 @@ c <- cut(x,lev)
 tmp <- lapply( seq_along(nData), function(n){
 			sapply(levels(c), function(lev){
 						sapply(1:l, function(e){
-									mean(sim[,2*e-1,,which(c==lev),n, drop=FALSE] < 5e-2 / (length(x)), na.rm=TRUE)
+									mean(simPwaldArray[,2*e-1,,which(c==lev),n, drop=FALSE] < 5e-2 / (length(x)), na.rm=TRUE)
 								})
 					})})
 
+#+ hazardFreq, fig.width=6, fig.height=6
 par(mfrow=c(2,2))
 for(n in 1:3){
-	plot(NA,NA, xlim=exp(c(-1,1)), ylim=range(log10(lev)), xlab="Hazard", ylab="Mutation frequency",  yaxt="n", log="x")
+	plot(NA,NA, xlim=exp(c(-1,1)), ylim=range(log10(lev)), xlab="Interaction hazard", ylab="Mutation frequency",  yaxt="n", log="x")
 	.filled.contour(z=tmp[[n]], x = exp(interactionEffects[seq(1,length(interactionEffects),2)]), y=log10(lev[-1]),levels=seq(0.1,1.1,0.1), col=colorRampPalette(brewer.pal(9,"Reds"))(11))
 	contour(z=tmp[[n]], x = exp(interactionEffects[seq(1,length(interactionEffects),2)]), y=log10(lev[-1]), levels=seq(0.1,1,0.1), col="black", add=TRUE, axes=FALSE)
 	axis(2, at=log10(lev[-9]), labels=lev[-9])
@@ -468,5 +491,44 @@ for(n in 1:3){
 }
 
 #' Interaction effect vs main effect
-plot(colMeans(sim * X$nData * x[X$gene]), rep(interactionEffects, 9*56*3))
+lev <-  c(0,c(1,2,5) * rep(10^(0:3), each=3),10000, 20000)
+X <- expand.grid(nData=nData, gene=colnames(simDataFrame)[which(groups=="Genetics")], treatmentEffects=treatmentEffects, interactionEffects=interactionEffects, nSim=1:nSim)
+numTimesEffect <- cut(X$nData * x[X$gene] * X$interactionEffects^2, breaks=lev)
+tmp <- 	sapply(levels(numTimesEffect), function(l){
+						w <- numTimesEffect == l
+						sapply(rev(treatmentEffects), function(t){
+									mean(simResults$pWald[w & X$treatmentEffects==t] < 5e-2 / (length(x)), na.rm=TRUE)
+								})
+					})
 
+#+ interactionMain, fig.width=3, fig.height=3
+par(mfrow=c(1,1))
+plot(NA,NA, xlim=range(treatmentEffects), ylim=range((lev[-1])), xlab="Treatment risk", ylab="Mutation frequency", log="y", xaxs="i", yaxs="i")
+image(z=tmp, x = rev(treatmentEffects), y=lev,breaks=c(seq(0,1,0.01)), col=colorRampPalette(brewer.pal(9,"Reds")[-9])(100), add=TRUE, right=FALSE) 
+contour(z=tmp, x = rev(treatmentEffects), y=lev[-1] - diff(lev), levels=seq(0.1,1,0.1), col="black", add=TRUE, axes=FALSE)
+abline(v=c(1/seq(1,2.5,.5),seq(1,2.5,.5)), col="grey")
+
+
+set.seed(42)
+sigma2 <- coxRFXFitTD$sigma2
+sigmaX <- apply(simDataFrame,2,var)
+
+c <- sapply(1:20, function(i){
+			#simRisk <- as.matrix(simDataFrame) %*% rnorm(length(groups), mean = coxRFXFitTD$mu[groups], sd = sqrt(sigma2)[groups])
+			simRisk <- as.matrix(simDataFrame[whichRFX]) %*% rnorm(length(groups[whichRFX]), mean = coxRFXFitTD$mu[groups[whichRFX]], sd = sqrt(sigma2)[groups[whichRFX]])
+			s <- SimSurvNonp(simRisk, coxRFXFit$surv, H0 = basehaz(coxRFXFit, centered = FALSE))
+			c(var(simRisk),survConcordance(s ~ simRisk)$concordance)
+		})
+
+v <- sapply(1:100, function(i){
+			simRisk <- as.matrix(simDataFrame) %*% rnorm(length(groups), mean = coxRFXFitTD$mu[groups], sd = sqrt(sigma2)[groups])
+			#simRisk <- as.matrix(simDataFrame[whichRFX]) %*% rnorm(length(groups[whichRFX]), mean = coxRFXFitTD$mu[groups[whichRFX]], sd = sqrt(sigma2)[groups[whichRFX]])
+			var(simRisk)
+		})
+
+simRisk <- as.matrix(simDataFrame) %*% rnorm(length(groups), mean = coxRFXFitTD$mu[groups], sd = sqrt(sigma2)[groups])
+c <- sapply(seq(0,5,0.1), function(i){
+			#simRisk <- as.matrix(simDataFrame[whichRFX]) %*% rnorm(length(groups[whichRFX]), mean = coxRFXFitTD$mu[groups[whichRFX]], sd = sqrt(sigma2)[groups[whichRFX]])
+			s <- SimSurvNonp(simRisk*i, coxRFXFit$surv, H0 = basehaz(coxRFXFit, centered = FALSE))
+			c(var(simRisk * i),survConcordance(s ~ simRisk)$concordance)
+		})
