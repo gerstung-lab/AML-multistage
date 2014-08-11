@@ -17,8 +17,7 @@ my_png <-  function(file, width, height, pointsize=12, ...) {
 library(RColorBrewer)
 set1 <- brewer.pal(8, "Set1")
 #col1 <- brewer.pal(9, "Set1")[c(1,6,4,3,5,7,8,2,9)]
-source("../../CoxHD/CoxHD/R/CoxRFX.R")
-source("../../CoxHD/CoxHD/R/functions.R")
+library(CoxHD)
 source("../../mg14/R/mg14.R")
 
 
@@ -26,7 +25,7 @@ source("../../mg14/R/mg14.R")
 #' -------------
 #' ### Clinical
 #' Loading
-clinicalData <- read.table("../data/Ulm1.14_MG_Clinical.txt", sep="\t", header=TRUE, na.strings = "na", comment.char = "", quote="\"")
+clinicalData <- read.table("../data/Ulm1.17_MG_Clinical.txt", sep="\t", header=TRUE, na.strings = "na", comment.char = "", quote="\"")
 clinicalData <- clinicalData[order(clinicalData$PDID),]
 clinicalData$ERDate <- as.Date(as.character(clinicalData$ERDate), "%d-%b-%y")
 clinicalData$CR_date <- as.Date(as.character(clinicalData$CR_date), "%d-%b-%y")
@@ -42,7 +41,7 @@ dim(clinicalData)
 #' ### Mutation data
 mutationData = read.table("../data/Ulm1.14_MG_Genetic.txt", sep="\t", header=TRUE, strip.white = TRUE)
 mutationData$SAMPLE_NAME <- factor(as.character(mutationData$SAMPLE_NAME), levels = levels(clinicalData$PDID)) ## Refactor
-mutationTable <- (table(mutationData[mutationData$Result %in% c("ONCOGENIC","POSSIBLE") & mutationData$FINAL_CALL == "OK" & !mutationData$CONSEQUENCE %in% c("ITD","PTD") ,c("SAMPLE_NAME","GENE")]) > 0)+0
+mutationTable <- (table(mutationData[mutationData$Result %in% c("ONCOGENIC","POSSIBLE") & mutationData$FINAL_CALL == "OK" ,c("SAMPLE_NAME","GENE")]) > 0)+0
 dim(mutationTable)
 
 all(rownames(mutationTable)==clinicalData$PDID)
@@ -60,7 +59,7 @@ tplIdxOs <- !is.na(clinicalData$TPL_type)
 
 #' #### All data as list
 dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
-		Cytogenetics = clinicalData[,46:69],
+		Cytogenetics = clinicalData[,50:74],
 		Treatment = cbind(trialArms[,2:3], ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL_efs=tplIdxEfs, TPL_os=tplIdxOs),
 		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH","HB","platelet","Splenomegaly")], MakeInteger(clinicalData$TypeAML)[,-1]))#,
 #MolRisk = makeInteger(clinicalData$M_Risk))
@@ -69,8 +68,9 @@ dataList$Genetics$CEBPA_mono <-  clinicalData$CEBPA == 1 # encoded as 0,1,2
 dataList$Genetics$CEBPA_bi <-  clinicalData$CEBPA == 2 # encoded as 0,1,2
 dataList$Genetics$CEBPA <- NULL
 dataList$Genetics$FLT3 <- NULL
-dataList$Genetics$FLT3_ITD <- clinicalData$ITDn != "0"
-dataList$Genetics$FLT3_TKD <- clinicalData$TKDn != "0"
+dataList$Genetics$FLT3_ITD <- clinicalData$FLT3_ITD != "0"
+dataList$Genetics$FLT3_TKD <- clinicalData$FLT3_TKD != "0"
+dataList$Genetics$FLT3_other <- clinicalData$FLT3_other != "0"
 dataList$Genetics$IDH2_p172 <- table(mutationData$SAMPLE_NAME[mutationData$GENE=='IDH2' & grepl("172", mutationData$AA_CHANGE)])[]
 dataList$Genetics$IDH2_p140 <-  table(mutationData$SAMPLE_NAME[mutationData$GENE=='IDH2' & grepl("140", mutationData$AA_CHANGE)])[]
 dataList$Genetics$IDH2 <- NULL
@@ -209,10 +209,55 @@ par(mfrow=c(1,4), bty="n")
 for(i in 1:4) plot(phTest[i])
 
 
-#' #### Basic KM plot
-s <- survfit(osTD ~ TP53 + TPL_os, data=dataFrameOsTD)
+#' #### Basic KM plots
+#' TP53 and TPL
+f <- formula("osTD ~ TP53 + TPL_os")
+s <- survfit(f, data=dataFrameOsTD)
+c <- coxph(f, data=dataFrameOsTD)
+summary(c)
+p <- 2*pnorm(abs(diff(c$coefficients)),sd=sqrt(sum(diag(c$var))), lower.tail=FALSE)
 plot(s, col=set1, mark=NA)
 legend("topright", bty="", rownames(summary(s)$table), col=set1, lty=1)
+title(main=paste("P =",signif(p,2)), font=1)
+
+
+#' FLT ITD v TKD
+f <- formula("os ~ FLT3_ITD + FLT3_TKD")
+s <- survfit(f, data=dataList$Genetics)
+c <- coxph(f, data=dataList$Genetics)
+summary(c)
+p <- 2*pnorm(abs(diff(c$coefficients)),sd=sqrt(sum(diag(c$var))), lower.tail=FALSE)
+plot(s, col=set1, mark=NA)
+legend("topright", bty="", rownames(summary(s)$table), col=set1, lty=1)
+title(main=paste("P =",signif(p,2)), font=1)
+
+
+#' CEBPA mono v bi
+f <- formula("os ~ CEBPA_mono + CEBPA_bi")
+s <- survfit(f, data=dataList$Genetics)
+c <- coxph(f, data=dataList$Genetics)
+summary(c)
+p <- 2*pnorm(abs(diff(c$coefficients)),sd=sqrt(sum(diag(c$var))), lower.tail=FALSE)
+plot(s, col=set1, mark=NA)
+legend("topright", bty="", rownames(summary(s)$table), col=set1, lty=1)
+title(main=paste("P =",signif(p,2)), font=1)
+
+#' IDH2 p140 v p172
+f <- formula("os ~ IDH2_p140 + IDH2_p172")
+s <- survfit(f, data=dataList$Genetics)
+c <- coxph(f, data=dataList$Genetics)
+summary(c)
+p <- 2*pnorm(abs(diff(c$coefficients)),sd=sqrt(sum(diag(c$var))), lower.tail=FALSE)
+plot(s, col=set1, mark=NA)
+legend("topright", bty="", rownames(summary(s)$table), col=set1, lty=1)
+title(main=paste("P =",signif(p,2)), font=1)
+
+#' #### NONC and complex karyotyope
+table(Complex=clinicalData$Complex, `#Recurr.Cyto`=rowSums(dataList$Cytogenetics))
+summary(coxph(os ~ . + clinicalData$Complex, data=dataFrame[mainIdx][colSums(dataFrame[mainIdx]) > 10]))
+
+NONC <- rowSums(dataFrame[groups %in% c("Genetics","Cytogenetics")])
+summary(coxph(os ~ . + NONC, data=dataFrame[mainIdx][colSums(dataFrame[mainIdx]) > 10]))
 
 
 #' ### 1. Random effects: static model
@@ -312,12 +357,6 @@ partRiskVar <- PartialRiskVar(coxRFXFitEfsTD,  groups = simpleGroups)
 x=c(varianceComponentsEfs, Error=mean(rowSums(partRiskVar)))
 pie(x, col=c(col1[names(varianceComponentsEfs)], "grey"), labels = paste(names(x), round(x/sum(x),2)))
 
-m <- colMeans(partRiskVar)
-barplot(varianceComponentsEfs +m, border=NA, col= colTrans(col1[names(varianceComponentsEfs)]), las=2, xaxt="n", ylab="Risk variance component")
-barplot(varianceComponentsEfs , border=NA, col= colTrans(col1[names(varianceComponentsEfs)],1), add=TRUE, xaxt="n", yaxt="n")
-barplot(pmax(0,varianceComponentsEfs-m) , border=NA, col= colTrans(col1[names(varianceComponentsEfs)],0), add=TRUE, xaxt="n", yaxt="n") -> b
-rotatedLabel(b, rep(0,nlevels(groups)), names(varianceComponentsEfs), srt=45)
-
 partRiskOsTD <- PartialRisk(coxRFXFitOsTD, groups = simpleGroups)
 #varianceComponents <- rowSums(cov(partRiskTD, use="complete"))
 varianceComponentsOs <- diag(cov(partRiskOsTD, use="complete"))
@@ -363,6 +402,33 @@ for(g in levels(simpleGroups)){
 }
 par(mfrow=c(1,1))
 
+#' #### Confidence intervals
+#' Estimate confidence intervals by parametric bootstrap. Note that the usual sample with replacement 
+#' yields inconsistencies for the interaction terms due to the overdispersed correlations.
+#+ parBoot, cache=TRUE
+set.seed(42)
+risk <- as.matrix(dataFrame[whichRFXOs]) %*% coxRFXFitOsTD$coefficients
+risk <- risk - mean(risk)
+parBoot <- mclapply(1:100, function(i) {
+			s <- SimSurvNonp(risk, os)
+			c <- CoxRFX(dataFrame[whichRFXOs], s, groups=groups[whichRFXOs], sigma0=0.1, nu=0)
+			c$X <- NULL # set X to zero to save mem
+			return(c)
+		}, mc.cores=16)
+
+#+ parBootPlot, fig.width=3, fig.height=2
+boxplot(t(sapply(parBoot, `[[`, "sigma2")), border=col1, lty=1, pch=16, staplewex=0, ylab="sigma2", las=2)
+points(coxRFXFitOsTD$sigma2,  pch=19)
+
+boxplot(t(sapply(parBoot, `[[`, "mu")), border=col1, lty=1, pch=16, staplewex=0, ylab="mu", las=2)
+points(coxRFXFitOsTD$mu,  pch=19)
+
+boxplot(t(sapply(parBoot, `[[`, "df")), border=col1, lty=1, pch=16, staplewex=0, ylab="df", las=2)
+points(coxRFXFitOsTD$df,  pch=19)
+
+boxplot(t(sapply(parBoot, VarianceComponents, newX=dataFrame[whichRFXOs])), border=col1, lty=1, pch=16, staplewex=0, ylab="variance comp.", las=2)
+points(VarianceComponents(coxRFXFitOsTD),  pch=19)
+rm(parBoot)
 
 #' #### Stars
 #+ stars, fig.width=12, fig.height=12
@@ -496,8 +562,8 @@ survConcordance(os[!trainIdx]~predict(treeCV, newdata=dataFrame[!trainIdx, mainI
 
 #+ rForest, cache=TRUE
 rForest <- rfsrc(Surv(time, status) ~.,data= cbind(time = os[,1], status = os[,2], dataFrame[,mainIdx & osIdx]), ntree=100)
-boxplot(rForest$importance ~ factor(as.character(groups[mainIdx])), border= col1, staplewex=0, pch=16, cex=0.75, ylab="RSF importance", lty=1, xaxt="n")
-sapply(mainGroups, function(g) vimp(rForest, colnames(dataFrame)[which(groups==g)]))
+boxplot(rForest$importance ~ factor(as.character(groups[mainIdx & osIdx])), border= col1, staplewex=0, pch=16, cex=0.75, ylab="RSF importance", lty=1, xaxt="n")
+rForestVimp <- sapply(mainGroups, function(g) vimp(rForest, colnames(dataFrame)[which(groups==g)]))
 
 survConcordance(na.omit(os)~predict(rForest, importance="none")$predicted)
 
@@ -539,15 +605,15 @@ CoxCPSSInteractions
 set.seed(42)
 coxCPSSIntEfs <- CoxCPSSInteractions(dataFrame[!is.na(efs),groups %in% mainGroups & efsIdx], na.omit(efs), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
 selectedIntEfs <- names(which(coxCPSSIntEfs$Pi > 0.8))
-selectedIntEfs[selectedIntEfs=="NPM1:TPL"] <- "TPL:NPM1"
+#selectedIntEfs[selectedIntEfs=="NPM1:TPL"] <- "TPL:NPM1"
 
 #' Concordance of the resulting static coxph model
 coxFitEfs <- coxph(as.formula(paste("efs[trainIdx] ~ ", paste(selectedIntEfs, collapse="+"))), data=dataFrame[trainIdx, ])
 summary(coxFitEfs)
-survConcordance(efs[!trainIdx] ~ predict(coxFitEfs, newdata = dataFrame[!trainIdx, selectedIntEfs]))
+survConcordance(efs[!trainIdx] ~ predict(coxFitEfs, newdata = dataFrame[!trainIdx, ]))
 
 #' Concordance of the corresponding time-dependent coxph model
-coxFitEfsTD <- coxph(as.formula(paste("efsTD[trainIdxTD] ~ ", paste(selectedIntEfs, collapse="+"))), data=dataFrameEfsTD[trainIdxEfsTD, ])
+coxFitEfsTD <- coxph(as.formula(paste("efsTD[trainIdxEfsTD] ~ ", paste(selectedIntEfs, collapse="+"))), data=dataFrameEfsTD[trainIdxEfsTD, ])
 summary(coxFitEfsTD)
 survConcordance(efsTD[!trainIdxEfsTD] ~ predict(coxFitEfsTD, newdata = dataFrameEfsTD[!trainIdxEfsTD, ]))
 
@@ -565,6 +631,8 @@ plot(coxCPSSIntEfs$Pi, coxCPSSEfs$Pi[match(names(coxCPSSIntEfs$Pi), names(coxCPS
 
 #' Partial risk for c
 names(groups) <- colnames(dataFrame)
+selectedIntEfs <- c(selectedIntEfs[selectedIntEfs %in% names(dataFrameEfsTD)],
+		sapply(strsplit(selectedIntEfs[!selectedIntEfs %in% names(dataFrame)], ":"), function(x) paste(rev(x), collapse=":")))
 X <- as.matrix(dataFrameEfsTD[selectedIntEfs])
 X <- X - rep(colMeans(X), each=nrow(X))
 partRiskCoxCPSSInt <- sapply(levels(groups), function(l) {
@@ -600,7 +668,7 @@ for(l in levels(clinicalData$M_Risk)[c(2,3,4,1)]){
 #+ CoxCPSSIntEfsCV, cache=TRUE
 coxCPSSIntEfsCV <- CoxCPSSInteractions(dataFrame[!is.na(efs) & trainIdx,groups %in% mainGroups & efsIdx], na.omit(efs[trainIdx]), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
 selectedIntEfsCV <- names(which(coxCPSSIntEfsCV$Pi > 0.8))
-survConcordance(efs[!trainIdx] ~ predict(coxph(efs[trainIdx] ~ ., data=dataFrame[trainIdx, selectedIntEfsCV]), newdata = dataFrame[!trainIdx, selectedIntEfsCV]))
+survConcordance(efs[!trainIdx] ~ predict(coxph(as.formula(paste("efs[trainIdx] ~", paste(selectedIntEfsCV, collapse="+"))), data=dataFrame[trainIdx, ]), newdata = dataFrame[!trainIdx, ]))
 
 #tmp <- CoxRFX(dataFrame[trainIdx, selectedIntEfs], efs[trainIdx], nu=0)
 #survConcordance(efs[!trainIdx] ~ as.matrix(dataFrame[!trainIdx, selectedIntEfs]) %*% coef(tmp))
@@ -674,7 +742,7 @@ predictedRiskCV <- data.frame(
 		coxRFX = as.matrix(dataFrame[!trainIdx,whichRFXOs]) %*% coef(coxRFXFitOsTrain),
 		coxBIC = predict(coxBICOsTDTrain, newdata=dataFrame[!trainIdx,mainIdx]),
 		coxAIC = predict(coxAICOsTDTrain, newdata=dataFrame[!trainIdx,mainIdx]),
-		coxCPSS = predict(coxFitOsCV, newdata = dataFrame[!trainIdx, selectedIntOsCV])
+		coxCPSS = predict(coxFitOsCV, newdata = dataFrame[!trainIdx, ])
 )
 
 #+ concordanceCV
@@ -819,10 +887,39 @@ segments(b,tcgaConcordance[1,o]-tcgaConcordance[2,o],b,tcgaConcordance[1,o]+tcga
 rotatedLabel(b, rep(0,length(b)), colnames(tcgaConcordance)[o], srt=45)
 
 
+#' 7. Miscellania
+#' --------------
+#' ### 1. Test of hotspot mutations other than above
+#+ coxRFXHotspots, cache=TRUE
+h <- paste(mutationData$GENE, sub("([0-9])([A-Z])$","\\1",mutationData$AA_CHANGE), sep="_")
+t <- table(h)
+i <- mutationData$Result %in% c("ONCOGENIC","POSSIBLE") & mutationData$FINAL_CALL == "OK" & h %in% names(t[t>=5])
+hotspots <- data.frame(table(mutationData$SAMPLE_NAME[i], h[i])[,]) ## Table of hotspots
+genes <- data.frame(mutationTable[,colSums(mutationTable)>0]) ## The original gene table
+g <- c(rep("genes", ncol(genes)), rep("hotspots", ncol(hotspots))) ## groups
+coxRFXHotspots <- CoxRFX(cbind(genes, hotspots), os, g, sigma0 = 0.1, nu=0, which.mu=1)
+plot(coxRFXHotspots)
+
+#' Basic CV
+#+ coxRFXHotspotsCV
+t <-  CoxRFX(cbind(genes, hotspots)[trainIdx,], os[trainIdx], g, sigma0 = 0.1, nu=0, which.mu=1)
+survConcordance( os[!trainIdx] ~ (as.matrix(cbind(genes, hotspots)) %*% coef(t))[!trainIdx])
+t0 <-  CoxRFX(genes[trainIdx,], os[trainIdx], sigma0 = 0.1, nu=0)
+survConcordance( os[!trainIdx] ~ (as.matrix(genes) %*% coef(t0))[!trainIdx])
+
+#' ### 2. Most frequent interaction terms
+
+#' #### Second order
+x <- cbind(mutationTable, dataList$Cytogenetics)
+t <- unlist(sapply(2:ncol(x), function(j) sapply(1:(j-1), function(k) {s <- sum(x[,j]*x[,k], na.rm=TRUE); names(s) <- paste(colnames(x)[c(j,k)], collapse=":"); return(s)})))
+head(sort(t, decreasing=TRUE), 50)
+
+#' #### Third order
+u <- unlist(sapply(3:ncol(x), function(i) sapply(2:(i-1), function(j) sapply(1:(j-1), function(k) {s <- sum(x[,i]*x[,j]*x[,k], na.rm=TRUE); names(s) <- paste(colnames(x)[c(i,j,k)], collapse=":"); return(s)}))))
+head(sort(u, decreasing=TRUE), 50)
 
 
-
-#' 7. Regression of blood counts
+#' 8. Regression of blood counts
 #' -----------------------------
 #' ### Prepare data
 #+ clinicalGlmnet, cache=TRUE
