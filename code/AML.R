@@ -32,7 +32,7 @@ clinicalData$CR_date <- as.Date(as.character(clinicalData$CR_date), "%d-%b-%y")
 clinicalData$TPL_date <- as.Date(as.character(clinicalData$TPL_date), "%d-%b-%y")
 clinicalData$Date_LF <- as.Date(as.character(clinicalData$Date_LF), "%d-%b-%y")
 clinicalData$Recurrence_date <- as.Date(as.character(clinicalData$Recurrence_date), "%d-%b-%y")
-levels(clinicalData$Study) <- c( "tr98A" ,   "tr98B" ,   "tr0704")
+levels(clinicalData$Study) <- c( "AMLSG0704" ,   "AMLHD98A" ,   "AMLHD98B")
 clinicalData$VPA[is.na(clinicalData$VPA)] <- 0
 clinicalData$ATRA_arm[is.na(clinicalData$ATRA_arm)] <- 0
 colnames(clinicalData) <- gsub('\\.',"",colnames(clinicalData))
@@ -62,7 +62,8 @@ tplIdxOs <- !is.na(clinicalData$TPL_type)
 #' #### All data as list
 dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
 		Cytogenetics = clinicalData[,50:74],
-		Treatment = cbind(trialArms[,2:3], ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL_efs=tplIdxEfs, TPL_os=tplIdxOs),
+		Trial = trialArms[,1:2],
+		Treatment = cbind(ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL_efs=tplIdxEfs, TPL_os=tplIdxOs, Family_donor = clinicalData$Family_donnor),
 		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH","HB","platelet","Splenomegaly")], MakeInteger(clinicalData$TypeAML)[,-1]))#,
 #MolRisk = makeInteger(clinicalData$M_Risk))
 #dataList$Genetics$CEBPA <-  clinicalData$CEBPA # encoded as 0,1,2
@@ -85,9 +86,9 @@ dataList$CytoCyto <- MakeInteractions(dataList$Cytogenetics, dataList$Cytogeneti
 dataList$CytoCyto <- dataList$CytoCyto[, colSums(dataList$CytoCyto, na.rm=TRUE) > 0]
 dataList$GeneCyto <- MakeInteractions(dataList$Genetics, dataList$Cytogenetics)
 dataList$GeneCyto <- dataList$GeneCyto[,colSums(dataList$GeneCyto, na.rm=TRUE) > 0]
-dataList$GeneTreat <- MakeInteractions(dataList$Genetics, dataList$Treatment[c("TPL_os","TPL_efs","ATRA","VPA")])
+dataList$GeneTreat <- MakeInteractions(dataList$Genetics, dataList$Treatment)
 dataList$GeneTreat <- dataList$GeneTreat[,colSums(dataList$GeneTreat, na.rm=TRUE) > 0]
-dataList$CytoTreat <- MakeInteractions(dataList$Cytogenetics, dataList$Treatment[c("TPL_os","TPL_efs","ATRA","VPA")])
+dataList$CytoTreat <- MakeInteractions(dataList$Cytogenetics, dataList$Treatment)
 dataList$CytoTreat <- dataList$CytoTreat[,colSums(dataList$CytoTreat, na.rm=TRUE) > 0]
 
 #' #### Condensing to a data.frame
@@ -201,7 +202,7 @@ dataFrameOsTD <- dataFrame[tplSplitOs,]
 dataFrameOsTD[which(tplIndexOs), grep("TPL", colnames(dataFrameOsTD), value=TRUE)] <- 0 ## Set pre-tpl variables to zero 
 
 #' Some indeces
-mainGroups <- c("Genetics","Treatment","Clinical","Cytogenetics")
+mainGroups <- c("Genetics","Treatment","Clinical","Cytogenetics", "Trial")
 mainIdx <- groups %in% mainGroups
 efsIdx <- !grepl("TPL_os", colnames(dataFrame))
 whichRFXEfs <- which((colSums(dataFrame)>=8 | mainIdx) & efsIdx) # ie, > 0.5%
@@ -282,7 +283,7 @@ coxRFXFitOs <- CoxRFX(dataFrame[,whichRFXOs], os, groups=groups[whichRFXOs], sig
 
 #' Coefficients
 par(mar=c(5,7,1,1))
-col1 <- brewer.pal(12, "Paired")[c(6,3,4,5,9,1,2,7,8)]
+col1 <- c(brewer.pal(12, "Paired")[c(6,3,4,5,9,1,2,7,8)],"#999999")
 names(col1) <- levels(groups)[order(toupper(levels(groups)))]
 #o <- order(coxRFXFitEfs$mu)
 #boxplot(coef(coxRFXFitEfs) ~ factor(coxRFXFitEfs$groups, levels=levels(groups)[o]), border=col1[o], horizontal=TRUE, las=1, lty=1, pch=16, cex=.66, staplewex=0)
@@ -559,8 +560,12 @@ for(l in list(c("efsTD","partRiskEfsTD"),c("os","partRiskOs"),c("efsTD","partRis
 	s <- sample(nrow(p),nStars^2) #1:(nStars^2)
 	h <- hclust(dist(p[s,]))
 	x <- p - rep(colMeans(p), each=nrow(p))
-	x <- x/(2*sd(x)) + 1 
-	stars(x[s,][h$order,]/2, scale=FALSE, locations=locations, key.loc=c(0,-3), col.lines=rep(1,(nStars^2)), col.stars = (brewer.pal(11,'RdBu'))[cut(t[s,2][h$order], quantile(t[,2], seq(0,1,0.1), na.rm=TRUE))])
+	x <- x/(2*sd(x)) + 1
+	if(l=="efsTD")
+		c <- cut((t[s,2]-t[s,1])[h$order], quantile(t[,2]-t[,1], seq(0,1,0.1), na.rm=TRUE))
+	else
+		c <- cut(t[s,1][h$order], quantile(t[,1], seq(0,1,0.1), na.rm=TRUE))
+	stars(x[s,][h$order,]/2, scale=FALSE, locations=locations, key.loc=c(0,-3), col.lines=rep(1,(nStars^2)), col.stars = (brewer.pal(11,'RdBu'))[c])
 	symbols(locations[,1], locations[,2], circles=rep(.5,(nStars^2)), inches=FALSE, fg="grey", add=TRUE, lty=1)
 }
 

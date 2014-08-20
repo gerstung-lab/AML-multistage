@@ -453,3 +453,15 @@ parBoot <- mclapply(1:100, function(i) {
 singularities <- sapply(strsplit("67 68 72 76 78 81 86 88 89 308 310 312 313 314 315 320 322 324 325 326 327 331 332 333 334 340 341 344 346 347 350 355 357 365"," "), as.numeric)[,1]
 
 singularities <- sapply(strsplit("228 229 230 231 232 233 234 235 236 392 393"," "), as.numeric)[,1]
+
+
+X <- dataFrame[groups=="Genetics"]
+genRisk <- X * rep(coef(coxRFXFitOs)[coxRFXFitOs$groups=="Genetics"], each=nrow(dataFrame)) 
+o <- TRUE#order(colSums(X), decreasing=TRUE)
+genRisk <- genRisk[,o]
+cumVar <- apply(apply(genRisk, 1, cumsum), 1, var)
+plot(cumsum(colMeans(X)[o]), cumVar, xlim=c(0,4), ylim=c(0,.3), xlab="Mean number of genetic drivers", ylab="Predicted variance")
+a <- coxRFXFitOs$sigma2["Genetics"] + coxRFXFitOs$mu["Genetics"]^2
+a <- var(coef(coxRFXFitOs)[coxRFXFitOs$groups=="Genetics"])+ coxRFXFitOs$mu["Genetics"]^2
+abline(0, a, lty=3)
+points(3.7, 3.7*a, col='red')
