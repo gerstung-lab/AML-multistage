@@ -465,3 +465,8 @@ a <- coxRFXFitOs$sigma2["Genetics"] + coxRFXFitOs$mu["Genetics"]^2
 a <- var(coef(coxRFXFitOs)[coxRFXFitOs$groups=="Genetics"])+ coxRFXFitOs$mu["Genetics"]^2
 abline(0, a, lty=3)
 points(3.7, 3.7*a, col='red')
+
+
+f <- function(fit){M <- matrix(unlist(sapply(split(fit$coefficients, fit$groups), function(x) c(rep(0, ncol(fit$X)),x)))[-(1:ncol(fit$X))], ncol=nlevels(fit$groups))
+	as.matrix(fit$X)[,order(fit$groups)] %*% M
+} 

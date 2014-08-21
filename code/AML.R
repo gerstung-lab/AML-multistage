@@ -63,7 +63,7 @@ tplIdxOs <- !is.na(clinicalData$TPL_type)
 dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
 		Cytogenetics = clinicalData[,50:74],
 		Trial = trialArms[,1:2],
-		Treatment = cbind(ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL_efs=tplIdxEfs, TPL_os=tplIdxOs, Family_donor = clinicalData$Family_donnor),
+		Treatment = data.frame(ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL_efs=tplIdxEfs, TPL_os=tplIdxOs, Family_donor = clinicalData$Family_donnor),
 		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH","HB","platelet","Splenomegaly")], MakeInteger(clinicalData$TypeAML)[,-1]))#,
 #MolRisk = makeInteger(clinicalData$M_Risk))
 #dataList$Genetics$CEBPA <-  clinicalData$CEBPA # encoded as 0,1,2
@@ -359,11 +359,11 @@ partRiskEfsTD <- PartialRisk(coxRFXFitEfsTD)
 #varianceComponents <- rowSums(cov(partRiskTD, use="complete"))
 varianceComponentsEfs <- diag(cov(partRiskEfsTDsimple, use="complete"))
 varianceComponentsEfs
-pie(abs(varianceComponentsEfs), col=col1[names(varianceComponentsEfs)])
+PlotVarianceComponents(coxRFXFitEfs, col=col1)
 title("Risk contributions EFS")
 
-pie(VarianceComponents(coxRFXFitEfsTD), col=col1)
-title("Risk contributions EFS")
+PlotVarianceComponents(coxRFXFitEfsTD, col=col1)
+title("Risk contributions EFS (time-dep TPL)")
 
 
 partRiskVar <- PartialRiskVar(coxRFXFitEfsTD,  groups = simpleGroupsEfs)
@@ -376,12 +376,11 @@ partRiskOs <- PartialRisk(coxRFXFitOs)
 #varianceComponents <- rowSums(cov(partRiskTD, use="complete"))
 varianceComponentsOs <- diag(cov(partRiskOsSimple, use="complete"))
 varianceComponentsOs
-pie(abs(varianceComponentsOs), col=col1[names(varianceComponentsOs)], radius = sqrt(var(rowSums(partRiskOsSimple))))
+PlotVarianceComponents(coxRFXFitOs, col=col1)
 title("Risk contributions OS")
 
-pie(VarianceComponents(coxRFXFitOs), col=col1, radius = sqrt(var(rowSums(partRiskOsSimple))))
+PlotVarianceComponents(coxRFXFitOs, col=col1, groups=simpleGroupsOs)
 title("Risk contributions OS")
-
 
 #o <- order(varianceComponents)
 #stars(matrix(varianceComponents[o], nrow=1) +m, draw.segments=TRUE, col.segments=colTrans(col1)[o], scale=FALSE, col.lines=0, lty=0, labels="")
@@ -491,12 +490,7 @@ image(x=1:nrow(x),y=1:ncol(x),x*.9 + as.numeric(f[o])-1 + 1e-5, useRaster=TRUE,
 		breaks=seq(0,nlevels(f), 0.1),  ylab="Patients",xlab="Variable", xlim=c(0,nrow(x)), ylim=c(0,ncol(x)))
 
 par(mar=c(4,.5,3,0.5), xpd=NA)
-v <- sort(v[levels(f)], decreasing=TRUE)
-vp <- v[v>0]
-vn <- v[v<0]
-pie(vp, col=col1[names(vp)], border=NA, labels=paste(names(vp), " (", round(vp, 2),")", sep=""))
-par(new=T)
-pie(c(abs(vn), sum(vp)-sum(vn)), col=c(col1[names(vn)],NA), border=NA, labels=paste(names(vn), " (", round(vn, 2),")", sep=""), new=FALSE, density=c(rep(36, length(vn) ),NA))
+PlotVarianceComponents(coxRFXFitOs, col = col1, type='diag')
 mtext(side=3, "Variance components",line=2, cex=.66)
 
 xo <- 3
@@ -580,8 +574,8 @@ x <- x/(2*t) + 1
 q <- apply(x, 2, quantile, c(0.1,0.5,0.9))
 rotation <- function(theta) matrix(c(cos(theta), sin(theta),  -sin(theta),cos(theta)), ncol=2)
 j <- apply(x, 2, function(y) {v <- violinJitter(y)$y; v/max(v)})/5
-c <- cos(seq(0,2*pi, l=10))[-10]
-s <- sin(seq(0,2*pi, l=10))[-10]
+c <- cos(seq(0,2*pi, l=ncol(x)+1))[-(ncol(x)+1)]
+s <- sin(seq(0,2*pi, l=ncol(x)+1))[-(ncol(x)+1)]
 par(bty="n", xpd=NA)
 plot(NA,NA, xlim=c(-1,1)*max(x), ylim=c(-1,1)*max(x), xlab="", ylab="", xaxt="n", yaxt="n")
 for(i in 1:nrow(dataFrame)){
@@ -600,7 +594,7 @@ text(log(c(0.66,1,1.5))/(2*t)+1, c(0,0,0)-.1,labels=c(0.66,1,1.5), cex=.33)
 #' EFS
 totalRiskEfsTD <- rowSums(partRiskEfsTDsimple)
 survConcordance( efsTD~totalRiskEfsTD)
-predictiveRiskEfsTD <- rowSums(partRiskEfsTDsimple[,-which(colnames(partRiskEfsTDsimple) %in% c("Treatment","GeneTreat","CytoTreat"))])
+predictiveRiskEfsTD <- rowSums(partRiskEfsTDsimple[,-which(colnames(partRiskEfsTDsimple) %in% c("Treatment","GeneTreat","CytoTreat","Trial"))])
 survConcordance( efsTD~predictiveRiskEfsTD)
 #' OS
 totalRiskOs <- rowSums(partRiskOsSimple)
@@ -682,7 +676,7 @@ totalRiskOsTest <- rowSums(partialRiskOsTest)
 survConcordance(os[!trainIdx]~totalRiskOsTest )
 
 #' Compared to molecular risk
-predictiveRiskTest <- rowSums(partialRiskOsTest[,-which(colnames(partRiskOsSimple) %in% c("Treatment","GeneTreat","CytoTreat"))])
+predictiveRiskTest <- rowSums(partialRiskOsTest[,-which(colnames(partRiskOsSimple) %in% c("Treatment","GeneTreat","CytoTreat","Trial"))])
 survConcordance(os[!trainIdx] ~ predictiveRiskTest)
 
 #barplot(c(CGP=survConcordance(survivalTD[!testIxTD] ~ predictiveRiskTest)$concordance, MolecularRisk = survConcordance(survivalTD[!testIxTD] ~ c(Favourable=1, Adverse=4, `inter-1`=2, `inter-2`=3)[clinicalData$M_Risk[tplSplit][!testIxTD]])[[1]]))
