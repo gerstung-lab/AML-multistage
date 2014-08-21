@@ -268,9 +268,17 @@ title(main=paste("P =",signif(p,2)), font=1)
 table(complex=clinicalData$complex, `#Recurr.Cyto`=rowSums(dataList$Cytogenetics))
 summary(coxph(os ~ ., data=dataFrame[mainIdxOs][colSums(dataFrame[mainIdxOs]) > 10]))
 
-NONC <- rowSums(dataFrame[groups %in% c("Genetics","Cytogenetics")])
+NONC <- rowSums(cbind(dataList$Cytogenetics[names(dataList$Cytogenetics)!="complex"], dataList$Genetics), na.rm=TRUE)
 summary(coxph(os ~ . + NONC, data=dataFrame[mainIdxOs][colSums(dataFrame[mainIdxOs]) > 10]))
 
+#+ NONC, fig.width=3, fig.height=2
+r=rainbow(9, s=1, v=0.66, start=0.2,end=1)
+s <- survfit(os ~ pmin(NONC,8))
+plot(s, col=r, xlab="Days", ylab="Survival")
+legend('topright', bty='n', col=r,legend= 0:8, lty=1, title="# onc. mut.")
+
+plot(0:8,summary(s)$table[,"median"], xlab="Number of oncogenic mutations", ylab="Median survival time", pch=19)
+segments(0:8, summary(s)$table[,"0.95LCL"],0:8, sapply(summary(s)$table[,"0.95UCL"], function(x) ifelse(is.na(x), max(os[,1]), x)))
 
 #' ### 1. Random effects: static model
 #+ coxRFXFitEfs, warning=FALSE, cache=TRUE
@@ -586,7 +594,7 @@ points(t(x) * c - t(j) *s, t(x) * s + t(j) * c, pch=16, cex=.25, col=col1[colnam
 segments(q[1,]*c, q[1,]*s,q[3,]*c,q[3,]*s, lwd=2)
 m <- apply(x,2,max)
 for(i in seq_along(m))
-	text(colnames(x)[i],x=(m[i] + strwidth(colnames(x)[i], units="user")/1.5)*c[i], y=(m[i] + strwidth(colnames(x)[i], units="user")/1.5)*s[i], srt = ((360/9 *(i-1)+90) %% 180) -90 )
+	text(colnames(x)[i],x=(m[i] + strwidth(colnames(x)[i], units="user")/1.5)*c[i], y=(m[i] + strwidth(colnames(x)[i], units="user")/1.5)*s[i], srt = ((360/ncol(x) *(i-1)+90) %% 180) -90 )
 text(log(c(0.66,1,1.5))/(2*t)+1, c(0,0,0)-.1,labels=c(0.66,1,1.5), cex=.33)
 
 #' #### Harrel's C
@@ -782,7 +790,7 @@ partRiskCoxCPSSInt <- sapply(levels(groups), function(l) {
 		})
 			
 #' Genomic risk 
-whichGenomicCoxCPSSInt <- which(!colnames(partRiskCoxCPSSInt) %in% c("Treatment","GeneTreat","CytoTreat","Clinical"))
+whichGenomicCoxCPSSInt <- which(!colnames(partRiskCoxCPSSInt) %in% c("Treatment","GeneTreat","CytoTreat","Clinical","Trial"))
 genomicRiskCoxCPSSInt <- rowSums(partRiskCoxCPSSInt[,whichGenomicCoxCPSSInt])
 survConcordance( efsTD~genomicRiskCoxCPSSInt)
 
