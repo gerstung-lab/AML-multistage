@@ -63,7 +63,7 @@ tplIdxOs <- !is.na(clinicalData$TPL_type)
 dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
 		Cytogenetics = clinicalData[,50:74],
 		Trial = trialArms[,1:2],
-		Treatment = data.frame(ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL_efs=tplIdxEfs, TPL_os=tplIdxOs, Family_donor = clinicalData$Family_donnor),
+		Treatment = data.frame(ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL_efs=tplIdxEfs, TPL_os=tplIdxOs),
 		Clinical = cbind(clinicalData[, c("AOD","gender","Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH","HB","platelet","Splenomegaly")], MakeInteger(clinicalData$TypeAML)[,-1]))#,
 #MolRisk = makeInteger(clinicalData$M_Risk))
 #dataList$Genetics$CEBPA <-  clinicalData$CEBPA # encoded as 0,1,2

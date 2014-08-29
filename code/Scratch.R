@@ -83,12 +83,12 @@ par(mar=c(3,6,1,3.5),mgp=c(2,0.5,0), bty="n")
 p <- PartialRisk(coxRFXFit)
 r <- rowSums(p)
 H0 <- basehaz(coxRFXFit, centered = FALSE)
-hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
+hazardDistNrm <- splinefun(H0$time, H0$hazard, method="monoH.FC")
 x <- 10^seq(1,log10(2500), 0.1)
-plot(x, exp(-hazardDist(x)), log="x", ylim=c(0,1), type="l")
+plot(x, exp(-hazardDistNrm(x)), log="x", ylim=c(0,1), type="l")
 xx <- seq(250, 2000, 250)
 o <- order(coxRFXFit$mu)
-boxplot(exp(-exp(coef(coxRFXFit))) / exp(hazardDist(xx[order(o)[coxRFXFit$groups]]))~ factor(coxRFXFit$groups, levels=levels(groups)[o]), at=xx,border=col1[o], horizontal=FALSE, las=1, lty=1, pch=NA, cex=.66, staplewex=0, add=TRUE, xaxt="n", yaxt="n", boxwex=200, col="NA")
+boxplot(exp(-exp(coef(coxRFXFit))) / exp(hazardDistNrm(xx[order(o)[coxRFXFit$groups]]))~ factor(coxRFXFit$groups, levels=levels(groups)[o]), at=xx,border=col1[o], horizontal=FALSE, las=1, lty=1, pch=NA, cex=.66, staplewex=0, add=TRUE, xaxt="n", yaxt="n", boxwex=200, col="NA")
 
 boxplot(-coef(coxRFXFit) + ~ factor(coxRFXFit$groups, levels=levels(groups)[o]), border=col1[o], horizontal=FALSE, las=1, lty=1, pch=NA, cex=.66, staplewex=0, ylab="", ylim=c(-1,1), yaxt="n", labels="", xaxt="n")
 abline(h=0)
@@ -100,11 +100,11 @@ dev.off()
 par(mfrow=c(3,3))
 i <- 1
 for(g in levels(groups)){
-	plot( x, exp(-hazardDist(x)), col="white", type="l", ylim=c(0,1), ylab="Expected survival", xlab="Days")
-	polygon( c(x, rev(x)), exp(-hazardDist(c(x,rev(x)))*exp( rep(range(coxRFXFit$coef[groups[whichRFX] == g]), each=length(x)) + mean(r) )), col=paste(col1[i],"44",sep=""), border=NA)
-	polygon( c(x, rev(x)), exp(-hazardDist(c(x,rev(x)))*exp( rep(sqrt(coxRFXFit$sigma2[g]) * c(-1,1), each=length(x)) + mean(r) + coxRFXFit$mu[g])), col=paste(col1[i],"44",sep=""), border=NA)
-	lines( x, exp(-hazardDist(x)*exp( coxRFXFit$mu[g] + mean(r))), col=col1[i], type="l", lwd=2)	
-	lines( x, exp(-hazardDist(x) * exp(mean(r))), col="black", lwd=2)
+	plot( x, exp(-hazardDistNrm(x)), col="white", type="l", ylim=c(0,1), ylab="Expected survival", xlab="Days")
+	polygon( c(x, rev(x)), exp(-hazardDistNrm(c(x,rev(x)))*exp( rep(range(coxRFXFit$coef[groups[whichRFX] == g]), each=length(x)) + mean(r) )), col=paste(col1[i],"44",sep=""), border=NA)
+	polygon( c(x, rev(x)), exp(-hazardDistNrm(c(x,rev(x)))*exp( rep(sqrt(coxRFXFit$sigma2[g]) * c(-1,1), each=length(x)) + mean(r) + coxRFXFit$mu[g])), col=paste(col1[i],"44",sep=""), border=NA)
+	lines( x, exp(-hazardDistNrm(x)*exp( coxRFXFit$mu[g] + mean(r))), col=col1[i], type="l", lwd=2)	
+	lines( x, exp(-hazardDistNrm(x) * exp(mean(r))), col="black", lwd=2)
 	mtext(side=3, g)
 	i <- i+1
 }
@@ -112,13 +112,13 @@ for(g in levels(groups)){
 par(mfrow=c(3,3))
 i <- 1
 for(g in levels(groups)){
-	plot( x, exp(-hazardDist(x)), col="white", type="l", ylim=c(0,1), ylab="Expected survival", xlab="Days")
+	plot( x, exp(-hazardDistNrm(x)), col="white", type="l", ylim=c(0,1), ylab="Expected survival", xlab="Days")
 	m <- mean(rowSums(p[,colnames(p)!=g]))
-	polygon( c(x, rev(x)), exp(-hazardDist(c(x,rev(x)))*exp( rep(range(partRiskTD[,g]), each=length(x)) +m)), col=paste(col1[i],"44",sep=""), border=NA)
-	polygon( c(x, rev(x)), exp(-hazardDist(c(x,rev(x)))*exp( rep(quantile(partRiskTD[,g], c(0.25,0.75)), each=length(x))+m)), col=paste(col1[i],"44",sep=""), border=NA)
-	polygon( c(x, rev(x)), exp(-hazardDist(c(x,rev(x)))*exp( rep(quantile(partRiskTD[,g], c(0.05,0.95)), each=length(x))+m)), col=paste(col1[i],"44",sep=""), border=NA)
-	lines( x, exp(-hazardDist(x)*exp( median(partRiskTD[,g])+m)), col=col1[i], type="l", lwd=2)	
-	lines( x, exp(-hazardDist(x) *exp(+m)), col="black", lwd=2)
+	polygon( c(x, rev(x)), exp(-hazardDistNrm(c(x,rev(x)))*exp( rep(range(partRiskTD[,g]), each=length(x)) +m)), col=paste(col1[i],"44",sep=""), border=NA)
+	polygon( c(x, rev(x)), exp(-hazardDistNrm(c(x,rev(x)))*exp( rep(quantile(partRiskTD[,g], c(0.25,0.75)), each=length(x))+m)), col=paste(col1[i],"44",sep=""), border=NA)
+	polygon( c(x, rev(x)), exp(-hazardDistNrm(c(x,rev(x)))*exp( rep(quantile(partRiskTD[,g], c(0.05,0.95)), each=length(x))+m)), col=paste(col1[i],"44",sep=""), border=NA)
+	lines( x, exp(-hazardDistNrm(x)*exp( median(partRiskTD[,g])+m)), col=col1[i], type="l", lwd=2)	
+	lines( x, exp(-hazardDistNrm(x) *exp(+m)), col="black", lwd=2)
 	mtext(side=3, g)
 	i <- i+1
 }
@@ -292,7 +292,7 @@ polygon(x,rowSums(r), col=colTrans(set1[1]), border=NA)
 
 
 H0 <- basehaz(coxFitCPSSIntOsTD, centered=TRUE)
-hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
+hazardDistNrm <- splinefun(H0$time, H0$hazard, method="monoH.FC")
 #plot(survfit(osTD ~1))
 #lines(0:5000, exp(-hazardDist(0:5000)),  col='red')
 invHazardDist <- splinefun(H0$hazard, H0$time, method="monoH.FC")
@@ -301,7 +301,7 @@ for(i in seq_along(l))
 lines(x, invHazardDist(-log(l[i]) /exp(x) )/10000, col='black', lty=c(2,1,2)[i])
 axis(side=4, at=seq(0,.5,0.1), labels=seq(0,.5,.1)*10000)
 mtext(side=4, line=2.5, "Time")
-mtext(side=3, at = log(-log(l)/hazardDist(par("usr")[4]*10000)), text=paste(100*l, "% survive", sep=""))
+mtext(side=3, at = log(-log(l)/hazardDistNrm(par("usr")[4]*10000)), text=paste(100*l, "% survive", sep=""))
 
 
 concordanceFromVariance <- function(x) {
@@ -409,7 +409,7 @@ h <- x %*% c
 h <- h - mean(h)
 
 H0 <- basehaz(coxph(os ~ 1), centered=TRUE)
-hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
+hazardDistNrm <- splinefun(H0$time, H0$hazard, method="monoH.FC")
 #plot(survfit(osTD ~1))
 #lines(0:5000, exp(-hazardDist(0:5000)),  col='red')
 invHazardDist <- splinefun(H0$hazard, H0$time, method="monoH.FC")
@@ -423,7 +423,7 @@ for(i in seq_along(l)[-1])
 	lines(x, invHazardDist(-log(l[i]) /exp(x) ), col='black', lty=c(2,1,2)[i])
 #axis(side=4, at=seq(0,.5,0.1), labels=seq(0,.5,.1)*10000)
 #mtext(side=4, line=2.5, "Time")
-mtext(side=3, at = log(-log(l)/hazardDist(par("usr")[4])), text=paste(100*l, "%", sep=""), cex=.66)
+mtext(side=3, at = log(-log(l)/hazardDistNrm(par("usr")[4])), text=paste(100*l, "%", sep=""), cex=.66)
 par(xpd=NA)
 mtext(side=3, "Survival",line=2, cex=.66)
 mtext(side=2, line=2.5, "Time",cex=.66)
@@ -470,3 +470,131 @@ points(3.7, 3.7*a, col='red')
 f <- function(fit){M <- matrix(unlist(sapply(split(fit$coefficients, fit$groups), function(x) c(rep(0, ncol(fit$X)),x)))[-(1:ncol(fit$X))], ncol=nlevels(fit$groups))
 	as.matrix(fit$X)[,order(fit$groups)] %*% M
 } 
+
+
+power <- function(x,y){x*y / (x/(1-x)*y/(1-y)+x/(1-x)+y/(1-y)+1)}
+
+t <- clinicalData$Recurrence_date - clinicalData$CR_date
+d <- clinicalData$Date_LF - clinicalData$CR_date
+t[is.na(t)] <- d[is.na(t)]
+lrm <- Surv(time=as.numeric(t), event=!is.na(clinicalData$Recurrence_date)+0)
+nrm <- Surv(time=as.numeric(d), event=is.na(clinicalData$Recurrence_date) & clinicalData$Status)
+
+
+plot(survfit(lrm ~ clinicalData$Family_donnor,subset=clinicalData$M_Risk %in% c("Inter-1","Inter-2")),  col=1:2, log='', mark.time=FALSE, fun=function(y) 1-y, ylim=c(0,1), xlab="Time", ylab="CIR", conf.int=TRUE )
+plot(survfit(nrm ~ clinicalData$Family_donnor,subset=clinicalData$M_Risk %in% c("Inter-1","Inter-2")),  col=1:2, log='', mark.time=FALSE, fun=function(y) 1-y, ylim=c(0,1), xlab="Time", ylab="NRM" )
+
+plot(survfit(lrm ~ c,subset=clinicalData$M_Risk %in% c("Inter-1","Inter-2")),  log='', mark.time=FALSE, fun=function(y) 1-y, ylim=c(0,1), xlab="Time", ylab="CIR", conf.int=FALSE)
+lines(survfit(nrm ~ clinicalData$Family_donnor),  col=2, mark.time=FALSE, fun=function(y) 1-y)
+
+plot(survfit(nrm ~ c,subset=clinicalData$M_Risk %in% c("Inter-1","Inter-2")),  log='', mark.time=FALSE, fun=function(y) 1-y, ylim=c(0,1), xlab="Time", ylab="NRM", conf.int=FALSE, col=set1)
+
+c <- cut(coxRFXFitOs$linear.predictors, seq(-3,4))
+
+plot(survfit(lrm ~ 1, data=dataList$Cytogenetics), mark.time=FALSE, ylim=c(0,1), xlab="Time", ylab="Fraction", conf.int=TRUE )
+lines(survfit(nrm ~ 1), col='red', mark=NA)
+
+fitLrm <- CoxCPSSInteractions(dataFrame[mainIdx &! grepl("TPL",names(dataFrame))][!is.na(lrm),], lrm[!is.na(lrm)])
+fitNrm <- CoxCPSSInteractions(dataFrame[mainIdx &! grepl("TPL",names(dataFrame))][!is.na(nrm),], nrm[!is.na(nrm)])
+
+coxLrm <- coxph(lrm ~ ., data=dataFrame[names(which(fitLrm$Pi > .8))])
+coxNrm <- coxph(nrm ~ ., data=dataFrame[c(names(which(fitNrm$Pi > .8)),"Family_donor")])
+
+H0Nrm <- basehaz(coxph(nrm~1), centered=TRUE)
+l <- range(coxNrm$linear.predictor)
+plot(H0Nrm$time, exp(-H0Nrm$hazard), type='l', ylim=c(0,1))
+for(i in seq_along(l))
+	lines(H0Nrm$time, exp(-H0Nrm$hazard * exp(l[i])), col='black', lty=2)
+
+H0Lrm <- basehaz(coxph(lrm~1), centered=TRUE)
+l <- range(coxNrm$linear.predictor)
+lines(H0Lrm$time, exp(-H0Lrm$hazard), type='l', ylim=c(0,1), col='red')
+for(i in seq_along(l))
+	lines(H0Lrm$time, exp(-H0Lrm$hazard * exp(l[i])), lty=2, col='red')
+
+par(mfrow=c(5,5))
+for(i in order(coxLrm$linear.predictor, decreasing = FALSE)[1:25]){
+	plot(H0Nrm$time, exp(-H0Nrm$hazard * exp(coxNrm$linear.predictor[i] - dataFrame$Family_donor[i]*coxNrm$coefficients["Family_donor"])), type='l', ylim=c(0,1))
+	lines(H0Nrm$time, exp(-H0Nrm$hazard * exp(coxNrm$linear.predictor[i] - (dataFrame$Family_donor[i]-1)*(coxNrm$coefficients["Family_donor"]))), lty=2)
+	lines(H0Lrm$time, exp(-H0Lrm$hazard * exp(coxLrm$linear.predictor[i] - dataFrame$Family_donor[i]*coxLrm$coefficients["Family_donor"])), type='l', col='red')
+	lines(H0Lrm$time, exp(-H0Lrm$hazard * exp(coxLrm$linear.predictor[i] - (dataFrame$Family_donor[i]-1)*(coxLrm$coefficients["Family_donor"]))), lty=2, col='red')
+}
+
+par(mfrow=c(1,1))
+plot(coxLrm$linear.predictor, coxNrm$linear.predictor)
+cor(coxLrm$linear.predictor, coxNrm$linear.predictor)
+
+
+
+
+### SF AML
+
+plot(survfit(lrm ~ U2AF1, data=dataFrame), col=1:2)
+
+survdiff(lrm ~ U2AF1, data=dataFrame)
+survdiff(os ~ U2AF1, data=dataFrame)
+
+whichSplice <- c("U2AF1","SFRS2","SF3B1","ZRSR2","U2AF2","SF3A1", "SF1")
+colSums(dataFrame[whichSplice])
+spliceSum <- rowSums(genes[,whichSplice])
+table(spliceSum)
+anySplice <- spliceSum > 0
+cor(dataFrame[selectedIntOs], anySplice)
+boxplot(dataFrame$AOD_10 ~ spliceSum, ylab ="Age/10", xlab="# SF mutations")
+coxph(os ~ .,data=dataFrame[whichSplice[-6]])
+coxph(os ~ anySplice)
+plot(survfit(os ~ anySplice))
+
+p <- colMeans(genes[,whichSplice])
+p0 <- prod(1-p)
+p1 <- sum(p * p0 %o% (1/(1-p)))
+p2 <- (p * p0 %o% (1/(1-p)))
+
+fit <- CoxCPSSInteractions(cbind(dataFrame[mainIdx &! grepl("TPL",names(dataFrame))], splice=anySplice>0), os)
+
+spliceCases <- unique(as.character(mutationData$SAMPLE_NAME[mutationData$GENE %in% whichSplice])) 
+
+pdf(width=8,height=8)
+t <- get(l[1])
+p <- get(l[2])
+locations <- 1.5*hilbertCurve(log2(nStars)) #2*expand.grid(1:nStars,1:nStars)
+s <- sample(nrow(p),nStars^2) #1:(nStars^2)
+h <- hclust(dist(p[s,]))
+x <- p - rep(colMeans(p), each=nrow(p))
+x <- x/(2*sd(x)) + 1
+stars(x[s,][h$order,]/2, scale=FALSE, locations=locations, key.loc=c(0,-3), col.lines=rep(1,(nStars^2)), col.stars = set1[clinicalData$M_Risk[s][h$order]])
+symbols(locations[,1], locations[,2], circles=rep(.5,(nStars^2)), inches=FALSE, fg="grey", add=TRUE, lty=1)
+dev.off()
+
+library(VennDiagram)
+grid.newpage()
+pushViewport(viewport(w = .9, h = .9))
+grid.draw(venn.diagram(list(CPSS=selectedIntOs, BIC=names(coef(coxBICOs)), AIC=names(coef(coxAICOs))), filename=NULL, lty=1, 
+				col=set1[1:3], fill=set1[1:3], alpha=0.3, euler.d=TRUE, fontfamily="Helvetica", cat.fontfamily="Helvetica", cat.fontface="italic", euler.diagram=TRUE))
+
+
+library(cmprsk)
+t <- clinicalData$Recurrence_date - clinicalData$CR_date
+d <- clinicalData$Date_LF - clinicalData$CR_date
+s <- clinicalData$Status
+s[t < d] <- 2
+crr(ftime = as.numeric(pmin(d, t)), fstatus=s, cov1 = dataFrame[names(which(fitLrm$Pi > 0.8))])
+plot(cuminc(ftime = as.numeric(pmin(d, t)), fstatus=s))
+
+
+n <- c(5, 10, 50, 100, 500, 1000)
+s <- 10^(seq(-2,0.5,0.1))
+
+f <- function(p,s,n=1000){
+	X <- matrix(rnorm(p*n, sd = sqrt(1/p)), ncol=p)
+	b <- rnorm(p, sd=sqrt(s))
+	r <- X %*% b
+	u <- CoxHD:::SimSurv(r)
+	CoxRFX(X,u, nu=0,  sigma0 = 0.1)$sigma2
+}
+
+x <- mclapply(s, function(x){sapply(n, function(y) f(y,x))}, mc.cores=13)
+
+for(f in 1:10){
+	print(f)
+}
