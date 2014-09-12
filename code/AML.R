@@ -107,10 +107,11 @@ dataFrame <- as.data.frame(sapply(dataFrame, poorMansImpute))
 #' Compute gene:gene interactions
 #+ interactions, cache=TRUE, fig.width=6, fig.height=6
 data <- cbind(dataList$Genetics, dataList$Cytogenetics)
-data <- data[,colSums(data, na.rm=TRUE)>=16]
+data <- data[,colSums(data, na.rm=TRUE)>=8]
 dim(data)
 interactions <- sapply(1:ncol(data), function(i) sapply(1:ncol(data), function(j) {f<- try(fisher.test(data[,i], data[,j]), silent=TRUE); if(class(f)=="try-error") 0 else ifelse(f$estimate>1, -log10(f$p.val),log10(f$p.val))} ))
 odds <- sapply(1:ncol(data), function(i) sapply(1:ncol(data), function(j) {f<- try(fisher.test(data[,i] + .5, data[,j] +.5), silent=TRUE); if(class(f)=="try-error") f=NA else f$estimate} ))
+pairs <- sapply(1:ncol(data), function(i) colMeans(data * data[,i], na.rm=TRUE))
 diag(interactions) <- 0
 diag(odds) <- 1
 colnames(odds) <- rownames(odds) <- colnames(interactions) <- rownames(interactions) <- colnames(data)
@@ -118,34 +119,42 @@ odds[10^-abs(interactions) > 0.05] = 1
 odds[odds<1e-3] = 1e-4
 odds[odds>1e3] = 1e4
 logodds=log10(odds)
+diag(interactions) <- NA
 
 #pdf(paste(Sys.Date(),"-Interactions.pdf", sep=""), 4,4, pointsize = 8) ## HEATMAP OF ALL
-par(bty="n", mgp = c(2,.5,0), mar=c(3,3,2,2)+.1, las=2, tcl=-.33)
+par(bty="n", mgp = c(2,.5,0), mar=c(4,4,3,3)+.1, las=2, tcl=-.33)
 ix = TRUE#colnames(interactions) %in% colnames(all_genotypes)
-h = hclust(dist(interactions[ix,ix]))
+h = hclust(dist(log(odds)[ix,ix]), method="average")
 o = h$order #c(h$order,(length(h$order) +1):ncol(interactions))
+M <-  matrix( NA, ncol=ncol(odds), nrow=nrow(odds))
+M[lower.tri(M)] <- cut(log10(odds[o,o][lower.tri(M)]), breaks = c(-4:0-.Machine$double.eps,0:4))
+M[upper.tri(M, diag=TRUE)] <- as.numeric(cut(pairs[o,o][upper.tri(M, diag=TRUE)]*nrow(data), breaks=c(-1,0,5,10,20,50,100,200,500))) + 9 
 #image(x=1:ncol(interactions), y=1:nrow(interactions), interactions[o,o], col=brewer.pal(11,"BrBG"), breaks = c(-100, seq(-9,9,2),  100), xaxt="n", yaxt="n", xlab="",ylab="", xlim=c(0, ncol(interactions)+3), ylim=c(0, ncol(interactions)+3))
-image(x=1:ncol(interactions), y=1:nrow(interactions), log10(odds[o,o]), col=brewer.pal(9,"BrBG"), breaks = c(-4:0-.Machine$double.eps,0:4), xaxt="n", yaxt="n", xlab="",ylab="", xlim=c(0, ncol(interactions)+3), ylim=c(0, ncol(interactions)+3))
-mtext(side=1, at=1:ncol(interactions), colnames(interactions)[o], cex=.5, font=3)
-mtext(side=2, at=1:ncol(interactions), colnames(interactions)[o], cex=.5, font=3)
+#image(x=1:ncol(interactions), y=1:nrow(interactions), log10(odds[o,o]), col=brewer.pal(9,"BrBG"), breaks = c(-4:0-.Machine$double.eps,0:4), xaxt="n", yaxt="n", xlab="",ylab="", xlim=c(0, ncol(interactions)+3), ylim=c(0, ncol(interactions)+3))
+image(x=1:ncol(interactions), y=1:nrow(interactions), M, col=c(brewer.pal(9,"BrBG"), c("white",brewer.pal(7,"Reds"))), breaks=0:max(M,na.rm=TRUE), xaxt="n", yaxt="n", xlab="",ylab="", xlim=c(0, ncol(interactions)+3), ylim=c(0, ncol(interactions)+3))
+l <- colnames(interactions)[o]
+mtext(side=1, at=1:ncol(interactions), l, cex=.66, font=ifelse(grepl("^[A-Z]",l),3,1))
+mtext(side=2, at=1:ncol(interactions), l, cex=.66, font=ifelse(grepl("^[A-Z]",l),3,1))
 abline(h = length(h$order)+.5, col="white", lwd=1)
 abline(v = length(h$order)+.5, col="white", lwd=1)
 abline(h=0:ncol(interactions)+.5, col="white", lwd=.5)
 abline(v=0:ncol(interactions)+.5, col="white", lwd=.5)
-w = arrayInd(which(p.adjust(10^-abs(interactions[o,o]), method="BH") < .1), rep(nrow(interactions),2))
+P <- 10^-abs(interactions[o,o])
+P[upper.tri(P)] <- NA
+w = arrayInd(which(p.adjust(P, method="BH") < .1), rep(nrow(interactions),2))
 points(w, pch=".", col="white")
-w = arrayInd(which(p.adjust(10^-abs(interactions[o,o])) < .05), rep(nrow(interactions),2))
+w = arrayInd(which(p.adjust(P) < .05), rep(nrow(interactions),2))
 points(w, pch="*", col="white")
-image(y = 1:8, x=rep(ncol(interactions),2)+c(2,3), z=matrix(c(1:8), nrow=1), col=brewer.pal(8,"BrBG"), add=TRUE)
-#axis(side = 4, at = 8:12 + .5, cex.axis=.5, tcl=-.15, label=10^-abs(seq(1,9,2)), las=1, lwd=.5)
-#axis(side = 4, at = 1:5 + .5, cex.axis=.5, tcl=-.15, label=10^-abs(seq(-9,-1,2)), las=1, lwd=.5)
-axis(side = 4, at = seq(1,7) + .5, cex.axis=.5, tcl=-.15, label=10^seq(-3,3), las=1, lwd=.5)
-#lines(rep(ncol(interactions),2)+c(1,4), c(6,6)+.5, col="white")
-#mtext(side=4, at=-1,  "P odds < 1", cex=.5, line=-.5)
-#mtext(side=4, at=15,  "P odds > 1", cex=.5, line=-.5)
-points(x=rep(ncol(interactions),2)+2.5, y=10:11, pch=c("*","."))
-image(x=rep(ncol(interactions),2)+c(2,3), y=(12:13) -0.5, z=matrix(1), col=brewer.pal(3,"BrBG"), add=TRUE)
-mtext(side=4, at=12:10, c("P > 0.05", "BH < 0.1", "Bf. < 0.05"), cex=.5, line=0.2)
+image(y = 1:9 +18, x=rep(ncol(interactions),2)+c(2,3), z=matrix(c(1:8), nrow=1), col=c("white",brewer.pal(7,"Reds")), add=TRUE)
+axis(side = 4, at = seq(1,7) + 19, cex.axis=.66, tcl=-.15, label=c(1,5,10,20,50,100,200), las=1, lwd=.5)
+mtext(side=4, at=28, "Frequency", las=2, line=-1,cex=.66)
+image(y = 1:8 +5, x=rep(ncol(interactions),2)+c(2,3), z=matrix(c(1:8), nrow=1), col=brewer.pal(8,"BrBG"), add=TRUE)
+axis(side = 4, at = seq(1,7) + 5.5, cex.axis=.66, tcl=-.15, label=10^seq(-3,3), las=1, lwd=.5)
+mtext(side=4, at=14, "Odds ratio", las=2, line=-1,cex=.66)
+mtext(side=4, at=4, "Significance", las=2, line=-1,cex=.66)
+points(x=rep(ncol(interactions),2)+2.5, y=1:2, pch=c("*","."))
+image(x=rep(ncol(interactions),2)+c(2,3), y=(2:3) -0.5, z=matrix(1), col=brewer.pal(3,"BrBG"), add=TRUE)
+mtext(side=4, at=3:1, c("P > 0.05", "BH < 0.1", "Bf. < 0.05"), cex=.66, line=0.2)
 #dev.off()
 
 
@@ -223,6 +232,7 @@ for(i in 1:4) plot(phTest[i])
 
 #' #### Basic KM plots
 #' TP53 and TPL
+#+ kmTP53vTPL, fig.width=3, fig.height=2.5
 f <- formula("osTD ~ TP53 + TPL_os")
 s <- survfit(f, data=dataFrameOsTD)
 c <- coxph(f, data=dataFrameOsTD)
@@ -234,6 +244,7 @@ title(main=paste("P =",signif(p,2)), font=1)
 
 
 #' FLT ITD v TKD
+#+ kmITDvTKD, fig.width=3, fig.height=2.5
 f <- formula("os ~ FLT3_ITD + FLT3_TKD")
 s <- survfit(f, data=dataList$Genetics)
 c <- coxph(f, data=dataList$Genetics)
@@ -245,6 +256,7 @@ title(main=paste("P =",signif(p,2)), font=1)
 
 
 #' CEBPA mono v bi
+#+ kmMonoVBi, fig.width=3, fig.height=2.5
 f <- formula("os ~ CEBPA_mono + CEBPA_bi")
 s <- survfit(f, data=dataList$Genetics)
 c <- coxph(f, data=dataList$Genetics)
@@ -255,6 +267,7 @@ legend("topright", bty="", rownames(summary(s)$table), col=set1, lty=1)
 title(main=paste("P =",signif(p,2)), font=1)
 
 #' IDH2 p140 v p172
+#+ km140v172, fig.width=3, fig.height=2.5
 f <- formula("os ~ IDH2_p140 + IDH2_p172")
 s <- survfit(f, data=dataList$Genetics)
 c <- coxph(f, data=dataList$Genetics)
@@ -271,7 +284,7 @@ summary(coxph(os ~ ., data=dataFrame[mainIdxOs][colSums(dataFrame[mainIdxOs]) > 
 NONC <- rowSums(cbind(dataList$Cytogenetics[names(dataList$Cytogenetics)!="complex"], dataList$Genetics), na.rm=TRUE)
 summary(coxph(os ~ . + NONC, data=dataFrame[mainIdxOs][colSums(dataFrame[mainIdxOs]) > 10]))
 
-#+ NONC, fig.width=3, fig.height=2
+#+ NONC, fig.width=3, fig.height=2.5
 r=rainbow(9, s=1, v=0.66, start=0.2,end=1)
 s <- survfit(os ~ pmin(NONC,8))
 plot(s, col=r, xlab="Days", ylab="Survival")
@@ -286,6 +299,8 @@ segments(0:8, summary(s)$table[,"0.95LCL"],0:8, sapply(summary(s)$table[,"0.95UC
 coxRFXFitEfs <- CoxRFX(dataFrame[,whichRFXEfs], efs, groups=groups[whichRFXEfs], sigma0=0.1, nu=0)
 #+ coxRFXFitOs, warning=FALSE, cache=TRUE
 coxRFXFitOs <- CoxRFX(dataFrame[,whichRFXOs], os, groups=groups[whichRFXOs], sigma0=0.1, nu=0)
+#+ coxRFXFitOsMain, warning=FALSE, cache=TRUE
+coxRFXFitOsMain <- CoxRFX(dataFrame[,mainIdxOs], os, groups=groups[mainIdxOs], sigma0=0.1, nu=0)
 
 #coxRFXFit <- CoxRFX(dataFrame[,whichRFX], survival, groups=groups[whichRFX], sigma0=0.01) ## reassuring that sigma doesn't shrink further
 
@@ -342,7 +357,7 @@ for(model in c("coxRFXFitEfsTD","coxRFXFitOs")){
 }
 
 #' #### OS v EFS
-#+ EFSvsOScoef, fig.width=5, fig.height=5
+#+ EFSvsOScoef, fig.width=4, fig.height=4
 efs2Os <- match(names(coef(coxRFXFitOs)), sub("efs","os",names(coef(coxRFXFitEfsTD))))
 plot(coef(coxRFXFitEfsTD)[efs2Os], coef(coxRFXFitOs), pch=16, xlab="Coefficient EFS", ylab="Coefficient OS", col=col1[coxRFXFitEfsTD$groups])
 segments((coef(coxRFXFitEfsTD) - sqrt(diag(coxRFXFitEfsTD$var)))[efs2Os], coef(coxRFXFitOs),(coef(coxRFXFitEfsTD)+ sqrt(diag(coxRFXFitEfsTD$var)))[efs2Os], coef(coxRFXFitOs),  col=paste(col1,"44",sep="")[coxRFXFitEfsTD$groups])
@@ -465,91 +480,110 @@ round(cov(v, 2))
 rm(parBoot)
 
 #' #### Large overview panel
-#+ overviewRFX, fig.width=8, fig.height=8
-layout(matrix(1:6, nrow=2), width=c(6,4,2),height=c(3,12))
-par(bty="n", mar=c(1,4,3,2), mgp=c(2.5,1,0), tcl=-.25)
-v <- VarianceComponents(coxRFXFitOs, type="rowSums")
-w <- TRUE#coxRFXFitOsTD$groups %in% mainGroups
-f <- factor(as.character(coxRFXFitOs$groups[w]), levels=levels(coxRFXFitOs$groups[w])[order(abs(v), decreasing=TRUE)])
-o <- order(f,coxRFXFitOs$coefficients[w])
-c <- coef(coxRFXFitOs)[w][o]
-plot(c, type='p',  ylab="Coefficient", xaxt='n', col=col1[as.character(f)[o]], xaxs="i", lwd=2, pch=NA, ylim=c(-2,2))
-abline(h=-1:1, col="grey")
-#segments(seq_along(c), coxRFXFitOsTD$mu[as.character(f)[o]], seq_along(c), c, col=col1[as.character(f)[o]])
-y <- seq(-2,2,l=100)
-points(c, col=col1[as.character(f)[o]], pch=16, cex=.66)
-par(xpd=NA)
-for(l in levels(f)){
-	x <- dnorm(y,coxRFXFitOs$mu[l], sqrt(coxRFXFitOs$sigma2[l]))
-	x <- x/max(x)*15
-	#polygon(x + (cumsum(table(f)) - table(f))[l], y, col=paste(col1[l],"44",sep=""), lty=0)
-	lines(x + (cumsum(table(f)) - table(f))[l], y, col=col1[l], lwd=1)
-	segments((cumsum(table(f)) - table(f))[l],coxRFXFitOs$mu[l],(cumsum(table(f)) - table(f))[l]+max(x),coxRFXFitOs$mu[l], col=col1[l])
-}
-mtext(side=3, levels(f), at= table(f)/2+ cumsum(c(0,table(f)[-nlevels(f)])), cex=.66)
-par(bty="L", mar=c(4,4,1,2), mgp=c(2.5,1,0))
-X <- as.matrix(dataFrame[whichRFXOs][w][o])
-p <- order(X %*% c)
-X <- X[p,]
-x <- t(X)/apply(X,2,max)
+#+ overviewRFX, fig.width=7, fig.height=5
+for(model in c("coxRFXFitOs", "coxRFXFitOsMain")){
+	layout(matrix(1:6, nrow=2), width=c(6,6,2),height=c(3,12))
+	par(bty="n", mar=c(0,4,4,2), mgp=c(2,.5,0), tcl=-.25)
+	v <- VarianceComponents(get(model), type="rowSums")
+	w <- TRUE#get(model)TD$groups %in% mainGroups
+	f <- factor(as.character(get(model)$groups[w]), levels=levels(get(model)$groups[w])[order(abs(v), decreasing=TRUE)])
+	o <- order(f,get(model)$coefficients[w])
+	c <- coef(get(model))[w][o]
+	plot(c, type='p',  ylab="log hazard/variable", xaxt='n', col=col1[as.character(f)[o]], xaxs="i", lwd=2, pch=NA)
+	y <- seq(-2,2,l=100)
+	par(xpd=FALSE)
+	abline(h=seq(-.5,.5,.25), col="grey", lty=c(1,3))
+	colRamp <- sapply(col1[levels(f)], function(x) c(colorRampPalette(c("white",x))(11)[-1]))
+#for(l in levels(f)){
+#	x <- dnorm(y,get(model)$mu[l], sqrt(get(model)$sigma2[l]))
+#	x <- x/max(x)*15
+#	#polygon(x + (cumsum(table(f)) - table(f))[l], y, col=colRamp[1,l], lty=0)
+#	#lines(x + (cumsum(table(f)) - table(f))[l], y, col=colRamp[1,l], lwd=1)
+#	#segments((cumsum(table(f)) - table(f))[l],get(model)$mu[l],(cumsum(table(f)) - table(f))[l]+max(x),get(model)$mu[l], col=colRamp[8,l])
+#	rect((cumsum(table(f)) - table(f))[l], get(model)$mu[l] - 2*sqrt(get(model)$sigma2[l]) , cumsum(table(f))[l] ,get(model)$mu[l]+ 2*sqrt(get(model)$sigma2[l]), col=colRamp[1,l], lty=0)
+#	rect((cumsum(table(f)) - table(f))[l], get(model)$mu[l] - 1*sqrt(get(model)$sigma2[l]) , cumsum(table(f))[l] ,get(model)$mu[l]+ 1*sqrt(get(model)$sigma2[l]), col=colRamp[4,l], lty=0)	
+#	segments((cumsum(table(f)) - table(f))[l], get(model)$mu[l]  , cumsum(table(f))[l] ,get(model)$mu[l], col=colRamp[8,l])	
+#}
+	par(xpd=NA)
+	segments(seq_along(c), get(model)$mu[as.character(f)[o]], seq_along(c), c, col=col1[as.character(f)[o]])
+#points(c, col=col1[as.character(f)[o]], pch=16, cex=.66)
+#mtext(side=3, levels(f), at= table(f)/2+ cumsum(c(0,table(f)[-nlevels(f)])), cex=.66)
+	rotatedLabel(table(f)/2+ cumsum(c(0,table(f)[-nlevels(f)])), y = rep(par("usr")[4]*.8, nlevels(f)), pos=3, labels=levels(f))
+	par(bty="L", mar=c(4,4,1,2))
+	X <- get(model)$X[,w][,o]
+	p <- order(X %*% c)
+	X <- X[p,]
+	x <- t(X)/apply(X,2,max)
 #h <- hclust(dist(t(x)))
-image(x=1:nrow(x),y=1:ncol(x),x*.9 + as.numeric(f[o])-1 + 1e-5, useRaster=TRUE, 
-		col=sapply(col1[levels(f)], function(x) c(colorRampPalette(c("white",x))(11)[-1])), 
-		breaks=seq(0,nlevels(f), 0.1),  ylab="Patients",xlab="Variable", xlim=c(0,nrow(x)), ylim=c(0,ncol(x)))
-
-par(mar=c(4,.5,3,0.5), xpd=NA)
-PlotVarianceComponents(coxRFXFitOs, col = col1, type='diag')
-mtext(side=3, "Variance components",line=2, cex=.66)
-
-xo <- 3
-par(mar=c(4,0,1,0.5), xpd=NA, bty="n")
-plot(NA,NA,ylim=c(1,nrow(X)), xlim=c(-xo/2, (nlevels(f)-.5)*xo), xaxt="n", yaxt="n", yaxs="i", xlab="Partial log hazard", ylab="n")
-i <- 0
-for(l in levels(f)){
-	h <- X[,f[o]==l] %*% c[f[o]==l]
+	image(x=1:nrow(x),y=1:ncol(x),x*.9 + as.numeric(f[o])-1 + 1e-5, useRaster=TRUE, 
+			col=colRamp, 
+			breaks=seq(0,nlevels(f), 0.1),  ylab="Patients",xlab="Variable", xlim=c(0,nrow(x)), ylim=c(0,ncol(x)))
+	
+	par(mar=c(3,.5,1,0.5), xpd=NA)
+	PlotVarianceComponents(get(model), col = col1)
+	mtext(side=3, at = 0, "Variance components",line=0, cex=.66)
+	
+	xo <- 3
+	par(mar=c(4,0,1,0.5), xpd=NA, bty="n")
+	plot(NA,NA,ylim=c(1,nrow(X)), xlim=c(-xo/2, (nlevels(f)-.5)*xo), xaxt="n", yaxt="n", yaxs="i", xlab="Partial log hazard", ylab="")
+	i <- 0
+	for(l in levels(f)){
+		h <- X[,f[o]==l] %*% c[f[o]==l]
+		h <- h - mean(h)
+		#plot(h, seq_along(h), pch=NA, xlab="log hazard", yaxs="i", yaxt="n", ylab='', xlim=c(-2,2))
+		par(xpd=FALSE)
+		abline(v=-1:1 + i*xo, col="grey")
+		par(xpd=NA)
+		segments(h + i*xo, seq_along(h), + i*xo, seq_along(h), col=col1[l])
+		#mtext(side=3, l, cex=.66, line=.5)
+		axis(side=1, at=-1:1 + xo*i, labels=-1:1)
+		x <- seq(-1.5,1.5,l=101)
+		lines(x +i*xo, dnorm(x, 0, sd(h))*100 /  dnorm(0, 0, sd(h)) + length(h)*1.01, col=col1[l])
+		i <- i+1
+	}
+	
+	h <- X %*% c
 	h <- h - mean(h)
-	#plot(h, seq_along(h), pch=NA, xlab="log hazard", yaxs="i", yaxt="n", ylab='', xlim=c(-2,2))
-	segments(h + i*xo, seq_along(h), + i*xo, seq_along(h), col=col1[l])
-	#mtext(side=3, l, cex=.66, line=.5)
-	axis(side=1, at=-1:1 + xo*i, labels=-1:1)
-	x <- seq(-1.5,1.5,l=100)
-	lines(x +i*xo, dnorm(x, 0, sd(h))*100 /  dnorm(0, 0, sd(h)) + length(h)*1.01, col=col1[l])
-	i <- i+1 
-}
-
-h <- X %*% c
-h <- h - mean(h)
-
-H0 <- basehaz(coxph(os ~ 1), centered=TRUE)
-hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
+	
+	H0 <- basehaz(coxph(os ~ 1), centered=TRUE)
+	hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
 #plot(survfit(osTD ~1))
 #lines(0:5000, exp(-hazardDist(0:5000)),  col='red')
-invHazardDist <- splinefun(H0$hazard, H0$time, method="monoH.FC")
-l <- c(0.1,.5,.9)#c(0.1,0.25,.5,.75,.9)
-i <- 1
-x <- seq(from=-4,to=4, l=512)
-par(mar=c(1,.5,3,0.5), xpd=FALSE)
-plot(x, invHazardDist(-log(l[2]) /exp(x) ), col='black', lty=c(2,1,2)[2], xlab="", ylab="Time", type='l',ylim=c(0,5000), xlim=range(h), xaxt="n")
-abline(v=seq(-2,4,2), col="grey")
+	invHazardDist <- splinefun(H0$hazard, H0$time, method="monoH.FC")
+	l <- c(0.1,.5,.9)#c(0.1,0.25,.5,.75,.9)
+	i <- 1
+	x <- seq(from=-3,to=3, l=512)
+	par(mar=c(1,.5,3,1), xpd=FALSE)
+	plot(x, invHazardDist(-log(l[2]) /exp(x) ), col='black', lty=c(2,1,2)[2], xlab="", ylab="Time", type='l',ylim=c(0,5000), xlim=c(min(h), 4), xaxt="n")
+	abline(v=seq(-2,3,1), col="grey")
 #for(i in seq_along(l)[-1])
 #	lines(x, invHazardDist(-log(l[i]) /exp(x) ), col='black', lty=c(2,1,2)[i])
-polygon(c(x, rev(x)), c(invHazardDist(-log(l[1]) /exp(x) ), rev(invHazardDist(-log(l[3]) /exp(x))) ), border=NA, col="#88888888")
+	polygon(c(x, rev(x)), c(invHazardDist(-log(l[1]) /exp(x) ), rev(invHazardDist(-log(l[3]) /exp(x))) ), border=NA, col="#88888888")
 #axis(side=4, at=seq(0,.5,0.1), labels=seq(0,.5,.1)*10000)
 #mtext(side=4, line=2.5, "Time")
-mtext(side=3, at = log(-log(l)/hazardDist(par("usr")[4])), text=paste(100*l, "%", sep=""), cex=.66)
-par(xpd=NA)
-mtext(side=3, "Survival",line=2, cex=.66)
-mtext(side=2, line=2.5, "Time",cex=.66)
-
-par(mar=c(4,.5,1,0.5), xpd=FALSE)
-plot(h, seq_along(h), pch=NA, xlab="Total log hazard", yaxs="i", yaxt="n", ylab='', xlim=range(h))
-abline(v=seq(-2,4,2), col="grey")
-segments(h, seq_along(h),0, seq_along(h))
+	mtext(side=3, at = log(-log(l)/hazardDist(par("usr")[4])), text=paste(100*l, "%", sep=""), cex=.66)
+	par(xpd=NA)
+	mtext(side=3, "Survival",line=2, cex=.66)
+	mtext(side=2, line=2.5, "Time",cex=.66)
+	q <- quantile(os[,1], seq(0,1,0.1), na.rm=TRUE)
+	image(x=c(3.5,4), y = q, matrix(1:10, nrow=1), col=brewer.pal(10,'RdBu'), add=TRUE)
+	
+	
+	par(mar=c(4,.5,1,1), xpd=FALSE)
+	plot(h, seq_along(h), pch=NA, xlab="Total log hazard", yaxs="i", yaxt="n", ylab='', xlim=c(min(h), 4), xaxt='n')
+	axis(side=1, at=-2:3)
+	abline(v=seq(-2,3,1), col="grey")
+	segments(h, seq_along(h),0, seq_along(h))
 #mtext(side=3, "Total log hazard", cex=.66, line=.5)
-par(xpd=NA)
-x <- seq(-3,5,l=100)
-lines(x , dnorm(x, 0, sd(h))*100 /  dnorm(0, 0, sd(h)) + length(h)*1.01)
-
+	par(xpd=NA)	
+	x <- seq(-3,5,l=100)
+	lines(x , dnorm(x, 0, sd(h))*100 /  dnorm(0, 0, sd(h)) + length(h)*1.01)
+	
+	c <- cut(os[p,1], q)
+#c[os[p,2]==0] <- NA
+	image(x=c(3.5,4), y = c(0,seq_along(c)), matrix(as.numeric(c), nrow=1), col=brewer.pal(10,'RdBu'), add=TRUE, useRaster=TRUE)
+	points(x=rep(4.1, sum(os[p,2]==0, na.rm=TRUE)), y=which(os[p,2]==0), pch=".")
+}
 
 #' #### Stars
 #+ stars, fig.width=12, fig.height=12
@@ -619,6 +653,7 @@ survConcordance( os~genomicRiskOs)
 
 
 #' #### AUC
+#+ tdAUC, fig.width=3, fig.height=2.5
 library(survAUC)
 s <- efs
 plot(AUC.uno(s[!is.na(s)],s[!is.na(s)], genomicRiskEfsTD[!is.na(s)], seq(0,1000,10)))
@@ -627,12 +662,14 @@ legend("bottomright",c("w/o treatment","w treatment"), col=2:1, lty=1)
 
 #' #### Genomic risk groups
 #' EFS
+#+ efsGroups, fig.width=3, fig.height=2.5
 genomicRiskGroupsEfs <-  cut(genomicRiskEfsTD[!is.na(genomicRiskEfsTD)], quantile(genomicRiskEfsTD, seq(0,1,0.25)), labels = c("very low","low","high","very high"))
 survConcordance( efsTD~as.numeric(genomicRiskGroupsEfs))
 plot(survfit(efsTD[!is.na(genomicRiskEfsTD)] ~ genomicRiskGroupsEfs), col=brewer.pal(4,"Spectral")[4:1], mark=3, cex=.5)
 table(clinicalData$M_Risk, genomicRiskGroupsEfs[1:nrow(clinicalData)])[c(2,3,4,1),]
 
 #' OS
+#+ osGroups, fig.width=3, fig.height=2.5
 genomicRiskGroupsOs <-  cut(genomicRiskOs[!is.na(genomicRiskOs)], quantile(genomicRiskOs, seq(0,1,0.25)), labels = c("very low","low","high","very high"))
 survConcordance( os~as.numeric(genomicRiskGroupsOs))
 plot(survfit(os[!is.na(genomicRiskOs)] ~ genomicRiskGroupsOs), col=brewer.pal(4,"Spectral")[4:1], mark=3, cex=.5)
@@ -696,7 +733,7 @@ legend("bottomright",c("w/o treatment","w treatment"), col=2:1, lty=1)
 
 
 #' ### 3. Recursive partitioning & randomForestSRC on OS
-#+ tree, fig.width=5, fig.height=5
+#+ tree, fig.width=3, fig.height=3
 library(rpart)
 library(randomForestSRC)
 tree <- rpart(os ~ ., data=dataFrame[mainIdxOs & osIdx])
@@ -704,7 +741,7 @@ plot(tree)
 text(tree)
 survConcordance(na.omit(os)~predict(tree))
 
-#+ treeCV, fig.width=5, fig.height=5
+#+ treeCV, fig.width=3, fig.height=3
 treeCV <- rpart(os[trainIdx] ~ ., data=dataFrame[trainIdx,mainIdxOs & osIdx])
 plot(treeCV)
 text(treeCV)
@@ -726,7 +763,8 @@ survConcordance(os[!trainIdx]~ p$predicted)
 #' ### 4. Stability selection: All terms
 
 #' Fit model
-#+ coxCPSS, cache=TRUE
+#+ coxCPSS, cache=TRUE, fig.width=3, fig.height=2.5
+
 set.seed(42)
 coxCPSSEfs <- CoxCPSS(dataFrame[!is.na(efs),efsIdx], efs[!is.na(efs)], bootstrap.samples = 50, control="BH", level=.1)
 
@@ -764,7 +802,7 @@ summary(coxFitEfsTD)
 survConcordance(efsTD[!trainIdxEfsTD] ~ predict(coxFitEfsTD, newdata = dataFrameEfsTD[!trainIdxEfsTD, ]))
 
 #' KM plots of interaction terms
-#+ CoxCPSSIntPlot
+#+ CoxCPSSIntPlot, fig.width=3, fig.height=2.5
 for(i in grep(":", selectedIntEfs, value=TRUE)){
 	j <- strsplit(i, ":")[[1]]
 	plot(survfit(as.formula(paste("efsTD ~ ", paste( j, collapse="+"))), data=dataFrameEfsTD), col=set1)
@@ -772,7 +810,6 @@ for(i in grep(":", selectedIntEfs, value=TRUE)){
 }
 
 #' Plots of the stability selection: No large difference between when interaction terms are enforce to only occur after main effects are included
-plot(coxCPSSIntEfs)
 plot(coxCPSSIntEfs$Pi, coxCPSSEfs$Pi[match(names(coxCPSSIntEfs$Pi), names(coxCPSSEfs$Pi))])
 
 #' Partial risk for c
@@ -795,10 +832,10 @@ genomicRiskCoxCPSSInt <- rowSums(partRiskCoxCPSSInt[,whichGenomicCoxCPSSInt])
 survConcordance( efsTD~genomicRiskCoxCPSSInt)
 
 #' #### Genomic risk groups
+#+ groupsCPSS, fig.width=3, fig.height=2.5
 genomicRiskGroupsCoxCPSSInt <-  cut(genomicRiskCoxCPSSInt[!is.na(genomicRiskCoxCPSSInt)], quantile(genomicRiskCoxCPSSInt, seq(0,1,0.25)), labels = c("very low","low","high","very high"))
-
 survConcordance( efsTD~as.numeric(genomicRiskGroupsCoxCPSSInt))
-plot(survfit(efsTD[!is.na(genomicRiskCoxCPSSInt)] ~ genomicRiskGroupsCoxCPSSInt), col=brewer.pal(4,"Spectral")[4:1], mark=16)
+plot(survfit(efsTD[!is.na(genomicRiskCoxCPSSInt)] ~ genomicRiskGroupsCoxCPSSInt), col=brewer.pal(4,"Spectral")[4:1])
 table(clinicalData$M_Risk, genomicRiskGroupsCoxCPSSInt[1:nrow(clinicalData)])[c(2,3,4,1),]
 
 #' Risk Plots
@@ -824,26 +861,22 @@ survConcordance(efs[!trainIdx] ~ predict(coxph(as.formula(paste("efs[trainIdx] ~
 set.seed(42)
 coxCPSSIntOs <- CoxCPSSInteractions(dataFrame[!is.na(os),groups %in% mainGroups & osIdx], na.omit(os), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
 selectedIntOs <- names(which(coxCPSSIntOs$Pi > 0.8))
+coxCPSSIntOs
 
 #' The corresponding coxph model (CV)
 coxFitCPSSIntOsCV <- coxph(as.formula(paste("os[trainIdx] ~", paste(selectedIntOs, collapse="+"))), data=dataFrame[trainIdx, ])
-summary(coxFitCPSSIntOsCV)
 survConcordance(os[!trainIdx] ~ predict(coxFitCPSSIntOsCV, newdata = dataFrame[!trainIdx, ]))
 
-#' The corresponding coxph model
-coxFitCPSSIntOs <- coxph(as.formula(paste("os ~", paste(selectedIntOs, collapse="+"))), data=dataFrame)
-riskCPSSIntOs <- predict(coxFitCPSSIntOs, newdata=dataFrame)
-summary(coxFitCPSSIntOs)
 
 #' With cross-val
 #+ CoxCPSSIntOsCV, cache=TRUE
 coxCPSSIntOsCV <- CoxCPSSInteractions(dataFrame[!is.na(os) & trainIdx,groups %in% mainGroups & osIdx], na.omit(os[trainIdx]), bootstrap.samples=50, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
 selectedIntOsCV <- names(which(coxCPSSIntOsCV$Pi > 0.8))
-coxFitCPSSIntOsCV <- coxph(as.formula(paste("os[trainIdx] ~", paste(selectedIntOsCV, collapse="+"))), data=dataFrame[trainIdx, ])
-survConcordance(os[!trainIdx] ~ predict(coxFitCPSSIntOsCV, newdata = dataFrame[!trainIdx, ]))
+survConcordance(os[!trainIdx] ~ predict(coxCPSSIntOsCV, newdata = dataFrame[!trainIdx, ]))
 
 #' Visualisation of risk
-#+ riskCPSSIntOs, fig.width=3.5, fig.height=2.5
+#+ riskCPSSIntOs, fig.width=3, fig.height=2.5
+riskCPSSIntOs <- predict(coxCPSSIntOs, newdata=dataFrame)
 risk <- riskCPSSIntOs[dataFrame$TPL_os==0]
 x <- seq(from=-4,to=4, l=512)
 r <- sapply(levels(clinicalData$M_Risk)[c(2,3,4,1)], function(r){
@@ -855,7 +888,7 @@ plot(exp(x),rowSums(r), type='l', lty=0,xlab="Hazard", ylab="Prop. patients", lo
 for(i in 1:4)
 	polygon(exp(c(x, rev(x))), c(rowSums(r[,1:i, drop=FALSE]), rev(rowSums(cbind(0,r)[,1:i, drop=FALSE]))), col=set1[c(3,2,4,1)][i], border=NA)
 
-H0 <- basehaz(coxFitCPSSIntOs, centered=TRUE)
+H0 <- basehaz(coxCPSSIntOs$coxph, centered=TRUE)
 hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
 invHazardDist <- splinefun(H0$hazard, H0$time, method="monoH.FC")
 l <- c(0.1,.5,.9)#c(0.1,0.25,.5,.75,.9)
@@ -909,20 +942,22 @@ predictedRiskCV <- data.frame(
 		coxCPSS = predict(coxFitCPSSIntOsCV, newdata = dataFrame[!trainIdx, ])
 )
 
-#+ concordanceCV
+#+ concordanceCV,fig.width=3, fig.height=2.5
 concordanceCV <- sapply(predictedRiskCV, function(x) {c <- survConcordance(os[!trainIdx] ~ x); c(c$concordance, c$std.err)})
 concordanceCV
 o <- order(concordanceCV[1,])
-barplot(concordanceCV[1,o], border=NA, col= set1, las=2, xaxt="n", ylab="Concordance") -> b
+barplot(concordanceCV[1,o], border=NA, col= set1[-6], las=2, xaxt="n", ylab="Concordance", ylim=c(0.5,0.75), xpd=FALSE) -> b
 segments(b,concordanceCV[1,o]-concordanceCV[2,o],b,concordanceCV[1,o]+concordanceCV[2,o])
-rotatedLabel(b, rep(0,length(b)), colnames(concordanceCV)[o], srt=45)
+rotatedLabel(b, rep(0.49,length(b)), colnames(concordanceCV)[o], srt=45)
 
-#+ aucCV
+#+ aucCV, fig.width=3, fig.height=2.5
 library(survivalROC)
-aucCV <- sapply(predictedRiskCV, function(x) survivalROC(Stime=efs[!is.na(efs) & !trainIdx,1], status=efs[!is.na(efs) &  !trainIdx,2], marker = x[!is.na(efs[!trainIdx])], predict.time = 278, method="KM", cut.values=seq(-5,5,0.1))$AUC)
-aucCV
-barplot(aucCV, border=NA, col= set1, las=2, xaxt="n", ylab="AUC (median EFS)") -> b
-rotatedLabel(b, rep(0,length(b)), names(aucCV), srt=45)
+#aucCV <- sapply(predictedRiskCV, function(x) survivalROC(Stime=os[!is.na(os) & !trainIdx,1], status=os[!is.na(os) &  !trainIdx,2], marker = scale(x[!is.na(os[!trainIdx])]), predict.time = 278, method="KM", cut.values=seq(-5,5,0.1))$AUC)
+aucCV <- sapply(predictedRiskCV, function(x) AUC.uno(os[!is.na(os) & trainIdx], na.omit(os[!trainIdx][!is.na(x)]), scale(na.omit(x[!is.na(os[!trainIdx])])), c(90,365,1000))$auc)
+o <- order(colMeans(aucCV))
+barplot(aucCV[,o], border=1, col= rep(set1[-6],each=3), las=2, xaxt="n", ylab="AUC", beside=TRUE, density=c(NA, 48,24), ylim=c(0.5,0.75), xpd=FALSE) -> b
+legend("topleft", bty="n", c("3mo","1yr","3yr"), fill='black', density=c(NA, 48,24))
+rotatedLabel(b[seq(3, length(b), 3)], rep(0.49,length(predictedRiskCV)), names(predictedRiskCV)[o], srt=45)
 
 
 
@@ -936,7 +971,7 @@ g <- as.character(tcgaGenetic$Hugo_Symbol)
 g[tcgaGenetic$Hugo_Symbol=="FLT3" & tcgaGenetic$Variant_Type == 'INS'] <- "FLT3_ITD"
 g[tcgaGenetic$Hugo_Symbol=="FLT3" & tcgaGenetic$Variant_Type == 'SNP'] <- "FLT3_TKD"
 tcgaMutation <- (table(tcgaGenetic$TCGA_ID,g)) + 0
-t <- data.frame(tcgaMutation[,]>0, CEBPA_mono = tcgaMutation[,"CEBPA"]==1,CEBPA_bi = tcgaMutation[,"CEBPA"]>1,tcgaClinical[,-c(1,2,4,5,6,12,24)], MakeInteger(tcgaClinical$TypeAML)) + 0
+t <- data.frame(tcgaMutation[,]>0, CEBPA_mono = tcgaMutation[,"CEBPA"]==1,CEBPA_bi = tcgaMutation[,"CEBPA"]>1,tcgaClinical[,-c(1,2,4,5,6,13,25)], MakeInteger(tcgaClinical$TypeAML)) + 0
 w <- grep("_10+$",colnames(dataFrame), value=TRUE)
 f <- as.numeric(sub(".+_","",w))
 n <- sub("_10+","",w)
@@ -956,6 +991,7 @@ rm(t,w)
 tcgaSurvival <- Surv(tcgaClinical$OS, tcgaClinical$Status)
 
 #' ### Plot mutation frequencies
+#+ tcgaFreq, fig.width=2.5, fig.height=2.5
 plot(colMeans(dataFrame[groups=="Genetics"])[colnames(tcgaMutation)], colMeans(tcgaMutation))
 text(colMeans(dataFrame[groups=="Genetics"])[colnames(tcgaMutation)], colMeans(tcgaMutation), colnames(tcgaMutation))
 cor(colMeans(dataFrame[groups=="Genetics"])[colnames(tcgaMutation)], colMeans(tcgaMutation), use='c')
@@ -972,12 +1008,12 @@ survConcordance(tcgaSurvival ~ tcgaRiskRFXOs[,1])
 
 #' #### CPSS model
 tcgaDataImputed <- as.data.frame(ImputeXMissing(dataFrame[mainIdxOs], newX=tcgaData[mainIdxOs]))
-tcgaRiskCPSSOs <- predict(coxFitCPSSIntOs, newdata=tcgaDataImputed)
+tcgaRiskCPSSOs <- predict(coxCPSSIntOs, newdata=tcgaDataImputed)
 survConcordance(tcgaSurvival ~ tcgaRiskCPSSOs)
 
 #' Blind imputation (mean only)
 f <- function(X) {X <- sapply(X, poorMansImpute);X[is.na(X)] <- 0; X}
-survConcordance(tcgaSurvival ~ predict(coxFitCPSSIntOs, newdata=as.data.frame(f(tcgaData[mainIdxOs]))))
+survConcordance(tcgaSurvival ~ predict(coxCPSSIntOs, newdata=as.data.frame(f(tcgaData[mainIdxOs]))))
 
 #' #### Cytogenetic risk
 survConcordance(tcgaSurvival ~ c(3,1,2)[tcgaClinical$C_Risk])
@@ -998,13 +1034,13 @@ PINAOs <- function(X){
 }
 pinaOs <- PINAOs(dataFrame)
 
-#+ PINAos
+#+ PINAos, fig.width=3, fig.height=2.5
 nkIdx <- clinicalData$NK == 1
 plot(survfit(os[nkIdx] ~ pinaOs[nkIdx,2]), col=rev(set1[1:3]))
 survConcordance(os[nkIdx] ~ pinaOs[nkIdx,1])
 
 #' Compared to CPSS (AML data)
-survConcordance(os[nkIdx] ~ predict(coxFitCPSSIntOs, newdata=dataFrame)[nkIdx])
+survConcordance(os[nkIdx] ~ predict(coxCPSSIntOs, newdata=dataFrame)[nkIdx])
 survConcordance(os[nkIdx&!trainIdx] ~ predict(coxFitCPSSIntOsCV, newdata=dataFrame)[nkIdx&!trainIdx])
 
 #' And on TCGA data
@@ -1026,21 +1062,31 @@ tcgaRisk <- data.frame(
 		coxCPSS = tcgaRiskCPSSOs
 )
 
-#+ concordanceTCGA
+#+ concordanceTCGA, fig.width=3, fig.height=2.5
 tcgaConcordance <- sapply(tcgaRisk, function(x) {c <- survConcordance(tcgaSurvival ~ x); c(c$concordance, c$std.err)})
 tcgaConcordance
 o <- order(tcgaConcordance[1,])
-barplot(tcgaConcordance[1,o], border=NA, col= set1, las=2, xaxt="n", ylab="Concordance") -> b
+barplot(tcgaConcordance[1,o], border=NA, col= set1[-6], las=2, xaxt="n", ylab="Concordance", ylim=c(0.5,0.75), xpd=FALSE) -> b
 segments(b,tcgaConcordance[1,o]-tcgaConcordance[2,o],b,tcgaConcordance[1,o]+tcgaConcordance[2,o])
-rotatedLabel(b, rep(0,length(b)), colnames(tcgaConcordance)[o], srt=45)
+rotatedLabel(b, rep(0.49,length(b)), colnames(tcgaConcordance)[o], srt=45)
 
-#+ kmTCGA
-risk <- cut(tcgaRiskCPSSOs, quantile(tcgaRiskCPSSOs), labels=c("low","int1","int2","high"))
+#+ aucTCGA, fig.width=3, fig.height=2.5
+library(survivalROC)
+#aucCV <- sapply(predictedRiskCV, function(x) survivalROC(Stime=os[!is.na(os) & !trainIdx,1], status=os[!is.na(os) &  !trainIdx,2], marker = scale(x[!is.na(os[!trainIdx])]), predict.time = 278, method="KM", cut.values=seq(-5,5,0.1))$AUC)
+tcgaAUC <- sapply(tcgaRisk, function(x) AUC.uno(na.omit(os), tcgaSurvival[!is.na(x) & !is.na(tcgaSurvival)], scale(x)[!is.na(tcgaSurvival) &! is.na(x)], c(90,365,1000))$auc)
+o <- order(colMeans(tcgaAUC))
+barplot(tcgaAUC[,o], border=1, col= rep(set1[-6],each=3), las=2, xaxt="n", ylab="AUC", beside=TRUE, density=c(NA, 48,24), ylim=c(0.5,0.85), xpd=FALSE) -> b
+legend("topleft", bty="n", c("3mo","1yr","3yr"), fill='black', density=c(NA, 48,24))
+rotatedLabel(b[seq(3, length(b), 3)], rep(0.49,length(tcgaRisk)), names(tcgaRisk)[o], srt=45)
+
+
+#+ kmTCGA, fig.width=3, fig.height=2.5
+risk <- cut(tcgaRiskCPSSOs, quantile(tcgaRiskCPSSOs), labels=c("1st Q","2nd Q","3rd Q","4th Q"))
 s <- survfit(tcgaSurvival ~ risk)
 plot(s, col=set1[c(3,2,4,1)], mark=NA)
 legend("topright", bty="n", rownames(summary(s)$table), col=set1[c(3,2,4,1)], lty=1)
 
-#+ riskTCGA, fig.width=3.5, fig.height=2.5
+#+ riskTCGA, fig.width=3, fig.height=2.5
 risk <- tcgaRiskCPSSOs - mean(tcgaRiskCPSSOs)
 x <- seq(from=-4,to=4, l=512)
 r <- sapply(levels(clinicalData$M_Risk)[c(2,3,4,1)], function(r){
@@ -1114,7 +1160,7 @@ rdIdx <- clinicalData$ereignart %in% levels(clinicalData$ereignart)[3:4]
 rdTime <- clinicalData$EFS
 rdTime[!rdIdx] <- NA
 
-d <- sapply(1:nrow(clinicalData), function(i){
+tdData <- sapply(1:nrow(clinicalData), function(i){
 			i <<- i
 			t <- c(as.numeric(clinicalData[i,c("CR_date","TPL_date","Date_LF","Recurrence_date")]) - as.numeric(clinicalData$ERDate[i]), rdTime[i])
 			o <- order(t, na.last=NA)
@@ -1127,13 +1173,146 @@ d <- sapply(1:nrow(clinicalData), function(i){
 			s <- cbind(time1 = tt[-length(tt)], time2=tt[-1], event=c(rep(0, length(o)-1), clinicalData$Status[i]), outer(0:(length(o)-1), r[-3], `>=`)+0, i=i)[diff(tt)!=0,]
 			return(s)
 		})
-d <- as.data.frame(do.call("rbind",d))
+tdData <- as.data.frame(do.call("rbind",tdData))
 
 #' A coxph model
-summary(coxph(Surv(time1, time2, event) ~ ., data=d[,-8]))
+summary(coxph(Surv(time1, time2, event) ~ . + TPL:CR + REC:TPL , data=tdData[,-8]))
 
 #' With CPSS selected terms
-summary(coxph(Surv(time1, time2, event) ~ ., data=cbind(d[,-8], dataFrame[d$i, grep("(TPL)|(:)", selectedIntOs, value=TRUE, invert = TRUE)])))
+summary(coxph(Surv(time1, time2, event) ~ ., data=cbind(tdData[,-8], dataFrame[tdData$i, grep("(TPL)|(:)", selectedIntOs, value=TRUE, invert = TRUE)])))
+
+#' ### 4. Splice factor AML
+whichSplice <- c("SFRS2","SF3B1","U2AF1","ZRSR2","U2AF2", "SF1","SF3A1")
+
+#' Frequency
+#+ spliceBar, fig.width=3, fig.height=2.5
+colSums(dataFrame[whichSplice])
+barplot(colSums(dataFrame[whichSplice]), col=set1, ylab="# Cases")
+spliceSum <- rowSums(genes[,whichSplice])
+table(spliceSum)
+anySplice <- spliceSum > 0
+dataFrame[spliceSum==2, whichSplice]
+
+#' Overlaps
+table(anySplice, clinicalData$WHOcat)
+f <- factor(paste(anySplice,clinicalData$WHOcat)[!is.na(clinicalData$WHOcat)], levels=c("TRUE no","FALSE no" , "FALSE yes" ,"TRUE yes"  ))
+pie(table(f), col=set1[c(3,1,1,3)], density=c(36,36,NA,NA), angle=90, init.angle=90, labels=table(f))
+legend("topleft", bty="n")
+
+fisher.test(.Last.value)
+table(anySplice, dataFrame$sAML)
+fisher.test(.Last.value)
+cor(dataFrame[selectedIntOs], anySplice)
+
+#' Age
+#+ spliceAge, fig.width=1.5, fig.height=2.5
+boxplot(dataFrame$AOD_10*10 ~ spliceSum, ylab ="Age", xlab="# SF mutations", staplewex=0, lty=1)
+summary(glm(dataFrame$AOD_10*10 ~ anySplice + clinicalData$WHOcat))
+
+#' Survival
+#+ spliceKM, fig.width=3, fig.height=2.5
+coxph(os ~ .,data=dataFrame[whichSplice[-6]])
+coxph(os ~ ., data=cbind(dataFrame[selectedIntOs], SF = anySplice+0))
+plot(survfit(os ~ anySplice), mark=NA, col=c("grey","black"))
+i <- 1
+for(w in whichSplice){
+	lines(survfit(os ~ 1, subset=dataFrame[w]==1), mark=NA, col=set1[i], conf.int=FALSE)
+	i <- i+1
+}
+legend("topright", bty="n", col=c("grey", set1[seq_along(whichSplice)], "black"), legend = c("none", whichSplice,"any"), lty=1)
+
+#' CPSS
+#+ coxCPSSOsSplice, cache=TRUE
+set.seed(42)
+coxCPSSOsSplice <- CoxCPSSInteractions(cbind(dataFrame[mainIdxOs], SF=anySplice+0), os, scope = which(groups %in% c("Genetics","Cytogenetics","Treatment")))
+coxCPSSOsSplice
+
+#' TCGA
+#+ tcgaSF, fig.width=3, fig.height=2.5
+tcgaAnySplice <- rowSums(tcgaDataImputed[whichSplice]>0)
+plot(survfit(tcgaSurvival ~ tcgaAnySplice), mark=NA, col=c("grey","black"))
+i <- 1
+for(w in whichSplice){
+	if(sum(tcgaDataImputed[w]==1)>0)
+		lines(survfit(tcgaSurvival ~ 1, subset=tcgaDataImputed[w]==1), mark=NA, col=set1[i], conf.int=FALSE)
+	i <- i+1
+}
+legend("topright", bty="n", col=c("grey", set1[seq_along(whichSplice)], "black"), legend = c("none", whichSplice,"any"), lty=1)
+
+coxph(tcgaSurvival ~ tcgaAnySplice)
+
+survConcordance(tcgaSurvival ~ predict(coxCPSSOsSplice, newdata=cbind(tcgaDataImputed, SF = tcgaAnySplice)))
+tcgaConcordance
+
+#' ### 5. Predicted variance
+#' #### Cumulative risk with interaction terms
+#+ cumRiskGeneGene, fig.width=3, fig.height=2.5
+X <- dataFrame[groups=="Genetics"]
+genRisk <- X * rep(coef(coxRFXFitOs)[coxRFXFitOs$groups=="Genetics"], each=nrow(dataFrame))
+geneGeneRisk <- dataFrame[whichRFXOs][coxRFXFitOs$groups=="GeneGene"] * rep(coef(coxRFXFitOs)[coxRFXFitOs$groups=="GeneGene"], each=nrow(dataFrame)) 
+o <- order(colSums(X), decreasing=TRUE)
+genRisk <- genRisk[,o]
+cumRisk <- apply(genRisk, 1, cumsum)
+cumVar <- apply(cumRisk,1,var)
+s <- strsplit(colnames(geneGeneRisk), ":")
+n <- colnames(genRisk)
+r <- 1:ncol(X)
+names(r)  <- names(X)[o]
+i <- sapply(s, function(i){
+			max(r[i])
+		})
+cumRiskInt <- t(cumRisk) + sapply(1:ncol(genRisk), function(x){
+			rowSums(geneGeneRisk[,which(i<=x), drop=FALSE])
+		})
+cumVarInt <- apply(cumRiskInt,2,var)
+plot(cumsum(colMeans(X)[o]), cumVar, xlim=c(0,4), ylim=c(0,.3), xlab="Mean number of driver mutations/patient", ylab="Predicted variance")
+a1 <- coxRFXFitOs$sigma2["Genetics"] + coxRFXFitOs$mu["Genetics"]^2
+a2 <- var(coef(coxRFXFitOs)[coxRFXFitOs$groups=="Genetics"])+ coxRFXFitOs$mu["Genetics"]^2
+abline(0, a1, lty=2)
+abline(0, a2, lty=3)
+points(3.7, 3.7*a2, col='red')
+points(3.7, 3.7*a1, col='red', pch=19)
+points(cumsum(colMeans(X)[o]), cumVarInt, pch=19)
+
+#' #### Cumulative risk with main terms
+#+ cumRiskGenes, fig.width=3, fig.height=2.5
+X <- dataFrame[groups=="Genetics"]
+genRisk <- X * rep(coef(coxRFXFitOsMain)[coxRFXFitOsMain$groups=="Genetics"], each=nrow(dataFrame))
+o <- order(colSums(X), decreasing=TRUE)
+genRisk <- genRisk[,o]
+cumRisk <- apply(genRisk, 1, cumsum)
+cumVar <- apply(cumRisk,1,var)
+plot(c(0,cumsum(colMeans(X)[o])), c(0,cumVar), xlim=c(0,4), ylim=c(0,.3), xlab="Mean number of driver mutations/patient", ylab="Predicted variance", pch=19, type='b')
+a1 <- coxRFXFitOsMain$sigma2["Genetics"] + coxRFXFitOsMain$mu["Genetics"]^2
+a2 <- mean(coef(coxRFXFitOsMain)[coxRFXFitOsMain$groups=="Genetics"]^2)
+abline(0, a1, lty=2)
+abline(0, a2, lty=3)
+points(3.7, 3.7*a2, col='red')
+points(3.7, 3.7*a1, col='red', pch=19)
+axis(side=1, at=c(cumsum(colMeans(X)[o])[c(1:10,15,20,30,40,50)], 3.7), labels=c(1:10,15,20,30,40,50, "Exome (TCGA)"), tcl=.5, las=2, hadj=0, mgp = c(-1.5,-0.5,0))
+mtext(side=1, line=-3, "Genes sequenced", las=1)
+
+#' ### 6. NPM1 FLT3_ITD interaction
+#' There is a reported interaction term for NPM1:FLT3_ITD, which can be explained by covarying factors:
+#+ intNPM1vFLT3, fig.width=3, fig.height=2.5
+m <- coxph(os ~  NPM1 + FLT3_ITD + NPM1:FLT3_ITD, data=dataFrame); m
+c <- coef(m)
+m <- coxph(os ~  NPM1 + FLT3_ITD, data=dataFrame); m
+d <- coef(m)
+f <- factor(paste(c("-","NPM1")[dataFrame$NPM1+1],c("-","FLT3_ITD")[dataFrame$FLT3_ITD+1], sep=" / "))
+s <- survfit(formula(m), data=dataFrame)
+plot(s, col=set1)
+legend("topright", col=set1, lty=1, rownames(summary(s)$table), bty='n')
+
+#+ intNPM1vFLT3box, fig.width=2, fig.height=2.5
+par(mar=c(6,4,1,1))
+boxplot(predict(coxRFXFitOsMain) ~ f , staplewex=0, lty=1, border=brewer.pal(4,"Pastel1"), ylab="log hazard", xaxt="n", ylim=c(-2.5,3.5), pch=".")
+rotatedLabel(1:4, rep(min(predict(coxRFXFitOsMain)),4), levels(f))
+points(c(0, c[1], c[2], sum(c[1:3])), col=set1, pch=19)
+points(c(0, d[1], d[2], sum(d)), col=set1)
+arrows(4,sum(d),4,sum(c), length=.2, col=set1[4])
+legend("topright", pch=c(46,1,19), col=c("grey","red","red"), c("all variables","NPM1 + FLT3 only", "NPM1 + FLT3 + interaction"), bty="n" )
+
 
 #' 8. Regression of blood counts
 #' -----------------------------
@@ -1238,7 +1417,7 @@ mtext(side=3, "Variance components", line=.5)
 mtext(side=1, expression(paste("Explained variance ",R^2)), line=2.5)
 
 #+ save
-save(list = ls(), file=paste(Sys.Date(), "-AML.RData", sep=""))
+#save(list = ls(), file=paste(Sys.Date(), "-AML.RData", sep=""))
 
 
 
