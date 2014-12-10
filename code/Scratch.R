@@ -4,7 +4,7 @@
 ###############################################################################
 
 data <- cbind(dataList$Genetics, dataList$Cytogenetics)
-t <- table(rowSums(data))
+t <- table(rowSums(data, na.rm=TRUE))
 data <- data[,colSums(data, na.rm=TRUE)>=16]
 dim(data)
 interactions <- sapply(1:ncol(data), function(i) sapply(1:ncol(data), function(j) {f<- try(fisher.test(data[,i], data[,j]), silent=TRUE); if(class(f)=="try-error") 0 else ifelse(f$estimate>1, -log10(f$p.val),log10(f$p.val))} ))
@@ -46,16 +46,17 @@ image(x=rep(ncol(interactions),2)+c(2,3), y=(12:13) -0.5, z=matrix(1), col=brewe
 mtext(side=4, at=12:10, c("P > 0.05", "BH < 0.1", "Bf. < 0.05"), cex=.5, line=0.2)
 dev.off()
 
+colRamp <- colorRampPalette(set1[c(3,2,4,1)])
+
 pdf("nOnc.pdf",4,3,pointsize=8)
 par(mar=c(3,3,0,0)+.1, mgp=c(2,0.5,0), bty="n")
-barplot(t,col=rev(brewer.pal(11,"Spectral")), xlab="Oncogenic mutations", ylab="# Cases")
+barplot(t,col=colRamp(11), xlab="Oncogenic mutations", ylab="# Cases")
 dev.off()
 
 pdf("nOncSurv.pdf",3,2.5, pointsize=8)
 par(mar=c(3,3,0,0)+.1, mgp=c(2,0.5,0), bty="n")
-spec <- rainbow(11, 1, 0.75) #rev(brewer.pal(11,"Spectral"))
-plot(survfit(survival ~ rowSums(data, na.rm=TRUE)), col=spec, xlab="Days", ylab="EFS")
-legend("topright", legend=0:10, lty=1, bty="n",  col=spec, cex=0.8, title="Oncogenic mut")
+plot(survfit(rfs ~ rowSums(data, na.rm=TRUE)), col=colRamp(11), xlab="Days", ylab="RFS", mark=NA)
+legend("topright", legend=0:10, lty=1, bty="n",  col=colRamp(11), cex=0.66, title="# Onc")
 dev.off()
 
 
@@ -123,6 +124,14 @@ for(g in levels(groups)){
 	i <- i+1
 }
 
+
+pdf("barplot.pdf", 7,2.5, pointsize=8)
+par(mar=c(5,4,1,1))
+s <- sort(colSums(dataFrame[groups %in% c("Genetics","Cytogenetics")]), d=TRUE)
+barplot(s/nrow(dataFrame), col=col1[as.character(groups[names(s)])], las=2, border=NA, ylab="Rel. frequency", names=NA)
+rotatedLabel(.Last.value, rep(0, length(s)), names(s), cex=.5)
+legend("topright", fill=col1[c("Genetics","Cytogenetics")], c("Genetics","Cytogenetics"), bty="n", border=NA)
+dev.off()
 
 load("../cv.RData")
 cv <- as.data.frame(tmp)
@@ -559,8 +568,9 @@ i <- mainIdx & !grepl("TPL", names(dataFrame))& groups!="Trial"
 coxRFXLrmTD <- CoxRFX(cbind(dataFrame[splitIndex(lrm, alloTime1CR) ,i],TPL=c(rep(0,nrow(lrm)), rep(1, length(which(alloTime1CR < lrm[,1]))))), lrmTD, groups=c(as.character(groups[i]), "Treatment"))
 
 nrmTD <- splitSurv(nrm, alloTime1CR)
-i <- mainIdx & !grepl("TPL", names(dataFrame))& groups!="Trial"
-coxRFXNrmTD <- CoxRFX(cbind(dataFrame[splitIndex(nrm, alloTime1CR) ,i],TPL=c(rep(0,nrow(nrm)), rep(1, length(which(alloTime1CR < nrm[,1]))))), nrmTD, groups=c(as.character(groups[i]), "Treatment"))
+i <- mainIdx & !grepl("TPL", names(dataFrame))#& groups!="Trial"
+nrmData <- cbind(dataFrame[splitIndex(nrm, alloTime1CR) ,i],TPL=c(rep(0,nrow(nrm)), rep(1, length(which(alloTime1CR < nrm[,1])))))
+coxRFXNrmTD <- CoxRFX(nrmData, nrmTD, groups=c(as.character(groups[i]), "Treatment"))
 
 i <- mainIdx & !grepl("TPL", names(dataFrame)) & groups!="Trial"
 w <- which(clinicalData$M_Risk %in% c("Inter-1","Inter-2") & !is.na(clinicalData$Family_donnor) & clinicalData$Study == "AMLHD98A")
@@ -635,17 +645,17 @@ nrmTD <- splitSurv(nrm, alloTime1CR)
 plot(survfit(nrmTD  ~ c(rep(0,nrow(nrm)), rep(1, sum(alloTime1CR < nrm[,1], na.rm=TRUE)))), col=1:2, ylab="Non-relapse mortality", fun = function(x) 1-x)
 legend("topright", bty="n", lty=1, col=1:2, legend=paste(c("no TPL (", "TPL ("), sum(!is.na(nrm)) * c(1,0)+ c(-1,1) * sum(alloTime1CR < nrm[,1], na.rm=TRUE), c(")",")"), sep=""))
 
-prm <- Surv(time=as.numeric(clinicalData$Date_LF - clinicalData$Recurrence_date), event=clinicalData$Status)
+prs <- Surv(time=as.numeric(clinicalData$Date_LF - clinicalData$Recurrence_date), event=clinicalData$Status)
 #plot(survfit(prm ~ 1))
 t <- clinicalData$TPL_date - clinicalData$Recurrence_date
 t[t < 0] <- NA
-prd <- data.frame(postRelapseTPL=c(rep(0, nrow(prm)), rep(1,sum(t < prm[,1], na.rm=TRUE))))
+prd <- data.frame(postRelapseTPL=c(rep(0, nrow(prs)), rep(1,sum(t < prs[,1], na.rm=TRUE))))
 i <- (clinicalData$TPL_date < clinicalData$Recurrence_date) 
 i[is.na(clinicalData$TPL_date) &! is.na(clinicalData$Recurrence_date)] <- 0
-s <- survfit(splitSurv(prm, as.numeric(t))  ~ prd$postRelapseTPL + i[splitIndex(prm, as.numeric(t))])
+s <- survfit(splitSurv(prs, as.numeric(t))  ~ prd$postRelapseTPL + i[splitIndex(prs, as.numeric(t))])
 plot(s, col=1:3, ylab="Post-relapse survival")
-coxph(splitSurv(prm, as.numeric(t)) ~ ., data=prd)
-legend("topright", bty="n", lty=1, col=1:2, legend=paste(c("no TPL (", "TPL ("), sum(!is.na(prm)) * c(1,0) + c(-1,1) * sum(alloTime1CR < prm[,1], na.rm=TRUE), c(")",")"), sep=""))
+coxph(splitSurv(prs, as.numeric(t)) ~ ., data=prd)
+legend("topright", bty="n", lty=1, col=1:2, legend=paste(c("no TPL (", "TPL ("), sum(!is.na(prs)) * c(1,0) + c(-1,1) * sum(alloTime1CR < prs[,1], na.rm=TRUE), c(")",")"), sep=""))
 
 
 pcm <- Surv(time=as.numeric(clinicalData$Date_LF - clinicalData$CR_date), event=clinicalData$Status)
@@ -681,7 +691,7 @@ survdiff(os ~ U2AF1, data=dataFrame)
 
 whichSplice <- c("U2AF1","SFRS2","SF3B1","ZRSR2","U2AF2","SF3A1", "SF1")
 colSums(dataFrame[whichSplice])
-spliceSum <- rowSums(genes[,whichSplice])
+spliceSum <- rowSums(dataList$Genetics[,whichSplice])
 table(spliceSum)
 anySplice <- spliceSum > 0
 cor(dataFrame[selectedIntOs], anySplice)
@@ -696,6 +706,9 @@ p1 <- sum(p * p0 %o% (1/(1-p)))
 p2 <- (p * p0 %o% (1/(1-p)))
 
 fit <- CoxCPSSInteractions(cbind(dataFrame[mainIdx &! grepl("TPL",names(dataFrame))], splice=anySplice>0), os)
+
+boxplot(dataFrame$BM_Blasts_100 ~ spliceSum, ylab ="Age/10", xlab="# SF mutations")
+
 
 spliceCases <- unique(as.character(mutationData$SAMPLE_NAME[mutationData$GENE %in% whichSplice])) 
 
@@ -715,16 +728,8 @@ library(VennDiagram)
 grid.newpage()
 pushViewport(viewport(w = .9, h = .9))
 grid.draw(venn.diagram(list(CPSS=selectedIntOs, BIC=names(coef(coxBICOs)), AIC=names(coef(coxAICOs))), filename=NULL, lty=1, 
-				col=set1[1:3], fill=set1[1:3], alpha=0.3, euler.d=TRUE, fontfamily="Helvetica", cat.fontfamily="Helvetica", cat.fontface="italic", euler.diagram=TRUE))
+				col=set1[1:3], fill=set1[1:3], alpha=0.3, euler.d=TRUE, fontfamily="Helvetica", cat.fontfamily="Helvetica", euler.diagram=TRUE))
 
-
-library(cmprsk)
-t <- clinicalData$Recurrence_date - clinicalData$CR_date
-d <- clinicalData$Date_LF - clinicalData$CR_date
-s <- clinicalData$Status
-s[t < d] <- 2
-crr(ftime = as.numeric(pmin(d, t)), fstatus=s, cov1 = dataFrame[names(which(fitLrm$Pi > 0.8))])
-plot(cuminc(ftime = as.numeric(pmin(d, t)), fstatus=s))
 
 
 n <- c(5, 10, 50, 100, 500, 1000)
@@ -901,16 +906,20 @@ sd(sapply(1:100, function(i){
 	survConcordance(tcgaSurvival ~ r)$concordance
 }))
 
-## PRM
+## Post relapse survival
+prs <- Surv(time=as.numeric(clinicalData$Date_LF - clinicalData$Recurrence_date), event=clinicalData$Status)
 t <- clinicalData$TPL_date - clinicalData$Recurrence_date
 t[t < 0] <- NA
-i <- mainIdx &! grepl("TPL", names(dataFrame))
-prmTD <- splitSurv(prm, t)
-prmSplit <- splitIndex(prm, t)
-prmTPL <- c(rep(0, nrow(dataFrame)), rep(1, sum(t < prm[,1], na.rm=TRUE)))
-prmData <- cbind(dataFrame[prmSplit ,i],TPL=prd$postRelapseTPL)
-plot(survfit(prmTD ~ prmTPL), col=1:2)
-coxRFXPrm <-  CoxRFX(prmData, prmTD, groups=c(as.character(groups[i]), "Treatment"))
+t[! clinicalData$TPL_type %in% c("ALLO","FREMD")] <- NA
+index <- mainIdx &! grepl("TPL", names(dataFrame))
+prsTD <- splitSurv(prs, t)
+prsSplit <- splitIndex(prs, t)
+prsTPL <- c(rep(0, nrow(dataFrame)), rep(1, sum(t < prs[,1], na.rm=TRUE)))
+prsData <- cbind(dataFrame[prsSplit ,index],TPL=duplicated(prsSplit)+0)
+plot(survfit(prsTD ~ prsTPL + clinicalData$M_Risk[prsSplit]), col=set1[1:4], lty=rep(c(1,3), each=4))
+coxRFXPrsTD <-  CoxRFX(prsData, prsTD, groups=c(as.character(groups[index]), "Treatment"), sigma0 = 0.1, nu=0.1)
+coxCPSSPrs <-  CoxCPSS(prsData[which(prs[,1]>0 & !is.na(prs)),], prs[prs[,1]>0 &! is.na(prs)], control="BH")
+
 
 ## rfs
 rfs <- Surv(clinicalData$rfs, clinicalData$rfsstat)
@@ -919,27 +928,65 @@ t[t < 0] <- NA
 rfsTD <- splitSurv(rfs, t)
 rfsSplit <- splitIndex(rfs, t)
 rfsTPL <- c(rep(0, nrow(dataFrame)), rep(1, sum(t < rfs[,1], na.rm=TRUE)))
-rfsData <- cbind(dataFrame[splitIndex(rfs, t) ,i],TPL=rfsTPL)
-coxRFXRfsTD <-  CoxRFX(rfsData, rfsTD, groups=c(as.character(groups[i]), "Treatment"))
+rfsData <- cbind(dataFrame[splitIndex(rfs, t) ,index],TPL=rfsTPL)
+coxRFXRfsTD <-  CoxRFX(rfsData, rfsTD, groups=c(as.character(groups[index]), "Treatment"))
+
 
 c <- coef(coxRFXRfsTD)
-plot(c, coef(coxRFXPrm) [names(c)], xlab="logHR RFS", ylab="logHR PRS")
-text(c, coef(coxRFXPrm)[names(c)], names(c))
-cor(c, coef(coxRFXPrm) [names(c)])
+plot(c, coef(coxRFXPrsTD) [names(c)], xlab="logHR RFS", ylab="logHR PRS")
+text(c, coef(coxRFXPrsTD)[names(c)], names(c))
+cor(c, coef(coxRFXPrsTD) [names(c)])
 
-survConcordance(prmTD ~ PredictRiskMissing(coxRFXRfsTD, prmData)[,1])
-survConcordance(rfsTD ~ PredictRiskMissing(coxRFXPrm, rfsData)[,1])
+survConcordance(prsTD ~ PredictRiskMissing(coxRFXRfsTD, prsData)[,1])
+survConcordance(rfsTD ~ PredictRiskMissing(coxRFXPrsTD, rfsData)[,1])
 
-d <- as.data.frame(rbind(rfsTD, prmTD))
+d <- as.data.frame(rbind(rfsTD, prsTD))
 colnames(d) <- c("time","time2", "event")
 s <- do.call("Surv",d)
 
-d <- cbind(rbind(rfsData, prmData), REC=c(rep(0,nrow(rfsData)), rep(1,nrow(prmData))))
-fit <- CoxRFX(d, s, groups=c(as.character(groups[i]), "Treatment","Nuisance"))
+d <- cbind(rbind(rfsData, prsData), REC=c(rep(0,nrow(rfsData)), rep(1,nrow(prsData))))
+fit <- CoxRFX(d, s, groups=c(as.character(groups[index]), "Treatment","Nuisance"))
 
 s2 <- s
 s2[which(!is.na(clinicalData$Recurrence_date)[rfsSplit]),3] <- 0
-fit2 <- CoxRFX(d, s2, groups=c(as.character(groups[i]), "Treatment","Nuisance"))
+fit2 <- CoxRFX(d, s2, groups=c(as.character(groups[index]), "Treatment","Nuisance"))
+
+## CIR
+c <- clinicalData$Recurrence_date - clinicalData$CR_date
+d <- clinicalData$Date_LF - clinicalData$CR_date
+c[is.na(c)] <- d[is.na(c)]
+t <- clinicalData$TPL_date - clinicalData$CR_date
+t[t < 0] <- NA
+cirData <- makeTimeDependent(dataFrame[index], timeTpl=t, timeSurv=c, event=!is.na(clinicalData$Recurrence_date)+0)
+coxph(Surv(time1, time2, event) ~ transplant, cirData)
+plot(survfit(Surv(time1, time2, event) ~ transplant, data=cirData), col=1:2, conf.int=TRUE)
+coxRFXCirTD <-  CoxRFX(cirData[c(1:101,105)], Surv(cirData$time1, cirData$time2, cirData$event), groups=c(as.character(groups[index]), "Treatment"))
+summary(coxRFXCirTD)
+
+plot(survfit(Surv(time1, time2, event) ~ clinicalData$M_Risk[cirData$index], data=cirData), col=set1[1:4])
+riskCol=set1[c(1,3,4,2)]
+names(riskCol) <- levels(clinicalData$M_Risk)
+r <- coxRFXCirTD$X %*% coef(coxRFXCirTD) - cirData$transplant * coef(coxRFXCirTD)["transplant"]
+g <- "Inter-2"
+w <- which(clinicalData$M_Risk[cirData$index]==g)
+q <- cut(r[w], quantile(r[w], seq(0,1,.33)))
+
+plot(survfit(Surv(time1, time2, event) ~ clinicalData$M_Risk[cirData$index], data=cirData), col=riskCol, ylab="Recurrence-free fraction", xlab="Time after CR", main="Molecular risk groups, all cases")
+legend("topright", lty=1, bty="n", paste(levels(clinicalData$M_Risk), table(clinicalData$M_Risk[!is.na(c)])), col=riskCol)
+plot(survfit(Surv(time1, time2, event) ~ q + transplant, data=cirData[w,]), col=riskCol[g], lty=c(1,3), ylab="Recurrence-free fraction", main=paste(g, "terciles"), xlab="Time after CR")
+legend("topright", lty=c(1,3), bty="n", c("no TPL","TPL"), col=riskCol[g])
+
+plot(survfit(prsTD ~ clinicalData$M_Risk[prsSplit]), col=set1[1:4], ylab="Post-relapse survival", xlab="Time after relapse", main="Molecular risk groups, all cases")
+plot(survfit(prs[w[w<=1540]] ~ q[w<=1540]), col=set1[2], lty=1:3, ylab="Post-relapse survival", xlab="Time after relapse", main="Favourable; terciles")
+
+## NRM
+t <- clinicalData$Time_1CR_TPL
+t[t > (clinicalData$Recurrence_date - clinicalData$CR_date)] <- NA
+s <- clinicalData$Date_LF - clinicalData$CR_date
+s[s<0] <- NA
+nrmData <- makeTimeDependent(dataFrame[index], timeTpl=t, timeSurv=s, event=clinicalData$Status &  is.na(clinicalData$Recurrence_date))
+plot(survfit(Surv(time1, time2, event) ~ transplant, data=nrmData), col=set1[1:2], ylab="Non-relapse mortality", xlab="Time after CR", fun = function(x) 1- x)
+legend("topleft", lty=1, bty='n', c("no TPL", "TPL"), col=set1[1:2])
 
 preRecAlloTime <- clinicalData$TPL_date
 preRecAlloTime[preRecAlloTime > clinicalData$Recurrence_date ] <- NA
@@ -947,6 +994,646 @@ s <- splitSurv(os, preRecAlloTime - clinicalData$ERDate)
 plot(survfit(s ~ c(rep(0, nrow(os)), rep(1, nrow(s)-nrow(os)))), col=1:2)
 
 
+pdf("survival.pdf", 3,3, pointsize=8)
+par(mar=c(3,3,2,1), bty="n", mgp=c(2,.5,0))
+riskCol=set1[c(1,3,4,2)]
+names(riskCol) <- levels(clinicalData$M_Risk)
+r <- coxRFXCirTD$X %*% coef(coxRFXCirTD) - cirData$transplant * coef(coxRFXCirTD)["transplant"]
+
+f <- function(x) 1-x
+plot(survfit(Surv(time1, time2, event) ~ clinicalData$M_Risk[cirData$index], data=cirData), col=riskCol, ylab="CIR", xlab="Time after CR", main="Molecular risk groups, all cases", fun=f , ylim=c(0,1))
+legend("bottomright", lty=1, bty="n", paste(levels(clinicalData$M_Risk), table(clinicalData$M_Risk[!is.na(c)])), col=riskCol)
+for(g in levels(clinicalData$M_Risk)){
+	w <- which(clinicalData$M_Risk[cirData$index]==g)
+	q <- cut(r[w], quantile(r[w], seq(0,1,.33)))
+	
+	plot(survfit(Surv(time1, time2, event) ~ q + transplant, data=cirData[w,]), col=riskCol[g], lty=c(1,3), ylab="CIR", main=paste(g, "terciles"), xlab="Time after CR", fun=f, ylim=c(0,1))
+	legend("bottomright", lty=c(1,3), bty="n", c("no TPL","TPL"), col=riskCol[g])
+}
+dev.off()
+
 d <- cbind(dataFrameOsTD[mainIdxOs], TPL = dataFrameOsTD$TPL_os, REC=(!is.na(clinicalData$Recurrence_date))[tplSplitOs])
 fit <- CoxRFX(d, osTD, groups=c(as.character(groups[mainIdxOs]), "Treatment","Nuisance"))
 
+preRecAllo <- (clinicalData$TPL_date < clinicalData$Recurrence_date | (is.na(clinicalData$Recurrence_date)  & !is.na(clinicalData$TPL_date))) & clinicalData$TPL_type %in% c("ALLO","FREMD")
+preRecAllo[is.na(preRecAllo)] <- 0
+postRecAllo <- (clinicalData$TPL_date > clinicalData$Recurrence_date) & clinicalData$TPL_type %in% c("ALLO","FREMD")
+postRecAllo[is.na(postRecAllo)] <- 0
+
+coxph(Surv(time1, time2, event) ~ CR + RD + REC + I(TPL*preRecAllo[tdData$i]) + I(TPL*postRecAllo[tdData$i]) , data=tdData[,-8], subset=clinicalData$M_Risk[tdData$i]=="Adverse")
+
+s <- I(tdData$TPL*preRecAllo[tdData$i])
+t <- I(tdData$TPL*postRecAllo[tdData$i])
+plot(survfit(Surv(time1, time2, event) ~ REC + s + t, data=tdData), col=set1[1:5], conf.int=TRUE)
+
+
+##
+w <- mainIdx & !grepl("TPL", names(dataFrame))
+cr <- efs
+cr[!clinicalData$ereignart %in% c("RD_after_Ind1","RD_or_PR_after_Ind2"),2] <- 0
+coxCPSSCr <- CoxCPSS(cbind(dataFrame[w & !names(dataFrame) %in% whichSplice], SF=anySplice)[!is.na(cr),], cr[!is.na(cr)], control="BH") 
+coxRFXCr <- CoxRFX(dataFrame[w], cr, groups[w]) 
+
+
+## Competing risk comparison
+library(cmprsk)
+r <- clinicalData$Recurrence_date - clinicalData$CR_date
+d <- clinicalData$Date_LF - clinicalData$CR_date
+s <- pmin(r,d)
+s[is.na(r)] <- d[is.na(r)]
+e <- clinicalData$Status
+e[r < d] <- 2
+e <- factor(e, labels=c("alive","dead","recurrence"))
+#crr(ftime = as.numeric(pmin(d, t)), fstatus=s, cov1 = dataFrame[names(which(fitLrm$Pi > 0.8))])
+compRisk <- cuminc(ftime = as.numeric(s), fstatus=e, cencode="alive")
+plot(compRisk, xaxs="i", yaxs="i")
+
+f <- survfit(cir ~ 1)
+lines(f, lty=2, col=2, fun=function(x) 1-x, mark=NA, conf.int=FALSE)
+g <- survfit(nrm ~ 1)
+lines(g, lty=1, col=2, fun=function(x) 1-x, mark=NA, conf.int=FALSE)
+
+cf <- cumsum(c(1,diff(f$surv)) * splinefun(g$time, g$surv, method="monoH.FC")(g$time))
+nrsCR <- cumsum(c(1,diff(g$surv)) * splinefun(f$time, f$surv, method="monoH.FC")(f$time))
+#for(i in 1){
+#	cg <-  1-(1-g$surv)* splinefun(f$time, cf, method="monoH.FC")(g$time)
+#	cf <-  1-(1-f$surv)* splinefun(g$time, cg, method="monoH.FC")(f$time)
+#}
+
+lines(f$time, 1-cf, col="blue", lty=2)
+lines(g$time, 1-nrsCR, col="blue")
+
+
+## data for web
+
+alloIdx <- clinicalData$TPL_type %in% c("ALLO","FREMD")
+alloTime1CR <- clinicalData$Time_1CR_TPL + .5
+alloTime1CR[!alloIdx] <- NA
+alloTimeRel <- clinicalData$TPL_date - clinicalData$Recurrence_date + .5
+alloTimeRel[!alloIdx] <- NA
+alloTimeRel[alloTimeRel <0] <- NA
+
+
+w <- mainIdx & !grepl("TPL", names(dataFrame)) & groups!="Nuisance"
+
+t <- clinicalData$Recurrence_date
+t[is.na(t)] <- as.Date(1e6, origin="2000-01-01")
+cirData <- makeTimeDependent(dataFrame[w], timeTpl=alloTime1CR, timeSurv=as.numeric(pmin(t, clinicalData$Date_LF) - clinicalData$CR_date), event=!is.na(clinicalData$Recurrence_date)+0)
+nrmData <- makeTimeDependent(dataFrame[w], timeTpl=alloTime1CR, timeSurv=as.numeric(pmin(t, clinicalData$Date_LF) - clinicalData$CR_date), event=is.na(clinicalData$Recurrence_date) & clinicalData$Status)
+#prsData <- makeTimeDependent(dataFrame[w], timeTpl=alloTimeRel, timeSurv=as.numeric(clinicalData$Date_LF - clinicalData$Recurrence_date)+1, event=clinicalData$Status)
+prsData <- makeTimeDependent(dataFrame[w], timeTpl=alloTime1CR, timeSurv=as.numeric(clinicalData$Date_LF- clinicalData$CR_date), time0Surv = as.numeric(clinicalData$Recurrence_date- clinicalData$CR_date), event=clinicalData$Status)
+cirData$transplant1CR <- cirData$transplant
+cirData$transplant <- NULL
+cirData$transplantRel <- 0
+nrmData$transplant1CR <- nrmData$transplant
+nrmData$transplant <- NULL
+nrmData$transplantRel <- 0
+prsData$transplant1CR <- nrmData$transplant1CR[1:nrow(dataFrame)][prsData$index]
+prsData$transplantRel <- prsData$transplant
+prsData$transplant <- NULL
+
+g <- c(as.character(groups[w]), "Treatment","Treatment")
+names(g) <- c(names(dataFrame)[w],"transplant1CR","transplantRel")
+coxRFXNrmTD <- CoxRFX(nrmData[names(g)], Surv(nrmData$time1, nrmData$time2, nrmData$event), groups=g)
+coxRFXNrmTD$coefficients["transplantRel"] <- 0
+coxRFXPrsTD <-  CoxRFX(prsData[names(g)], Surv(prsData$time1, prsData$time2, prsData$event), groups=g, sigma0 = 0.1, nu=0.1)
+coxRFXCirTD <-  CoxRFX(cirData[names(g)], Surv(cirData$time1, cirData$time2, cirData$event), groups=g)
+coxRFXCirTD$coefficients["transplantRel"] <- 0
+
+osCR <- Surv(time=as.numeric(clinicalData$Date_LF - clinicalData$CR_date), event=clinicalData$Status)
+
+c <- CoxRFX(nrmData[c("AOD_10","transplant1CR","gender")], Surv(nrmData$time1, nrmData$time2, nrmData$event))
+coxRFXNrmTD$coefficients[] <-0
+coxRFXNrmTD$coefficients[names(coef(c))] <- coef(c)
+coxRFXNrmTD$var2[] <- 0
+colnames(coxRFXNrmTD$var2) <- rownames(coxRFXNrmTD$var2) <- names(coxRFXNrmTD$coefficients)
+coxRFXNrmTD$var2[names(coef(c)),names(coef(c))] <- c$var2
+
+
+save(coxRFXCirTD, coxRFXNrmTD, coxRFXPrsTD, nrmData, cirData, prsData, osCR, g,crGroups, file="../../../Projects/sandbox/relapse/predict.RData")
+
+
+pdf("survival.pdf", 3,3, pointsize=8)
+par(mar=c(3,3,2,1), bty="n", mgp=c(2,.5,0))
+riskCol=set1[c(1,3,4,2)]
+names(riskCol) <- levels(clinicalData$M_Risk)
+r <- coxRFXCirTD$X %*% coef(coxRFXCirTD) - coxRFXCirTD$X[,"transplant1CR"] * coef(coxRFXCirTD)["transplant1CR"]
+f <- function(x) 1-x
+plot(survfit(Surv(time1, time2, event) ~ clinicalData$M_Risk[cirData$index], data=cirData), col=riskCol, ylab="CIR", xlab="Time after CR", main="Molecular risk groups, all cases", fun=f , ylim=c(0,1))
+legend("bottomright", lty=1, bty="n", paste(levels(clinicalData$M_Risk), table(clinicalData$M_Risk[!is.na(c)])), col=riskCol)
+for(g in levels(clinicalData$M_Risk)){
+	w <- which(clinicalData$M_Risk[cirData$index]==g)
+	q <- cut(r[w], quantile(r[w], seq(0,1,.33)))
+	
+	plot(survfit(Surv(time1, time2, event) ~ q + transplant1CR, data=cirData[w,]), col=riskCol[g], lty=c(1,3), ylab="CIR", main=paste(g, "terciles"), xlab="Time after CR", fun=f, ylim=c(0,1))
+	legend("bottomright", lty=c(1,3), bty="n", c("no TPL","TPL"), col=riskCol[g])
+}
+plot(survfit(Surv(time1, time2, event) ~ transplant1CR, data=nrmData), col="black", lty=c(1,3), ylab="NRM", xlab="Time after CR", fun=f, ylim=c(0,1))
+legend("bottomright", lty=c(1,3), bty="n", c("no TPL","TPL"), col="black")
+
+plot(survfit(Surv(time1, time2, event)   ~ clinicalData$M_Risk[prsData$index] + transplantRel, data=prsData), col=riskCol, ylab="Survival", xlab="Time after relapse", main="Molecular risk groups, all cases", ylim=c(0,1), lty=rep(c(3,1), each=4))
+legend("topright", lty=1, bty="n", paste(levels(clinicalData$M_Risk), table(clinicalData$M_Risk[!is.na(c)])), col=riskCol)
+
+dev.off()
+
+
+
+f <- "os ~ FLT3_ITD + FLT3_TKD"
+s <- survfit(as.formula(f), data=dataList$Genetics)
+c <- coxph(as.formula(sub("\\+","\\*",f)), data=dataList$Genetics)
+summary(c)
+p <- 2*pnorm(coef(c)[3],sd=sqrt(diag(c$var)[3]), lower.tail=FALSE)
+plot(s, col=set1, mark=NA)
+legend("topright", bty="", rownames(summary(s)$table), col=set1, lty=1)
+title(main=paste("P =",signif(p,2)), font=1)
+
+
+
+##MDS
+VAF <- matrix(0,nrow = length(IDs), ncol = length(levels(mds_gen$Gene)))
+rownames(VAF) <- IDs
+colnames(VAF) <- levels(mds_gen$Gene)
+VAF <- VAF[rownames(VAF)!="", colnames(VAF)!=""]
+for(index in seq_along(mds_gen$Gene)){
+	#if(mds_gen$Decision[i] %in% c("ONCOGENIC", "POSSIBLE ONCOGENIC"))
+	if(mds_gen$SAMPLE.NAME[index] %in% IDs)
+		if(mds_gen$SAMPLE.NAME[index] != "" & mds_gen$Decision[index] %in% c("ONCOGENIC")){
+			VAF[as.character(mds_gen$SAMPLE.NAME[index]), as.character(mds_gen$Gene[index])] <- max(mds_gen$X._MUT_IN_TUM[index],VAF[as.character(mds_gen$SAMPLE.NAME[index]), as.character(mds_gen$Gene[index])]) 
+			#if(!is.na(match(mds_gen$CHR[i], colnames(copy_numbers))))
+			#	clonality[as.character(mds_gen$SAMPLE.NAME[i]), as.character(mds_gen$Gene[i])] <- clonality[as.character(mds_gen$SAMPLE.NAME[i]), as.character(mds_gen$Gene[i])] * copy_numbers[match(mds_gen$SAMPLE.NAME[i], mds_clin$PDID),match(mds_gen$CHR[i], colnames(copy_numbers))]/2
+		}
+}
+VAF = VAF[rownames(VAF) != "PD6785c",]
+VAF = VAF[,colSums(VAF, na.rm=TRUE)>0]
+VAF = VAF[,order(colSums(VAF>0, na.rm=TRUE), decreasing = TRUE)]
+
+
+#Jackknife
+set.seed(42)
+k <- lapply(1:100, function(b){
+			w <- sample(1:nrow(dataFrame)%%2 +1 )!=1
+			m <- CoxRFX(dataFrame[w,mainIdxOs], os[w], groups=groups[mainIdxOs])
+			p <- as.matrix(dataFrame[!w,mainIdxOs]) %*% coef(m)
+			list(coef=coef(m), conc=survConcordance(os[!w] ~ p)$concordance)
+})
+c <- sapply(k, `[[`, 1)
+d <- sapply(k, `[[`,2) 
+coxRFXKnife <- coxRFXFitOsMain
+coxRFXKnife$coefficients <- rowMeans(c, na.rm=TRUE)
+coxRFXKnife$var <- cov(t(c), use="c")
+
+PlotVarianceComponents(coxRFXKnife, col=col1)
+tcgaRiskRFXOs <- PredictRiskMissing(coxRFXKnife, tcgaData[which(mainIdxOs)])
+survConcordance(tcgaSurvival ~ tcgaRiskRFXOs[,1])
+
+boxplot(t(c))
+points(coef(coxRFXFitOsMain), col='red',pch=19)
+segments(seq_along(coef(coxRFXFitOsMain)),coef(coxRFXFitOsMain) - sqrt(diag(coxRFXFitOsMain$var2)),seq_along(coef(coxRFXFitOsMain)),coef(coxRFXFitOsMain) + sqrt(diag(coxRFXFitOsMain$var2)), col="red" )
+abline(h=0)
+
+coxCPSSKnife <- coxCPSSIntOs$coxph
+set.seed(42)
+h <- lapply(1:100, function(b){
+			w <- sample(1:nrow(dataFrame)%%3 +1 )!=1
+			f <- os[w] ~ NPM1 + RUNX1 + TP53 + CEBPA_bi + FLT3_ITD + minus7 + complex + Date_1000 + ATRA + AOD_10 + Performance_ECOG + wbc_100 + LDH_1000 + ATRA:AOD_10 + Date_1000:wbc_100
+			m <- coxph(f, data=dataFrame[w,])
+			p <- predict(m, newdata=dataFrame[!w,])
+			list(coef=coef(m), conc=survConcordance(os[!w] ~ p)$concordance)
+		})
+c <- sapply(h, `[[`, "coef")
+e <- sapply(h, `[[`, "conc")
+boxplot(t(c))
+points(coef(coxCPSSKnife), col='red',pch=19)
+segments(1:15,coef(coxCPSSKnife) - sqrt(diag(coxCPSSKnife$var)),1:15,coef(coxCPSSKnife) + sqrt(diag(coxCPSSKnife$var)), col="red" )
+
+index <- lapply(1:100, function(b){
+			w <- sample(1:nrow(dataFrame)%%3 +1 )!=1
+			m <- coxph(coxBICOs$formula, data=dataFrame, subset=w)
+			p <- predict(m, newdata=dataFrame[!w,])
+			list(coef=coef(m), conc=survConcordance(os[!w] ~ p)$concordance)
+		})
+c <- sapply(h, `[[`, "coef")
+f <- sapply(index, `[[`, "conc")
+
+boxplot(d,e,f)
+
+survConcordance(tcgaSurvival ~ predict(coxBICOs, newdata=tcgaDataImputed))
+survConcordance(tcgaSurvival ~ predict(coxCPSSIntOs, newdata=tcgaDataImputed))
+
+sapply(1:100, function(i){
+			w <- sample(1:nrow(tcgaSurvival), 100)
+			survConcordance(tcgaSurvival[w] ~ predict(coxRFXFitOsMain, newdata=tcgaDataImputed)[w])$concordance
+		})
+
+glmPrediction <- glm$coefficients[,1:31] %*% t(tcgaDesign[,1:31])
+pcPrediction <- t(glmPrediction - tcgaPca$center) %*% tcgaPca$rotation
+set.seed(42)
+concPcPred <- sapply(1:100, function(i){
+			v <- sample(1:nrow(dataFrame) %% 5 + 1) == 1
+			fit <- CoxRFX(pcPrediction[!v, 1:20], tcgaSurvival[!v], which.mu=NULL)
+			p <- as.matrix(pcPrediction[v, 1:20]) %*% coef(fit)
+			pcp <- survConcordance(tcgaSurvival[v]~p)$concordance[1]
+			fit <- CoxRFX(tcgaPca$x[!v, 1:20], tcgaSurvival[!v], which.mu=NULL)
+			p <- as.matrix(tcgaPca$x[v, 1:20]) %*% coef(fit)
+			pc <- survConcordance(tcgaSurvival[v]~p)$concordance[1]
+			fit <- CoxRFX(dataFrame[!v,survivalGroups %in% c("Genetics","Cytogenetics")], tcgaSurvival[!v], which.mu=NULL)
+			p <- as.matrix(dataFrame[v, survivalGroups %in% c("Genetics","Cytogenetics")]) %*% coef(fit)
+			gen <- survConcordance(tcgaSurvival[v]~p)$concordance[1]
+			c(PC=pc, Genomics=gen, `PC (predicted)`=pcp)
+		})
+
+boxplot(t(concPcPred), notch=TRUE, ylab="C")
+title(main="AML")
+
+##MDS
+pcPrediction <-  as.matrix(design[,2:18]) %*% t(glm$coefficients[,2:18])  %*% pca$rotation
+set.seed(42)
+mdsConcPcPred <- sapply(1:100, function(i){
+			v <- sample(1:nrow(amlFreeSurvival) %% 5 + 1) == 1
+			fit <- CoxRFX(pcPrediction[as.character(mdsSamples), 1:20][!v,], amlFreeSurvival[!v], which.mu=NULL)
+			p <- as.matrix(pcPrediction[as.character(mdsSamples), 1:20][v,]) %*% coef(fit)
+			pcp <- survConcordance(amlFreeSurvival[v]~p)$concordance[1]
+			fit <- CoxRFX(Z$expression[!v, 1:20], amlFreeSurvival[!v], which.mu=NULL)
+			p <- as.matrix(Z$expression[v, 1:20]) %*% coef(fit)
+			pc <- survConcordance(amlFreeSurvival[v]~p)$concordance[1]
+			fit <- CoxRFX(data.frame(Z$geneticsCytogenetics[!v,]), amlFreeSurvival[!v], which.mu=NULL)
+			p <- as.matrix(Z$geneticsCytogenetics[v,]) %*% coef(fit)
+			gen <- survConcordance(amlFreeSurvival[v]~p)$concordance[1]
+			c(PC=pc, Genomics=gen, `PC (predicted)`=pcp)
+		})
+
+#+ TCGA-, fig.width=1.25, fig.height=2.5, cache=TRUE
+
+pdf("predictedPC.pdf", width=1.25, height=2.5, pointsize=8)
+par(mar=c(10,4,1,1), bty="n", mgp=c(2,.5,0))
+c <- set1[c(4,2,4)]
+boxplot(t(mdsConcPcPred), notch=TRUE, ylab="Concordance", names=NA, lty=1, staplewex=0, pch=16, cex=.5, xaxt="n", at=1:3, border=c, col=c(NA,NA, brewer.pal(4,"Paired")[1]))
+u <- par("usr")
+rotatedLabel(1:3, rep(u[3] ,3), c("Expression","Genomics","Predicted expression"))
+dev.off()
+
+
+
+f <- character(nrow(clinicalData))
+for(l in levels(clinicalData$M_Risk)){
+	w <- which(clinicalData$M_Risk==l)
+	q <- cut(r[w], quantile(r[w], seq(0,1,.33), include.lowest=TRUE), labels=c("T1","T2","T3"))
+	f[w] <- as.character(q)
+}
+f <- factor(f, levels=c("T1","T2","T3"))
+
+getGT <- function(X){
+	n <- colnames(X)
+	apply(X,1, function(x){
+				w <- x!=0
+				l <- sub("^1$","",paste(signif(x[w],2)))
+				paste(sub(":$","",paste(n[w], l, sep=":")), collapse=";")
+			})
+}
+
+whichRFXOsGG <- which((colSums(dataFrame)>=8 | mainIdx) & osIdx & groups %in% c(mainGroups,"GeneGene")) # ie, > 0.5%
+ggc <- mclapply(1:100, function(foo){
+			set.seed(foo)
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			coxRFXOsTrain <- CoxRFX(dataFrame[trainIdx,whichRFXOsGG], os[trainIdx], groups[whichRFXOsGG])
+			return(c(
+							RFX=survConcordance(os[!trainIdx]~as.matrix(dataFrame[!trainIdx,whichRFXOsGG]) %*% coef(coxRFXOsTrain))$concordance
+					))
+		}, mc.cores=20)
+coxRFXOsGG<-CoxRFX(dataFrame[whichRFXOsGG], os, groups[whichRFXOsGG])
+coxRFXOsTDGG<-CoxRFX(dataFrameOsTD[whichRFXOsGG], osTD, groups[whichRFXOsGG])
+
+allIntC <- mclapply(1:100, function(foo){
+			set.seed(foo)
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			coxRFXOsTrain <- CoxRFX(dataFrame[trainIdx,whichRFXOs], os[trainIdx], groups[whichRFXOs])
+			return(c(
+							RFX=survConcordance(os[!trainIdx]~as.matrix(dataFrame[!trainIdx,whichRFXOs]) %*% coef(coxRFXOsTrain))$concordance
+					))
+		}, mc.cores=12)
+
+confIntVar <- function(x, ci=c(0.025,0.0975)){
+	v <- var(x)
+	s <- sum((x-mean(x))^2)
+	n <- length(x)
+	s/qchisq(ci,n-1)
+}
+
+
+X <- cbind(dataFrame[whichRFXOsGG], `NPM1:FLT3_ITD:DNMT3A` = (rowSums(dataFrame[c('NPM1',"FLT3_ITD","DNMT3A")])==3)+0)
+p <- ncol(X)
+g <- c(as.character(groups[whichRFXOsGG]),"GeneGene")
+gtc2 <- mclapply(1:100, function(foo){
+			set.seed(foo)
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			fitGG <- CoxRFX(X[trainIdx,-p], os[trainIdx], g[-p])
+			fitGT <- CoxRFX(X[trainIdx,], os[trainIdx], g)
+			fitMain <- CoxRFX(dataFrame[trainIdx,mainIdxOs], os[trainIdx], groups=groups[mainIdxOs])
+			
+			return(c(
+							GG=survConcordance(os[!trainIdx]~as.matrix(X[!trainIdx,-p]) %*% coef(fitGG))$concordance,
+							GT=survConcordance(os[!trainIdx]~as.matrix(X[!trainIdx,]) %*% coef(fitGT))$concordance,
+							Main=survConcordance(os[!trainIdx]~as.matrix(dataFrame[!trainIdx,mainIdxOs]) %*% coef(fitMain))$concordance
+			
+					))
+		}, mc.cores=20)
+
+
+plotSurv <- function(f, col=1:(length(terms(f))-1)^2 , ...){
+	s <- survfit(f, ...)
+	c <- coxph(f, ...)
+	summary(c)
+	#p <- 2*pnorm(abs(diff(c$coefficients)),sd=sqrt(sum(diag(c$var))), lower.tail=FALSE)
+	p <- pchisq(c$coefficients[3]^2/diag(c$var)[3], 1,lower.tail=FALSE)
+	plot(s, col=col, mark=NA)
+	legend("topright", bty="n", rownames(summary(s)$table), col=col, lty=1)
+	title(main=paste("P =",signif(p,2)), font=1)
+}
+
+PredictOS <- function(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, x =365){
+	getS <- function(coxRFX, data) {
+		coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
+		r <- PredictRiskMissing(coxRFX, matrix(data, ncol=ncol(coxRFX$Z)), var="var2")
+		H0 <- basehaz(coxRFX, centered = FALSE)
+		hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
+		x <- 0:5000
+		S <- exp(-hazardDist(x))
+		return(list(S=S, r=r, x=x, hazardDist=hazardDist, r0 = coxRFX$means %*% coef(coxRFX)))
+	}
+	hazCir <- getS(coxRFX = coxRFXCirTD, data = data)
+	hazNrm <- getS(coxRFX = coxRFXNrmTD, data = data)
+	hazPrs <- getS(coxRFX = coxRFXPrsTD, data = data)
+
+	hazCir$Sadj <- cumsum(c(1,diff(hazCir$S)) * hazNrm$S)
+	hazNrm$Sadj <- cumsum(c(1,diff(hazNrm$S)) * hazCir$S)
+	
+	w <- hazCir$x == x
+	nrs <- hazNrm$Sadj[w]^exp(hazNrm$r[,1])
+	nrsUp <- hazNrm$Sadj[w]^exp(hazNrm$r[,1] + 2*sqrt(hazNrm$r[,2]))
+	nrsLo <- hazNrm$Sadj[w]^exp(hazNrm$r[,1] - 2*sqrt(hazNrm$r[,2]))
+	
+	cir <- hazCir$Sadj[w]^exp(hazCir$r[,1])
+	cirUp <- hazCir$Sadj[w]^exp(hazCir$r[,1] + 2*sqrt(hazCir$r[,2]))
+	cirLo <- hazCir$Sadj[w]^exp(hazCir$r[,1] - 2*sqrt(hazCir$r[,2]))
+	
+	rs <- 1 - (1-cir) * (1-hazPrs$S[w]^exp(hazPrs$r[,1]))
+	rsUp <- 1 - (1-cirUp) * (1-hazPrs$S[w]^exp(hazPrs$r[,1] + 2* sqrt(hazPrs$r[,2])))
+	rsLo <- 1 - (1-cirLo) * (1-hazPrs$S[w]^exp(hazPrs$r[,1] - 2* sqrt(hazPrs$r[,2])))
+	
+	return(data.frame(os=rs*nrs, osUp = rsUp*nrsUp, osLo = rsLo*nrsLo, rs=rs, cir=cir, nrs=nrs))
+}
+
+w <- mainIdx & !grepl("TPL", names(dataFrame)) & groups!="Nuisance"
+
+osCR <- Surv(as.numeric(clinicalData$Date_LF- clinicalData$CR_date), event = clinicalData$Status)
+osData <- MakeTimeDependent(dataFrame[w], timeEvent=alloTime1CR, timeStop=as.numeric(clinicalData$Date_LF- clinicalData$CR_date), status=clinicalData$Status)
+osData$transplant1CR <- osData$event
+osData$transplantRel <- osData$event
+w <- which(clinicalData$TPL_date > clinicalData$Recurrence_date)  
+osData$transplant1CR[osData$index %in% w] <- 0
+osData$transplantRel[!osData$index %in% w] <- 0
+
+coxRFXOsCR <- CoxRFX(osData[names(crGroups)], Surv(osData$time1, osData$time2, osData$status), groups=crGroups)
+
+allRisk <- PredictOS(coxRFXNrmTD = coxRFXNrmTD, coxRFXPrsTD = coxRFXPrsTD, coxRFXCirTD = coxRFXCirTD, coxRFXOsCR$Z, 365)
+
+survConcordance(Surv(osData$time1, osData$time2, osData$status) ~ -allRisk[,1])
+
+
+bimp <- function(x){
+	 if(any(is.na(x))) x[is.na(x)] <- rbinom(sum(is.na(x)),1, mean(x[!is.na(x)]))
+	 x 
+}
+
+library(pcalg)
+set.seed(42)
+X <- sapply(cbind(dataList$Genetics, dataList$Cytogenetics), bimp)
+fit2 <- pc(list(dm=X, adaptDF = FALSE), binCItest, labels=colnames(X), alpha=0.05)
+library(Rgraphviz)
+plot(fit2)
+
+dtrbeta <- function(x, shape1,shape2, xmin = 0)
+	dbeta(x,shape1,shape2, log=TRUE) - pbeta(xmin, shape1, shape2, lower.tail=FALSE, log.p=TRUE) 
+p <- optim(c(0.2,8), function(y)  -sum(dtrbeta(x, y[1],y[2], xmin=1/1540)))
+
+rtrbeta <- function(n, shape1,shape2, xmin = 0){
+	x <- numeric(n)
+	i <- 1
+	while(i<=n){
+		r <- rbeta(1,shape1,shape2)
+		if(r > xmin){
+			x[i] <- r
+			i <- i+1
+		}
+	}
+	return(x)
+}
+
+
+p1 <- c(.4, .6)
+p2 <- c(.5,.5)
+
+X <- c(50,100)
+
+L <- apply(P,2,prod)
+pi <- L/sum(L)
+pi <- c(.5,.5)
+
+for(i in 1:10000){
+	P <- matrix(c(rep(pi[1]*p1[1], X[1]), rep(pi[1]*p1[2], X[2]),rep(pi[2]*p2[1], X[1]), rep(pi[2]*p2[2], X[2])), ncol=2)
+	pi <- colMeans( P / rowSums(P))
+}
+
+whichRFXOsGG <- which((colSums(dataFrame)>=8 | mainIdxOs) & osIdx & groups %in% c(mainGroups,"GeneGene")) # ie, > 0.5%
+
+
+replicates <- 100 ## number of replicates
+allModelsCV <- mclapply(1:replicates, function(foo){
+			set.seed(foo)
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			c <- coxph(os[trainIdx] ~ 1, data=dataFrame[trainIdx,mainIdxOs])
+			scopeStep <- as.formula(paste("os[trainIdx] ~", paste(colnames(dataFrame)[mainIdxOs], collapse="+")))
+			coxBICOsTrain <- step(c, scope=scopeStep, k = log(sum(trainIdx)), trace=0)
+			coxAICOsTrain <- step(coxBICOsTrain, scope=scopeStep, k = 2, trace=0)
+			coxCPSSOsTrain <- CoxCPSSInteractions(dataFrame[!is.na(os) & trainIdx, mainIdxOs], na.omit(os[trainIdx]), bootstrap.samples=50, scope = which(groups %in% scope))
+			coxRFXOsTrain <- CoxRFX(dataFrame[trainIdx,mainIdxOs], os[trainIdx], groups=groups[mainIdxOs])
+			coxRFXOsTrain$Z <- NULL
+			coxRFXOsGGc <- CoxRFX(dataFrame[trainIdx,whichRFXOsGG], os[trainIdx], groups=groups[whichRFXOsGG], which.mu=mainGroups)
+			coxRFXOsGGc$Z <- NULL
+			rForestOsTrain <- rfsrc(Surv(time, status) ~.,data= cbind(time = os[,1], status = os[,2], dataFrame[,mainIdxOs])[trainIdx,], ntree=100, importance="none")
+			return(list(
+							BIC=coxBICOsTrain,
+							AIC=coxAICOsTrain,
+							CPSS=coxCPSSOsTrain,
+							RFX=coxRFXOsTrain,
+							RFXgg=coxRFXOsGGc,
+							rForest=rForestOsTrain
+					))
+		}, mc.cores=20)
+
+
+tcgaConcordanceCV <- mclapply(1:100, function(foo){
+			set.seed(foo)
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			coxRFXOsTrain <- CoxRFX(dataFrame[trainIdx,mainIdxOs], os[trainIdx], groups=groups[mainIdxOs])
+			p <- PredictRiskMissing(coxRFXOsTrain, newZ=tcgaData[mainIdxOs])
+			return(c(
+							RFX=survConcordance(tcgaSurvival~ p[,1])$concordance
+					))
+		}, mc.cores=10)
+
+
+allModelsTcgaConcordance <- sapply(allModelsCV, function(x){
+			sapply(x, function(y){
+						p <- predictAllModels(y, newdata=tcgaDataImputed)
+						survConcordance(tcgaSurvival ~ p)$concordance
+					})
+		})
+
+apply(sapply(allModelsCV, function(x){
+			sapply(x[1:4], function(y){
+						length(attr(terms(y), "term.labels"))
+					})
+		}),1,quantile)
+
+
+apply(sapply(allModelsCV, function(x){
+			sapply(x, function(y){
+						p <- predictAllModels(y, newdata=tcgaDataImputed)
+						survConcordance(tcgaSurvival ~ p)$concordance
+					})
+		}), 1, quantile)
+
+
+t <- sort(unique(tcgaSurvival[,1]))
+allModelsTcgaAUC <- sapply(allModelsCV, function(x){
+			sapply(x[1:4], function(y){
+						p <- predict(y, newdata=tcgaDataImputed)
+						a <- AUC.uno(na.omit(os), tcgaSurvival[!is.na(p) & !is.na(tcgaSurvival)], scale(p)[!is.na(tcgaSurvival) &! is.na(p)], t)$auc
+					})
+		})
+allModelsTcgaAUC <- array(allModelsTcgaAUC, dim=c(length(t), 4,100))
+for(i in 1:4)
+lines(t,rowMeans(allModelsTcgaAUC, dims=2)[,i], type='l', new=i==1, col=i)
+
+t <- sort(unique(tcgaSurvival[,1]))
+tcgaAUC <- sapply(tcgaRisk, function(x) AUC.uno(na.omit(os), tcgaSurvival[!is.na(x) & !is.na(tcgaSurvival)], scale(x)[!is.na(tcgaSurvival) &! is.na(x)], t)$auc)
+tcgaAUC
+
+
+t <- sort(unique(tcgaSurvival[,1]))
+tcgaAucCV <- sapply(tcgaRisk, function(x) {
+			sapply(1:100, function(foo){
+						ix <-  sample(1:nrow(tcgaSurvival)%%5 +1 )!=1 ## sample 1/5
+			AUC.uno(na.omit(os), tcgaSurvival[ix & !is.na(x) & !is.na(tcgaSurvival)], scale(x)[ix & !is.na(tcgaSurvival) &! is.na(x)], t)$auc})})
+tcgaAucCV <- aperm(array(tcgaAucCV, dim=c(length(t),100,ncol(tcgaRisk))),c(2,1,3))
+
+tcgaAucCVm <- colMeans(tcgaAucCV)
+colModels <- c("#888888", set1[c(2,1,4,3,5)])
+w <- c(1,6,7,8,5,3)
+plot(t,tcgaAucCVm[,1], type="l", ylim=c(.5,1), lty=0, xlab="Years", ylab="AUC", xlim=c(0,6))
+for(i in seq_along(w)){
+	lines(t,tcgaAucCVm[,w[i]],  ylim=c(.5,1), lty=1, col=colModels[i], type='p', pch=16,cex=.5)
+	s <- smooth.spline(t, tcgaAucCVm[,w[i]], df=10)
+	#sigma <- sqrt(var(s$yin - s$y)/(1-s$lev))
+	sigma <- apply(tcgaAucCV[,,w[i]],2,sd)
+	lines(predict(s), col=colModels[i])
+	polygon(c(t, rev(t)), c(s$y + 2.0*sigma*sqrt(s$lev) , rev(s$y - 2*sigma*sqrt(s$lev) )), col=paste(colModels[i],"00", sep=""), lty=1, border=colModels[i], lwd=0.5)
+}
+legend("bottomright", colnames(tcgaRisk)[w], col=colModels, lty=1)
+
+
+
+allModelsCvTcgaConcordance <- sapply(allModelsCV, function(x){
+			sapply(x, function(y) {
+						p <- predictAllModels(y, newdata=tcgaDataImputed)
+						survConcordance(tcgaSurvival ~ p)$concordance
+					})
+		})
+boxplot(t(allModelsCvTcgaConcordance))
+apply(allModelsCvTcgaConcordance, 1, quantile)
+
+
+t <- sort(unique(tcgaSurvival[,1]))
+tcgaAucCVm <- sapply(tcgaRisk, function(x) AUC.uno(na.omit(os), tcgaSurvival[!is.na(x) & !is.na(tcgaSurvival)], scale(x)[!is.na(tcgaSurvival) &! is.na(x)], t)$auc)
+tcgaAucCVm
+
+ResidualNonp <- function(fit){
+	H0 <- basehaz(fit, centered = FALSE)
+	FHaz <- splinefun(c(0,H0$time), c(0,H0$hazard), method="monoH.FC")
+	s <- fit$surv
+	-log(FHaz(s[,ncol(s)-1]))
+}
+
+
+allModelsTrial <- mclapply(levels(clinicalData$Study), function(foo){
+			#set.seed(foo)
+			trainIdx <- clinicalData$Study != foo 
+			c <- coxph(os[trainIdx] ~ 1, data=dataFrame[trainIdx,mainIdxOs])
+			scopeStep <- as.formula(paste("os[trainIdx] ~", paste(colnames(dataFrame)[mainIdxOs], collapse="+")))
+			coxBICOsTrain <- step(c, scope=scopeStep, k = log(sum(trainIdx)), trace=0)
+			coxAICOsTrain <- step(coxBICOsTrain, scope=scopeStep, k = 2, trace=0)
+			coxCPSSOsTrain <- CoxCPSSInteractions(dataFrame[!is.na(os) & trainIdx, mainIdxOs], na.omit(os[trainIdx]), bootstrap.samples=50, scope = which(groups %in% scope))
+			coxRFXOsTrain <- CoxRFX(dataFrame[trainIdx,mainIdxOs], os[trainIdx], groups=groups[mainIdxOs])
+			coxRFXOsTrain$Z <- NULL
+			coxRFXOsGGc <- CoxRFX(dataFrame[trainIdx,whichRFXOsGG], os[trainIdx], groups=groups[whichRFXOsGG], which.mu=mainGroups)
+			coxRFXOsGGc$Z <- NULL
+			rForestOsTrain <- rfsrc(Surv(time, status) ~.,data= cbind(time = os[,1], status = os[,2], dataFrame[,mainIdxOs])[trainIdx,], ntree=100, importance="none")
+			return(list(
+							BIC=coxBICOsTrain,
+							AIC=coxAICOsTrain,
+							CPSS=coxCPSSOsTrain,
+							RFX=coxRFXOsTrain,
+							RFXgg=coxRFXOsGGc,
+							rForest=rForestOsTrain
+					))
+		}, mc.cores=3)
+names(allModelsTrial) <- levels(clinicalData$Study)
+
+allModelsTrialPredictions <- mclapply(names(allModelsTrial), function(foo){
+			x <- allModelsCV[[foo]]
+			trainIdx <- clinicalData$Study != foo
+			cbind(ELN=c(4,1,3,2)[clinicalData$M_Risk[!trainIdx]],
+					sapply(x, function(y){
+								predictAllModels(y, newdata=dataFrame[!trainIdx,])
+							}))
+		}, mc.cores=10)
+
+
+allModelsTrialC <- sapply(names(allModelsTrial), function(foo){
+			trainIdx <- clinicalData$Study != foo
+			apply(allModelsTrialPredictions[[foo]], 2 , function(p){						
+						survConcordance(osYr[!trainIdx,] ~ p)
+					})
+		})
+
+apply(allModelsCvC,1,quantile)
+boxplot(t(allModelsCvC), ylim=c(0,0.5), notch=TRUE, ylab="OXS R2", border=colModels[2:6], las=2, lty=1, pch=16, staplewex=0)
+
+
+
+replicates <- 100 ## number of replicates
+tmp <- mclapply(1:replicates, function(foo){
+			set.seed(foo)
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			coxCPSSOsTrain <- CoxCPSSInteractions(dataFrame[!is.na(os) & trainIdx, mainIdxOs], na.omit(os[trainIdx]), bootstrap.samples=50, scope = which(groups %in% scope))
+		}, mc.cores=10)
+
+foo <- 1
+tmp2 <- sapply(tmp, function(x){
+			set.seed(foo)
+			foo <<- foo+1
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			p <- predictAllModels(x, newdata=dataFrame[!trainIdx,])
+			survConcordance(os[!trainIdx]~p)$concordance
+		})
+quantile(tmp2)
+
+foo <- 1
+tmp3 <- sapply(allModelsCV, function(x){
+			set.seed(foo)
+			foo <<- foo+1
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			p <- predictAllModels(x[[4]], newdata=dataFrame[!trainIdx,])
+			survConcordance(os[!trainIdx]~p)$concordance
+		})

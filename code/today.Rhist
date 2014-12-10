@@ -2435,3 +2435,849 @@ source("/Users/mg14/Git/Projects/CoxHD/CoxHD/R/ecoxph.R", echo=FALSE, encoding="
 a <- AnovaRFX(coxRFXFit)
 a
 pie(a)
+setwd("code")
+library(RColorBrewer)
+set1 <- brewer.pal(8, "Set1")
+#col1 <- brewer.pal(9, "Set1")[c(1,6,4,3,5,7,8,2,9)]
+library(CoxHD)
+source("../../mg14/R/mg14.R")
+clinicalData <- read.table("../data/Ulm1.17_MG_Clinical.txt", sep="\t", header=TRUE, na.strings = "na", comment.char = "", quote="\"")
+clinicalData <- clinicalData[order(clinicalData$PDID),]
+clinicalData$ERDate <- as.Date(as.character(clinicalData$ERDate), "%d-%b-%y")
+clinicalData$CR_date <- as.Date(as.character(clinicalData$CR_date), "%d-%b-%y")
+clinicalData$TPL_date <- as.Date(as.character(clinicalData$TPL_date), "%d-%b-%y")
+clinicalData$Date_LF <- as.Date(as.character(clinicalData$Date_LF), "%d-%b-%y")
+clinicalData$Recurrence_date <- as.Date(as.character(clinicalData$Recurrence_date), "%d-%b-%y")
+levels(clinicalData$Study) <- c(`_07-04`="AMLSG0704" ,   `98A`="AMLHD98A" ,  `98B`="AMLHD98B")[levels(clinicalData$Study)]
+clinicalData$VPA[is.na(clinicalData$VPA)] <- 0
+clinicalData$ATRA_arm[is.na(clinicalData$ATRA_arm)] <- 0
+colnames(clinicalData) <- gsub('\\.',"",colnames(clinicalData))
+clinicalData <- clinicalData[!is.na(clinicalData$TypeAML),] ## remove unknown patients
+clinicalData$PDID <- factor(as.character(clinicalData$PDID))
+dim(clinicalData)
+
+#' ### Mutation data
+mutationData = read.table("../data/Ulm1.14_MG_Genetic.txt", sep="\t", header=TRUE, strip.white = TRUE)
+mutationData$SAMPLE_NAME <- factor(as.character(mutationData$SAMPLE_NAME), levels = levels(clinicalData$PDID)) ## Refactor
+mutationTable <- (table(mutationData[mutationData$Result %in% c("ONCOGENIC","POSSIBLE") & mutationData$FINAL_CALL == "OK" ,c("SAMPLE_NAME","GENE")]) > 0)+0
+dim(mutationTable)
+
+all(rownames(mutationTable)==clinicalData$PDID)
+
+#' #### All data as list
+dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
+		Cytogenetics = clinicalData[,50:74],
+		Nuisance = data.frame( MakeInteger(clinicalData$Study)[,1:2], Date=scale(as.numeric(clinicalData$ERDate), scale=FALSE)),
+		Treatment = data.frame(ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL_efs=tplIdxEfs, TPL_os=tplIdxOs),
+		Demographics = clinicalData[,c("AOD","gender")],
+		Clinical = cbind(clinicalData[, c("Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH","HB","platelet","Splenomegaly")], MakeInteger(clinicalData$TypeAML)[,-1]))#,
+#MolRisk = makeInteger(clinicalData$M_Risk))
+#dataList$Genetics$CEBPA <-  clinicalData$CEBPA # encoded as 0,1,2
+dataList$Genetics$CEBPA_mono <-  clinicalData$CEBPA == 1 # encoded as 0,1,2
+dataList$Genetics$CEBPA_bi <-  clinicalData$CEBPA == 2 # encoded as 0,1,2
+dataList$Genetics$CEBPA <- NULL
+dataList$Genetics$FLT3 <- NULL
+dataList$Genetics$FLT3_ITD <- clinicalData$FLT3_ITD != "0"
+dataList$Genetics$FLT3_TKD <- clinicalData$FLT3_TKD != "0"
+dataList$Genetics$FLT3_other <- clinicalData$FLT3_other != "0"
+dataList$Genetics$IDH2_p172 <- table(mutationData$SAMPLE_NAME[mutationData$GENE=='IDH2' & grepl("172", mutationData$AA_CHANGE)])[]
+dataList$Genetics$IDH2_p140 <-  table(mutationData$SAMPLE_NAME[mutationData$GENE=='IDH2' & grepl("140", mutationData$AA_CHANGE)])[]
+dataList$Genetics$IDH2 <- NULL
+dataList$Genetics$NPM1 <- clinicalData$NPM1
+dataList$Cytogenetics$MLL_PTD <- NULL
+dataList$Genetics = dataList$Genetics + 0
+tplIdxEfs <- (clinicalData$Time_Diag_TPL < clinicalData$efs & !is.na(clinicalData$Time_Diag_TPL)) | (is.na(clinicalData$efs & !is.na(clinicalData$Time_Diag_TPL))) # Need to restrict to those with transplant prior to event..
+tplIdxOs <- !is.na(clinicalData$TPL_type)
+
+#' #### All data as list
+dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
+		Cytogenetics = clinicalData[,50:74],
+		Nuisance = data.frame( MakeInteger(clinicalData$Study)[,1:2], Date=scale(as.numeric(clinicalData$ERDate), scale=FALSE)),
+		Treatment = data.frame(ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL_efs=tplIdxEfs, TPL_os=tplIdxOs),
+		Demographics = clinicalData[,c("AOD","gender")],
+		Clinical = cbind(clinicalData[, c("Performance_ECOG","BM_Blasts","PB_Blasts","wbc","LDH","HB","platelet","Splenomegaly")], MakeInteger(clinicalData$TypeAML)[,-1]))#,
+#MolRisk = makeInteger(clinicalData$M_Risk))
+#dataList$Genetics$CEBPA <-  clinicalData$CEBPA # encoded as 0,1,2
+dataList$Genetics$CEBPA_mono <-  clinicalData$CEBPA == 1 # encoded as 0,1,2
+dataList$Genetics$CEBPA_bi <-  clinicalData$CEBPA == 2 # encoded as 0,1,2
+dataList$Genetics$CEBPA <- NULL
+dataList$Genetics$FLT3 <- NULL
+dataList$Genetics$FLT3_ITD <- clinicalData$FLT3_ITD != "0"
+dataList$Genetics$FLT3_TKD <- clinicalData$FLT3_TKD != "0"
+dataList$Genetics$FLT3_other <- clinicalData$FLT3_other != "0"
+dataList$Genetics$IDH2_p172 <- table(mutationData$SAMPLE_NAME[mutationData$GENE=='IDH2' & grepl("172", mutationData$AA_CHANGE)])[]
+dataList$Genetics$IDH2_p140 <-  table(mutationData$SAMPLE_NAME[mutationData$GENE=='IDH2' & grepl("140", mutationData$AA_CHANGE)])[]
+dataList$Genetics$IDH2 <- NULL
+dataList$Genetics$NPM1 <- clinicalData$NPM1
+dataList$Cytogenetics$MLL_PTD <- NULL
+dataList$Genetics = dataList$Genetics + 0
+dataList$GeneGene <- MakeInteractions(data.frame(dataList$Genetics), data.frame(dataList$Genetics))[,as.vector(upper.tri(matrix(0,ncol=ncol(dataList$Genetics), nrow=ncol(dataList$Genetics))))]
+dataList$GeneGene <- dataList$GeneGene[,colSums(dataList$GeneGene, na.rm=TRUE)>0] 
+dataList$CytoCyto <- MakeInteractions(dataList$Cytogenetics, dataList$Cytogenetics)[,sapply(1:ncol(dataList$Cytogenetics), `<`, 1:ncol(dataList$Cytogenetics))]
+dataList$CytoCyto <- dataList$CytoCyto[, colSums(dataList$CytoCyto, na.rm=TRUE) > 0]
+dataList$GeneCyto <- MakeInteractions(dataList$Genetics, dataList$Cytogenetics)
+dataList$GeneCyto <- dataList$GeneCyto[,colSums(dataList$GeneCyto, na.rm=TRUE) > 0]
+dataList$GeneTreat <- MakeInteractions(dataList$Genetics, dataList$Treatment)
+dataList$GeneTreat <- dataList$GeneTreat[,colSums(dataList$GeneTreat, na.rm=TRUE) > 0]
+dataList$CytoTreat <- MakeInteractions(dataList$Cytogenetics, dataList$Treatment)
+dataList$CytoTreat <- dataList$CytoTreat[,colSums(dataList$CytoTreat, na.rm=TRUE) > 0]
+
+#' #### Condensing to a data.frame
+dataFrame <- do.call(cbind,dataList)
+names(dataFrame) <- unlist(sapply(dataList, names))
+dataFrame <- StandardizeMagnitude(dataFrame)
+dim(dataFrame)
+
+groups <- unlist(sapply(names(dataList), function(x) rep(x, ncol(dataList[[x]]))))
+groups[grepl("^(t_)|(inv)", colnames(dataFrame)) &! grepl(":", colnames(dataFrame))] <- "Translocations"
+groups <- factor(groups)
+table(groups)
+poorMansImpute <- function(x) {x[is.na(x)] <- mean(x, na.rm=TRUE); return(x)}
+dataFrame <- as.data.frame(sapply(dataFrame, poorMansImpute))
+copyNumbers = cbind(dataList$Cytogenetics[grep(c("minus|plus|mono"), colnames(dataList$Cytogenetics))], clinicalData$gender)
+copyNumbers$minus7 <- (copyNumbers$minus7 | copyNumbers$minus7q) +0
+copyNumbers$minus7q <- NULL
+for(i in 1:ncol(copyNumbers)){
+	if(grepl("plus", colnames(copyNumbers)[i]))
+		copyNumbers[,i] = copyNumbers[,i] * 3
+}
+copyNumbers[copyNumbers==0 | is.na(copyNumbers)] = 2
+colnames(copyNumbers) = c(5,7,8,9,12,13,17,18,20,21,22,"Y",11,4,"X")
+rownames(copyNumbers) <- clinicalData$PDID
+
+cn = sapply(1:nrow(mutationData), function(i) {c=copyNumbers[mutationData$SAMPLE.NAME[i],match(mutationData$CHR[i], colnames(copyNumbers))]; if(length(c)==0) 2 else c})
+precedence <- matrix(0, ncol=ncol(mutationTable), nrow=ncol(mutationTable), dimnames=list(colnames(mutationTable), colnames(mutationTable)))
+ix=mutationData$GENE %in% colnames(precedence) &mutationData$Result %in% c("ONCOGENIC")
+for(s in unique(mutationData$SAMPLE.NAME)){
+	for(i in which(mutationData$SAMPLE.NAME==s & ix))
+		for(j in which(mutationData$SAMPLE.NAME==s & ix)){
+			if(!is.na(cn[i]) & !is.na(cn[j]) & i!=j){
+				m <- round(matrix(c(mutationData$TUM_DEPTH[i]-min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i], 
+										min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i],
+										mutationData$TUM_DEPTH[j]-min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j],
+										min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j]), ncol=2))
+				f <- (fisher.test(m, alternative="less")$p.value< 0.95 )#& m[2,1]/(m[1,1]+m[2,1]) + m[2,2]/(m[1,2]+m[2,2]) > 1)
+				if(f){
+					precedence[as.character(mutationData$Gene[i]),as.character(mutationData$Gene[j])] <- precedence[as.character(mutationData$Gene[i]),as.character(mutationData$Gene[j])] + 1
+				}
+				
+			}
+		}
+}
+
+precedence
+sum(ix)
+cn = sapply(1:nrow(mutationData), function(i) {c=copyNumbers[mutationData$SAMPLE_NAME[i],match(mutationData$CHR[i], colnames(copyNumbers))]; if(length(c)==0) 2 else c})
+table(cn)
+precedence <- matrix(0, ncol=ncol(mutationTable), nrow=ncol(mutationTable), dimnames=list(colnames(mutationTable), colnames(mutationTable)))
+ix=mutationData$GENE %in% colnames(precedence) &mutationData$Result %in% c("ONCOGENIC")
+for(s in unique(mutationData$SAMPLE_NAME)){
+	for(i in which(mutationData$SAMPLE_NAME==s & ix))
+		for(j in which(mutationData$SAMPLE_NAME==s & ix)){
+			if(!is.na(cn[i]) & !is.na(cn[j]) & i!=j){
+				m <- round(matrix(c(mutationData$TUM_DEPTH[i]-min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i], 
+										min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i],
+										mutationData$TUM_DEPTH[j]-min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j],
+										min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j]), ncol=2))
+				f <- (fisher.test(m, alternative="less")$p.value< 0.95 )#& m[2,1]/(m[1,1]+m[2,1]) + m[2,2]/(m[1,2]+m[2,2]) > 1)
+				if(f){
+					precedence[as.character(mutationData$Gene[i]),as.character(mutationData$Gene[j])] <- precedence[as.character(mutationData$Gene[i]),as.character(mutationData$Gene[j])] + 1
+				}
+				
+			}
+		}
+}
+class(mutationData$VAF)
+levels(mutationData$VAF)
+mutationData$X._MUT_IN_TUM <- as.numeric(as.character(mutationData$X._MUT_IN_TUM))
+precedence <- matrix(0, ncol=ncol(mutationTable), nrow=ncol(mutationTable), dimnames=list(colnames(mutationTable), colnames(mutationTable)))
+ix=mutationData$GENE %in% colnames(precedence) &mutationData$Result %in% c("ONCOGENIC")
+for(s in unique(mutationData$SAMPLE_NAME)){
+	for(i in which(mutationData$SAMPLE_NAME==s & ix))
+		for(j in which(mutationData$SAMPLE_NAME==s & ix)){
+			if(!is.na(cn[i]) & !is.na(cn[j]) & i!=j){
+				m <- round(matrix(c(mutationData$TUM_DEPTH[i]-min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i], 
+										min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i],
+										mutationData$TUM_DEPTH[j]-min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j],
+										min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j]), ncol=2))
+				f <- (fisher.test(m, alternative="less")$p.value< 0.95 )#& m[2,1]/(m[1,1]+m[2,1]) + m[2,2]/(m[1,2]+m[2,2]) > 1)
+				if(f){
+					precedence[as.character(mutationData$Gene[i]),as.character(mutationData$Gene[j])] <- precedence[as.character(mutationData$Gene[i]),as.character(mutationData$Gene[j])] + 1
+				}
+				
+			}
+		}
+}
+levels(mutationData$TUM_DEPTH)
+mutationData$TUM_DEPTH <- as.numeric(as.character(mutationData$TUM_DEPTH))
+for(s in unique(mutationData$SAMPLE_NAME)){
+	for(i in which(mutationData$SAMPLE_NAME==s & ix))
+		for(j in which(mutationData$SAMPLE_NAME==s & ix)){
+			if(!is.na(cn[i]) & !is.na(cn[j]) & i!=j){
+				m <- round(matrix(c(mutationData$TUM_DEPTH[i]-min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i], 
+										min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i],
+										mutationData$TUM_DEPTH[j]-min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j],
+										min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j]), ncol=2))
+				f <- (fisher.test(m, alternative="less")$p.value< 0.95 )#& m[2,1]/(m[1,1]+m[2,1]) + m[2,2]/(m[1,2]+m[2,2]) > 1)
+				if(f){
+					precedence[as.character(mutationData$Gene[i]),as.character(mutationData$Gene[j])] <- precedence[as.character(mutationData$Gene[i]),as.character(mutationData$Gene[j])] + 1
+				}
+				
+			}
+		}
+}
+
+precedence <- matrix(0, ncol=ncol(mutationTable), nrow=ncol(mutationTable), dimnames=list(colnames(mutationTable), colnames(mutationTable)))
+ix=mutationData$GENE %in% colnames(precedence) &mutationData$Result %in% c("ONCOGENIC")
+for(s in unique(mutationData$SAMPLE_NAME)){
+	for(i in which(mutationData$SAMPLE_NAME==s & ix))
+		for(j in which(mutationData$SAMPLE_NAME==s & ix)){
+			if(!is.na(cn[i]) & !is.na(cn[j]) & i!=j){
+				m <- round(matrix(c(mutationData$TUM_DEPTH[i]-min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i], 
+										min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i],
+										mutationData$TUM_DEPTH[j]-min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j],
+										min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j]), ncol=2))
+				f <- try(fisher.test(m, alternative="less")$p.value< 0.95 )#& m[2,1]/(m[1,1]+m[2,1]) + m[2,2]/(m[1,2]+m[2,2]) > 1)
+				if(class(f)!="try.error"){
+					precedence[as.character(mutationData$Gene[i]),as.character(mutationData$Gene[j])] <- precedence[as.character(mutationData$Gene[i]),as.character(mutationData$Gene[j])] + 1
+				}
+				
+			}
+		}
+}
+precedence
+precedence <- matrix(0, ncol=ncol(mutationTable), nrow=ncol(mutationTable), dimnames=list(colnames(mutationTable), colnames(mutationTable)))
+ix=mutationData$GENE %in% colnames(precedence) &mutationData$Result %in% c("ONCOGENIC")
+for(s in unique(mutationData$SAMPLE_NAME)){
+	for(i in which(mutationData$SAMPLE_NAME==s & ix))
+		for(j in which(mutationData$SAMPLE_NAME==s & ix)){
+			if(!is.na(cn[i]) & !is.na(cn[j]) & i!=j){
+				m <- round(matrix(c(mutationData$TUM_DEPTH[i]-min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i], 
+										min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i],
+										mutationData$TUM_DEPTH[j]-min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j],
+										min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j]), ncol=2))
+				f <- try(fisher.test(m, alternative="less")$p.value< 0.95 )#& m[2,1]/(m[1,1]+m[2,1]) + m[2,2]/(m[1,2]+m[2,2]) > 1)
+				if(class(f)!="try.error"){
+					precedence[as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])] <- precedence[as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])] + 1
+				}
+				
+			}
+		}
+}
+precedence
+boxplot(mutationData$X._MUT_IN_TUM/cn ~ mutationData$GENE)
+boxplot(mutationData$X._MUT_IN_TUM/cn ~ mutationData$GENE, las=2)
+boxplot(mutationData$X._MUT_IN_TUM ~ mutationData$GENE, las=2)
+apply(copyNumbers, 2, table)
+range(copyNumbers)
+copyNumbers = cbind(dataList$Cytogenetics[grep(c("minus|plus|mono"), colnames(dataList$Cytogenetics))], c(2,1)[clinicalData$gender])
+copyNumbers$minus7 <- (copyNumbers$minus7 | copyNumbers$minus7q) +0
+copyNumbers$minus7q <- NULL
+for(i in 1:ncol(copyNumbers)){
+	if(grepl("plus", colnames(copyNumbers)[i]))
+		copyNumbers[,i] = copyNumbers[,i] * 3
+}
+copyNumbers[copyNumbers==0 | is.na(copyNumbers)] = 2
+colnames(copyNumbers) = c(5,7,8,9,12,13,17,18,20,21,22,"Y",11,4,"X")
+rownames(copyNumbers) <- clinicalData$PDID
+cn = sapply(1:nrow(mutationData), function(i) {c=copyNumbers[mutationData$SAMPLE_NAME[i],match(mutationData$CHR[i], colnames(copyNumbers))]; if(length(c)==0) 2 else c})
+boxplot(mutationData$X._MUT_IN_TUM/cn ~ mutationData$GENE, las=2)
+sapply(split(mutationData$CHR, mutationData$GENE), unique)
+table(clinicalData$gender, clinicalData$minusY)
+copyNumbers = cbind(dataList$Cytogenetics[grep(c("minus|plus|mono"), colnames(dataList$Cytogenetics))], clinicalData$gender)
+copyNumbers$minus7 <- (copyNumbers$minus7 | copyNumbers$minus7q) +0
+copyNumbers$minus7q <- NULL
+for(i in 1:ncol(copyNumbers)){
+	if(grepl("plus", colnames(copyNumbers)[i]))
+		copyNumbers[,i] = copyNumbers[,i] * 3
+}
+copyNumbers[copyNumbers==0 | is.na(copyNumbers)] = 2
+colnames(copyNumbers) = c(5,7,8,9,12,13,17,18,20,21,22,"Y",11,4,"X")
+rownames(copyNumbers) <- clinicalData$PDID
+boxplot(mutationData$X._MUT_IN_TUM*cn ~ mutationData$GENE, las=2)
+precedence <- matrix(0, ncol=ncol(mutationTable), nrow=ncol(mutationTable), dimnames=list(colnames(mutationTable), colnames(mutationTable)))
+ix=mutationData$GENE %in% colnames(precedence) &mutationData$Result %in% c("ONCOGENIC")
+for(s in unique(mutationData$SAMPLE_NAME)){
+	for(i in which(mutationData$SAMPLE_NAME==s & ix))
+		for(j in which(mutationData$SAMPLE_NAME==s & ix)){
+			if(!is.na(cn[i]) & !is.na(cn[j]) & i!=j){
+				m <- round(matrix(c(mutationData$TUM_DEPTH[i]-min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i], 
+										min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i],
+										mutationData$TUM_DEPTH[j]-min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j],
+										min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j]), ncol=2))
+				f <- try(fisher.test(m, alternative="less")$p.value< 0.95 )#& m[2,1]/(m[1,1]+m[2,1]) + m[2,2]/(m[1,2]+m[2,2]) > 1)
+				if(class(f)!="try.error"){
+					precedence[as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])] <- precedence[as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])] + 1
+				}
+				
+			}
+		}
+}
+
+makeDesign <- function(I) {
+	w <- which(lower.tri(I), arr.ind=TRUE)
+	x <- matrix(0, nrow(w), nrow(I))
+	for(i in 1:nrow(w)){
+		x[i,w[i,1]] <- 1
+		x[i,w[i,2]] <- -1
+	}
+	return(x)
+}
+
+btModel <- function(I){
+	y <- cbind(I[lower.tri(I)], t(I)[lower.tri(I)])
+	x <- makeDesign(I = I)
+	glm.fit(x=x,y=y, family=binomial())
+}
+btModel(precedence)
+fit <- btModel(precedence)
+coef(fit)
+any(is.na(precedence))
+range(precedence)
+colSums(precedence)
+fit <- btModel(precedence[w,w])
+w <- which(colSums(precedence) > 0)
+fit <- btModel(precedence[w,w])
+coef(fit)
+length(w)
+makeDesign(precedence[w,w])
+dim(makeDesign(precedence[w,w]))
+length(w)
+w <- which(colSums(precedence) > 5)
+fit <- btModel(precedence[w,w])
+coef(fit)
+w <- which(colSums(precedence) > 50)
+fit <- btModel(precedence[w,w])
+coef(fit)
+dim(makeDesign(precedence[w,w]))
+rowSums(precedence)/colSums(precedence)
+colSums(precedence)
+rowSums(precedence)
+image(precedence)
+precedence <- matrix(0, ncol=ncol(mutationTable), nrow=ncol(mutationTable), dimnames=list(colnames(mutationTable), colnames(mutationTable)))
+ix=mutationData$GENE %in% colnames(precedence) &mutationData$Result %in% c("ONCOGENIC")
+for(s in unique(mutationData$SAMPLE_NAME)){
+	for(i in which(mutationData$SAMPLE_NAME==s & ix))
+		for(j in which(mutationData$SAMPLE_NAME==s & ix)){
+			if(!is.na(cn[i]) & !is.na(cn[j]) & i!=j){
+				m <- round(matrix(c(mutationData$TUM_DEPTH[i]-min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i], 
+										min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i],
+										mutationData$TUM_DEPTH[j]-min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j],
+										min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j]), ncol=2))
+				f <- try(fisher.test(m, alternative="less")$p.value< 0.95 )#& m[2,1]/(m[1,1]+m[2,1]) + m[2,2]/(m[1,2]+m[2,2]) > 1)
+				if(class(f)!="try.error")
+					if(f){
+					precedence[as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])] <- precedence[as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])] + 1
+				}
+				
+			}
+		}
+}
+class(f)
+precedence <- matrix(0, ncol=ncol(mutationTable), nrow=ncol(mutationTable), dimnames=list(colnames(mutationTable), colnames(mutationTable)))
+ix=mutationData$GENE %in% colnames(precedence) &mutationData$Result %in% c("ONCOGENIC")
+for(s in unique(mutationData$SAMPLE_NAME)){
+	for(i in which(mutationData$SAMPLE_NAME==s & ix))
+		for(j in which(mutationData$SAMPLE_NAME==s & ix)){
+			if(!is.na(cn[i]) & !is.na(cn[j]) & i!=j){
+				m <- round(matrix(c(mutationData$TUM_DEPTH[i]-min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i], 
+										min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i],
+										mutationData$TUM_DEPTH[j]-min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j],
+										min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j]), ncol=2))
+				f <- try(fisher.test(m, alternative="less")$p.value< 0.95 )#& m[2,1]/(m[1,1]+m[2,1]) + m[2,2]/(m[1,2]+m[2,2]) > 1)
+				if(class(f)!="try-error")
+					if(f){
+						precedence[as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])] <- precedence[as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])] + 1
+				}
+				
+			}
+		}
+}
+w <- which(colSums(precedence) > 0)
+
+fit <- btModel(precedence[w,w])
+coef(fit)
+plot(sort(coef(fit)))
+c <- coef(fit)
+names(c) <- colnames(precedence)
+names(c) <- colnames(precedence)[w]
+sort(c)
+fit
+class(fit)
+names(fit)
+summary(glm)
+summary.glm
+chol2inv(qr.lm(gfit))
+chol2inv(qr.lm(fit))
+chol2inv(stats:::qr.lm(fit))
+chol2inv(stats:::qr.lm(fit)$qr)
+diag(chol2inv(stats:::qr.lm(fit)$qr))
+stats:::qr.lm(fit)
+stats:::qr.lm
+diag(chol2inv(fit$qr))
+diag(chol2inv(fit$qr$qr))
+summary.glm
+fit$qr$pivot
+btModel <- function(I){
+	y <- cbind(I[lower.tri(I)], t(I)[lower.tri(I)])
+	x <- makeDesign(I = I)
+	glm.fit(x=x[,-1],y=y, family=binomial())
+}
+fit <- btModel(precedence[w,w])
+chol2inv(stats:::qr.lm(fit)$qr)
+diag(chol2inv(fit$qr$qr))
+fit <- btModel(precedence[w,w])
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- order(coef(fit))
+v <- sqrt(c(0,diag(chol2inv(fit$qr$qr))))
+
+plot(-c, o, xlab="Relative time", yaxt="n")
+segments(-c-v, o,-c+v,o)
+text(-c,o,names(c), font=3)
+plot(-c, o, xlab="Relative time", yaxt="n")
+segments(-c-v, o,-c+v,o)
+text(-c,o,names(c), font=3)
+fit <- btModel(precedence[w,w])
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- order(c)
+v <- sqrt(c(0,diag(chol2inv(fit$qr$qr))))
+
+plot(-c, o, xlab="Relative time", yaxt="n")
+segments(-c-v, o,-c+v,o)
+text(-c,o,names(c), font=3)
+fit <- btModel(precedence[w,w])
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- rank(c)
+v <- sqrt(c(0,diag(chol2inv(fit$qr$qr))))
+
+plot(-c, o, xlab="Relative time", yaxt="n")
+segments(-c-v, o,-c+v,o)
+text(-c,o,names(c), font=3)
+sapply(split(mutationData$CHR, mutationData$GENE), unique)
+precedence <- matrix(0, ncol=ncol(mutationTable), nrow=ncol(mutationTable), dimnames=list(colnames(mutationTable), colnames(mutationTable)))
+ix=mutationData$GENE %in% colnames(precedence) &mutationData$Result %in% c("ONCOGENIC")
+for(s in unique(mutationData$SAMPLE_NAME)){
+	for(i in which(mutationData$SAMPLE_NAME==s & ix))
+		for(j in which(mutationData$SAMPLE_NAME==s & ix)){
+			if(!is.na(cn[i]) & !is.na(cn[j]) & i!=j){
+				m <- round(matrix(c(mutationData$TUM_DEPTH[i]-min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i], 
+										min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i],
+										mutationData$TUM_DEPTH[j]-min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j],
+										min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j]), ncol=2))
+				f <- try(fisher.test(m, alternative="less")$p.value< 0.1 )#& m[2,1]/(m[1,1]+m[2,1]) + m[2,2]/(m[1,2]+m[2,2]) > 1)
+				if(class(f)!="try-error")
+					if(f){
+						precedence[as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])] <- precedence[as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])] + 1
+				}
+				
+			}
+		}
+}
+
+makeDesign <- function(I) {
+	w <- which(lower.tri(I), arr.ind=TRUE)
+	x <- matrix(0, nrow(w), nrow(I))
+	for(i in 1:nrow(w)){
+		x[i,w[i,1]] <- 1
+		x[i,w[i,2]] <- -1
+	}
+	return(x)
+}
+
+btModel <- function(I){
+	y <- cbind(I[lower.tri(I)], t(I)[lower.tri(I)])
+	x <- makeDesign(I = I)
+	glm.fit(x=x[,-1],y=y, family=binomial())
+}
+
+w <- which(colSums(precedence) > 0)
+
+fit <- btModel(precedence[w,w])
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- rank(c)
+v <- sqrt(c(0,diag(chol2inv(fit$qr$qr))))
+
+plot(-c, o, xlab="Relative time", yaxt="n")
+segments(-c-v, o,-c+v,o)
+text(-c,o,names(c), font=3)
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey")
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,names(c), font=3)
+
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="")
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,names(c), font=3)
+sapply(split(mutationData$CHR, mutationData$GENE), unique)
+colSums(precedence)
+rowSums(precedence)
+colSums(precedence)
+w <- which(colSums(precedence) > 5)
+
+fit <- btModel(precedence[w,w])
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- rank(c)
+v <- sqrt(c(0,diag(chol2inv(fit$qr$qr))))
+sapply(split(mutationData$CHR, mutationData$GENE), unique)
+
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="")
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,names(c), font=3)
+range(-c+c(-v,v))
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,names(c), font=3)
+precedence <- matrix(0, ncol=ncol(mutationTable), nrow=ncol(mutationTable), dimnames=list(colnames(mutationTable), colnames(mutationTable)))
+plist <- list()
+ix=mutationData$GENE %in% colnames(precedence) &mutationData$Result %in% c("ONCOGENIC")
+for(s in unique(mutationData$SAMPLE_NAME)){
+	l <- list()
+	for(i in which(mutationData$SAMPLE_NAME==s & ix))
+		for(j in which(mutationData$SAMPLE_NAME==s & ix)){
+			if(!is.na(cn[i]) & !is.na(cn[j]) & i!=j){
+				m <- round(matrix(c(mutationData$TUM_DEPTH[i]-min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i], 
+										min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i],
+										mutationData$TUM_DEPTH[j]-min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j],
+										min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j]), ncol=2))
+				f <- try(fisher.test(m, alternative="less")$p.value< 0.1 )#& m[2,1]/(m[1,1]+m[2,1]) + m[2,2]/(m[1,2]+m[2,2]) > 1)
+				if(class(f)!="try-error")
+					if(f){
+						precedence[as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])] <- precedence[as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])] + 1
+				l <- c(l, c(as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])))		
+				}
+				
+			}
+		}
+	plist[[s]] <- l
+}
+plist[1]
+precedence <- matrix(0, ncol=ncol(mutationTable), nrow=ncol(mutationTable), dimnames=list(colnames(mutationTable), colnames(mutationTable)))
+plist <- list()
+ix=mutationData$GENE %in% colnames(precedence) &mutationData$Result %in% c("ONCOGENIC")
+for(s in unique(mutationData$SAMPLE_NAME)){
+	l <- list()
+	for(i in which(mutationData$SAMPLE_NAME==s & ix))
+		for(j in which(mutationData$SAMPLE_NAME==s & ix)){
+			if(!is.na(cn[i]) & !is.na(cn[j]) & i!=j){
+				m <- round(matrix(c(mutationData$TUM_DEPTH[i]-min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i], 
+										min(mutationData$X._MUT_IN_TUM[i]/100*cn[i],1)*mutationData$TUM_DEPTH[i],
+										mutationData$TUM_DEPTH[j]-min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j],
+										min(mutationData$X._MUT_IN_TUM[j]/100*cn[j],1)*mutationData$TUM_DEPTH[j]), ncol=2))
+				f <- try(fisher.test(m, alternative="less")$p.value< 0.1 )#& m[2,1]/(m[1,1]+m[2,1]) + m[2,2]/(m[1,2]+m[2,2]) > 1)
+				if(class(f)!="try-error")
+					if(f){
+						precedence[as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])] <- precedence[as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])] + 1
+				l <- c(l, list(c(as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j]))))		
+				}
+				
+			}
+		}
+	plist[[s]] <- l
+}
+plist[1]
+plist[[1]]
+plist[[2]]
+plist[[3]]
+plist[[4]]
+plist[[5]]
+pit(table(sapply(l, length)>0))
+pie(table(sapply(l, length)>0))
+table(sapply(l, length)>0)
+pie(table(sapply(plist, length)>0))
+table(sapply(plist, length)>0)
+vafCn <- pmin(1,mutationData$X._MUT_IN_TUM/100*cn)
+quantile(vafCn)
+quantile(vafCn, na.rm)
+quantile(vafCn, na.rm=TRUE)
+acf <- sapply(split(vafCn),mutationData$SAMPLE_NAME, mean, na.rm=TRUE)
+acf <- sapply(split(vafCn,mutationData$SAMPLE_NAME), mean, na.rm=TRUE)
+quantile(acf)
+quantile(acf, na.rm=TRUE)
+quantile(acf, na.rm=TRUE, seq(0,1,0.1))
+length(acf)
+acf <- sapply(split(vafCn,mutationData$SAMPLE_NAME), max, na.rm=TRUE)
+quantile(acf, na.rm=TRUE, seq(0,1,0.1))
+vafCn <- mutationData$X._MUT_IN_TUM/100*cn
+quantile(vafCn, na.rm=TRUE, seq(0,1,0.1))
+vafCn <- mutationData$X._MUT_IN_TUM/100*cn
+vafCn[vafCn > 1.5] <- mutationData$X._MUT_IN_TUM
+vafCn[vafCn] > 1 <- 1
+vafCn[vafCn > 1] <- 1
+vafCn <- mutationData$X._MUT_IN_TUM/100*cn
+vafCn[vafCn > 1.5] <- mutationData$X._MUT_IN_TUM[vafCn > 1.5]
+vafCn[vafCn > 1] <- 1
+vafCn <- mutationData$X._MUT_IN_TUM/100*cn
+vafCn[which(vafCn > 1.25)] <- mutationData$X._MUT_IN_TUM[which(vafCn > 1.5)] ## Wrong CN adjust
+vafCn[vafCn > 1] <- 1 ## Random
+acf <- sapply(split(vafCn,mutationData$SAMPLE_NAME), max, na.rm=TRUE)
+vafCn <- mutationData$X._MUT_IN_TUM/100*cn
+vafCn[which(vafCn > 1.25)] <- mutationData$X._MUT_IN_TUM[which(vafCn > 1.25)] ## Wrong CN adjust
+vafCn[vafCn > 1] <- 1 ## Random
+acf <- sapply(split(vafCn,mutationData$SAMPLE_NAME), max, na.rm=TRUE)
+precedence <- matrix(0, ncol=ncol(mutationTable), nrow=ncol(mutationTable), dimnames=list(colnames(mutationTable), colnames(mutationTable)))
+plist <- list()
+ix=mutationData$GENE %in% colnames(precedence) &mutationData$Result %in% c("ONCOGENIC")
+for(s in unique(mutationData$SAMPLE_NAME)){
+	l <- list()
+	for(i in which(mutationData$SAMPLE_NAME==s & ix))
+		for(j in which(mutationData$SAMPLE_NAME==s & ix)){
+			if(!is.na(cn[i]) & !is.na(cn[j]) & i!=j){
+				m <- round(matrix(c(mutationData$TUM_DEPTH[i]-vafCn[i]*mutationData$TUM_DEPTH[i], 
+										vafCn[i]*mutationData$TUM_DEPTH[i],
+										mutationData$TUM_DEPTH[j]-vafCn[j]*mutationData$TUM_DEPTH[j],
+										vafCn[j]*mutationData$TUM_DEPTH[j]), ncol=2))
+				f <- try(fisher.test(m, alternative="less")$p.value< 0.1 )#& m[2,1]/(m[1,1]+m[2,1]) + m[2,2]/(m[1,2]+m[2,2]) > 1)
+				if(class(f)!="try-error")
+					if(f){
+						precedence[as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])] <- precedence[as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])] + 1
+				l <- c(l, list(c(as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j]))))		
+				}
+				
+			}
+		}
+	plist[[s]] <- l
+}
+
+makeDesign <- function(I) {
+	w <- which(lower.tri(I), arr.ind=TRUE)
+	x <- matrix(0, nrow(w), nrow(I))
+	for(i in 1:nrow(w)){
+		x[i,w[i,1]] <- 1
+		x[i,w[i,2]] <- -1
+	}
+	return(x)
+}
+
+btModel <- function(I){
+	y <- cbind(I[lower.tri(I)], t(I)[lower.tri(I)])
+	x <- makeDesign(I = I)
+	glm.fit(x=x[,-1],y=y, family=binomial())
+}
+
+w <- which(colSums(precedence) > 5)
+
+fit <- btModel(precedence[w,w])
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- rank(c)
+v <- sqrt(c(0,diag(chol2inv(fit$qr$qr))))
+sapply(split(mutationData$CHR, mutationData$GENE), unique)
+
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,names(c), font=3)
+vafCn <- mutationData$X._MUT_IN_TUM/100*cn
+vafCn[which(vafCn > 1.25)] <- mutationData$X._MUT_IN_TUM[which(vafCn > 1.25)] ## Wrong CN adjust
+vafCn[vafCn > 1] <- 1 ## Random
+acf <- sapply(split(vafCn,mutationData$SAMPLE_NAME), max, na.rm=TRUE)
+precedence <- matrix(0, ncol=ncol(mutationTable), nrow=ncol(mutationTable), dimnames=list(colnames(mutationTable), colnames(mutationTable)))
+plist <- list()
+ix=mutationData$GENE %in% colnames(precedence) &mutationData$Result %in% c("ONCOGENIC")
+for(s in unique(mutationData$SAMPLE_NAME)){
+	l <- list()
+	for(i in which(mutationData$SAMPLE_NAME==s & ix))
+		for(j in which(mutationData$SAMPLE_NAME==s & ix)){
+			if(!is.na(cn[i]) & !is.na(cn[j]) & i!=j){
+				m <- round(matrix(c(mutationData$TUM_DEPTH[i]-vafCn[i]*mutationData$TUM_DEPTH[i], 
+										vafCn[i]*mutationData$TUM_DEPTH[i],
+										mutationData$TUM_DEPTH[j]-vafCn[j]*mutationData$TUM_DEPTH[j],
+										vafCn[j]*mutationData$TUM_DEPTH[j]), ncol=2))
+				f <- try(fisher.test(m, alternative="less")$p.value< 0.1 )#& m[2,1]/(m[1,1]+m[2,1]) + m[2,2]/(m[1,2]+m[2,2]) > 1)
+				if(class(f)!="try-error")
+					if(f & vafCn[i] >= 2* vafCn[j]){
+						precedence[as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])] <- precedence[as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j])] + 1
+						l <- c(l, list(c(as.character(mutationData$GENE[i]),as.character(mutationData$GENE[j]))))		
+				}
+				
+			}
+		}
+	plist[[s]] <- l
+}
+
+makeDesign <- function(I) {
+	w <- which(lower.tri(I), arr.ind=TRUE)
+	x <- matrix(0, nrow(w), nrow(I))
+	for(i in 1:nrow(w)){
+		x[i,w[i,1]] <- 1
+		x[i,w[i,2]] <- -1
+	}
+	return(x)
+}
+
+btModel <- function(I){
+	y <- cbind(I[lower.tri(I)], t(I)[lower.tri(I)])
+	x <- makeDesign(I = I)
+	glm.fit(x=x[,-1],y=y, family=binomial())
+}
+
+w <- which(colSums(precedence) > 5)
+
+fit <- btModel(precedence[w,w])
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- rank(c)
+v <- sqrt(c(0,diag(chol2inv(fit$qr$qr))))
+sapply(split(mutationData$CHR, mutationData$GENE), unique)
+
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,names(c), font=3)
+colSums(precedence)
+rowSums(precedence)
+table(sapply(plist, function(x) unique(unlist(x))))
+table(unlist(sapply(plist, function(x) unique(unlist(x)))))
+nCasesGene <- table(unlist(sapply(plist, function(x) unique(unlist(x)))))
+w <- which(nCasesGene > 5)
+fit <- btModel(precedence[w,w])
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- rank(c)
+v <- sqrt(c(0,diag(chol2inv(fit$qr$qr))))
+sapply(split(mutationData$CHR, mutationData$GENE), unique)
+
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,names(c), font=3)
+w
+nCasesGene <- table(unlist(sapply(plist, function(x) unique(unlist(x)))))
+which(nCasesGene > 5)
+fit <- btModel(precedence[w,w])
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- rank(c)
+v <- sqrt(c(0,diag(chol2inv(fit$qr$qr))))
+fit <- btModel(precedence[w,w]+1)
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- rank(c)
+v <- sqrt(c(0,diag(chol2inv(fit$qr$qr))))
+sapply(split(mutationData$CHR, mutationData$GENE), unique)
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,names(c), font=3)
+fit <- btModel(precedence[w,w]+.5)
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- rank(c)
+v <- sqrt(c(0,diag(chol2inv(fit$qr$qr))))
+sapply(split(mutationData$CHR, mutationData$GENE), unique)
+
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,names(c), font=3)
+w <- which(nCasesGene > 0)
+
+fit <- btModel(precedence[w,w]+.5)
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- rank(c)
+v <- sqrt(c(0,diag(chol2inv(fit$qr$qr))))
+sapply(split(mutationData$CHR, mutationData$GENE), unique)
+
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,names(c), font=3)
+colSums(precedence)
+rowSums(precedence)
+fit <- btModel(precedence[w,w]+.1)
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- rank(c)
+v <- sqrt(c(0,diag(chol2inv(fit$qr$qr))))
+sapply(split(mutationData$CHR, mutationData$GENE), unique)
+
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,names(c), font=3)
+colnames(precedence)
+names(nCasesGene)
+nCasesGene <- table(factor(unlist(sapply(plist, function(x) unique(unlist(x))))), levels=colnames(precedence))
+w <- which(nCasesGene > 0)
+
+fit <- btModel(precedence[w,w]+.1)
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- rank(c)
+v <- sqrt(c(0,diag(chol2inv(fit$qr$qr))))
+sapply(split(mutationData$CHR, mutationData$GENE), unique)
+
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,names(c), font=3)
+nCasesGene <- table(factor(unlist(sapply(plist, function(x) unique(unlist(x)))), levels=colnames(precedence)))
+w <- which(nCasesGene > 0)
+
+fit <- btModel(precedence[w,w]+.1)
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- rank(c)
+v <- sqrt(c(0,diag(chol2inv(fit$qr$qr))))
+sapply(split(mutationData$CHR, mutationData$GENE), unique)
+
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,names(c), font=3)
+fit <- btModel(precedence[w,w])
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- rank(c)
+v <- sqrt(c(0,diag(chol2inv(fit$qr$qr))))
+sapply(split(mutationData$CHR, mutationData$GENE), unique)
+
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,names(c), font=3)
+w <- which(nCasesGene > 5)
+
+fit <- btModel(precedence[w,w])
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- rank(c)
+v <- sqrt(c(0,diag(chol2inv(fit$qr$qr))))
+sapply(split(mutationData$CHR, mutationData$GENE), unique)
+
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,names(c), font=3)
+
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,paste(names(c), sapply(split(mutationData$CHR, mutationData$GENE), unique)[w], nCasesGene[w]), font=3)
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,paste(names(c), ", chr",sapply(split(mutationData$CHR, mutationData$GENE),", n=" ,unique)[w], nCasesGene[w]))
+text(-c,o,paste(names(c), ", chr",sapply(split(mutationData$CHR, mutationData$GENE)," n=" ,unique)[w], nCasesGene[w]))
+text(-c,o,paste(names(c), ", chr",sapply(split(mutationData$CHR, mutationData$GENE) ,unique)[w], " n=",nCasesGene[w]))
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,paste(names(c), ", chr",sapply(split(mutationData$CHR, mutationData$GENE) ,unique)[w], ", n=",nCasesGene[w]), sep="")
+text(-c,o,paste(names(c), ", chr",sapply(split(mutationData$CHR, mutationData$GENE) ,unique)[w], ", n=",nCasesGene[w], sep=""))
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,paste(names(c), ", chr",sapply(split(mutationData$CHR, mutationData$GENE) ,unique)[w], ", n=",nCasesGene[w], sep=""))
+sapply(split(vafCn, mutationData$GENE))
+sapply(split(vafCn, mutationData$GENE), quantile, na.rm=TRUE)
+sapply(split(mutationData$X._MUT_IN_TUM, mutationData$GENE), quantile, na.rm=TRUE)
+plot(density(mutationData$X._MUT_IN_TUM[mutationData$GENE=="DNMT3A"]))
+plot(density(mutationData$X._MUT_IN_TUM[mutationData$GENE=="DNMT3A" & grepl("882", mutationData$AA_CHANGE)]))
+plot(density(mutationData$X._MUT_IN_TUM[mutationData$GENE=="DNMT3A" & grepl("882H", mutationData$AA_CHANGE)]))
+plot(density(mutationData$X._MUT_IN_TUM[mutationData$GENE=="DNMT3A" & grepl("882C", mutationData$AA_CHANGE)]))
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,paste(names(c), ", chr",sapply(split(mutationData$CHR, mutationData$GENE) ,unique)[w], ", n=",nCasesGene[w], sep=""))
+
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c,o,paste(names(c),  ", n=",nCasesGene[w], sep=""), font=3)
+pie(table(sapply(l, length)>0), add=TRUE)
+pie(table(sapply(plist, length)>0), add=TRUE)
+t <- table(sapply(plist, length)>0)
+pie(t, labels=t)
+ t
+t <- table(sapply(plist, length)>0)
+pie(t, labels=paste(t, c("clonal/NA","polyclonal")))
+?pie

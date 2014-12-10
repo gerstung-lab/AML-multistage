@@ -178,36 +178,6 @@ simSelectedInt
 simCoxFitInt <- coxph(simSurvival[trainIdx] ~ ., data=dataFrame[trainIdx,][,names(simSelectedInt)])
 summary(simCoxFitInt)
 
-#' 3. Extrapolations
-#' -----------------
-#' Simulate data 
-#+ simData, cache=TRUE
-set.seed(42)
-SimDataNonp
-data <- data.frame(Clinical=dataList$Clinical, Genetics=dataList$Genetics, Cytogenetics=dataList$Cytogenetics, Treatment=dataList$Treatment)
-simData <- SimDataNonp(data, nData = 10000, m=10)
-names(simData) <- names(data)
-
-#+ simDataFrame
-set.seed(42)
-g <- sub("\\..+","", colnames(data))
-colnames(simData) <- gsub("(Clinical|Genetics|Treatment|Cytogenetics).","", colnames(simData))
-for(w in which(colSums(simData,na.rm=TRUE) == 0))
-	simData[[w]] <- rbinom(nrow(simData),1,mean(data[[w]]))
-all(colSums(simData,na.rm=TRUE) != 0)
-simDataFrame <- data.frame(simData,
-		MakeInteractions(simData[,g=="Genetics"], simData[,g=="Genetics"])[,as.vector(upper.tri(matrix(0,ncol=sum(g=="Genetics"), nrow=sum(g=="Genetics"))))],
-		MakeInteractions(simData[,g=="Genetics"], simData[,g=="Cytogenetics"]),
-		MakeInteractions(simData[,g=="Genetics"], simData[,g=="Treatment"]),
-		MakeInteractions(simData[,g=="Cytogenetics"], simData[,g=="Treatment"]), check.names = FALSE
-)
-for(n in unique(which(is.na(simDataFrame), arr.ind = TRUE)[,2]))
-	simDataFrame[[n]] <- poorMansImpute(simDataFrame[[n]])
-simDataFrame <- StandardizeMagnitude(simDataFrame)
-simDataFrame <- simDataFrame[,colnames(dataFrame)]
-
-#simDataFrameTD <- simDataFrame[tplSplit,]
-#simDataFrameTD[which(tplIndex), grep("TPL", colnames(simDataFrameTD), value=TRUE)] <- 0 ## Set pre-tpl variables to zero 
 
 #' Coefficients
 set.seed(42)
