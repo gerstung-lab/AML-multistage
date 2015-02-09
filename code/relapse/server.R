@@ -14,12 +14,18 @@ set1 <- brewer.pal(8, "Set1")
 shinyServer(function(input, output) {
 			getData <- reactive({
 						l <- list()
-						for(n in colnames(coxRFXCirTD$Z))
-							l[[n]] <- as.numeric(input[[n]])
-						do.call("data.frame",l)
+						if(input[["pdid"]]=="other"){
+							for(n in colnames(coxRFXCirTD$Z))
+								l[[n]] <- as.numeric(input[[n]])
+							out <- do.call("data.frame",l)
+						}else{
+							out <- coxRFXCirTD$Z[input[["pdid"]],,drop=FALSE]
+							#for(n in colnames(coxRFXCirTD$Z))
+							#	input[[n]] <- out[1,n]
+						}
 					})
-			plotRisk <- function(coxRFX, data) {
-				plot(survfit(coxRFX), xlab="Days", ylab="Fraction", mark=NA, conf.int=FALSE, fun=function(x) 1-x, ylim=c(0,1), xlim=c(0,2000))
+			plotRisk <- function(coxRFX, data,xlab="Days", ylab="Incidence", mark=NA) {
+				plot(survfit(coxRFX), xlab=xlab, ylab=ylab, mark=mark, conf.int=FALSE, fun=function(x) 1-x, ylim=c(0,1), xlim=c(0,2000))
 				#lines(survfit(coxRFX$surv ~ 1), lty=3, mark=NA, fun=function(x) 1-x)
 				abline(h=seq(0,1,.2), lty=3)
 				abline(v=seq(0,2000,365), lty=3)
@@ -56,14 +62,14 @@ shinyServer(function(input, output) {
 					})
 			output$KM <- renderPlot({
 						par(mfrow=c(2,2), cex=1)
-						hazCir <- plotRisk(coxRFX = coxRFXCirTD, data = getData())
+						hazCir <- plotRisk(coxRFX = coxRFXCirTD, data = getData(), ylab="Incidence")
 						#lines(compRisk$`1 recurrence`$time, compRisk$`1 recurrence`$est, lty=2)
-						title("CIR")
-						hazNrm <- plotRisk(coxRFX = coxRFXNrmTD, data = getData())
+						title("Relapse")
+						hazNrm <- plotRisk(coxRFX = coxRFXNrmTD, data = getData(), ylab="Mortality")
 						#lines(compRisk$`1 dead`$time, compRisk$`1 dead`$est, lty=2)
-						title("NRM")
-						hazPrs <- plotRisk(coxRFX = coxRFXPrsTD, data = getData())
-						title("PRM")
+						title("Non-relapse mortality")
+						hazPrs <- plotRisk(coxRFX = coxRFXPrsTD, data = getData(), ylab="Mortality")
+						title("Post-relapse mortality")
 						l <- length(hazCir$inc)
 						#M <- matrix(0, nrow=l-1, ncol=l)
 						#for(i in seq_along(hazCir$inc)[-l])
@@ -130,7 +136,7 @@ shinyServer(function(input, output) {
 						points(x,y, pch=16, col=set1[1])
 						text(x, y, labels=round(y,2), pos=1)
 						legend("bottomright", col=set1[3:1], lty=1, c("Relapse","Non-relapse","Total"), bty="n")
-						title("OS")
+						title("Overall survival")
 					})
 
 		})
