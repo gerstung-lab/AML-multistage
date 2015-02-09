@@ -24,7 +24,7 @@ my_png <-  function(file, width, height, pointsize=12, ...) {
 
 #' #### Libraries
 library(CoxHD)
-source("../../mg14/R/mg14.R")
+library(mg14)
 set1 <- brewer.pal(8, "Set1")
 
 #' 1. Load data
@@ -958,6 +958,7 @@ grid.draw(venn.diagram(list(CPSS=selectedIntOs, BIC=names(coef(coxBICOs)), AIC=n
 				col=set1[1:3], fill=set1[1:3], alpha=0.3, euler.d=TRUE, fontfamily="Helvetica", cat.fontfamily="Helvetica", euler.diagram=TRUE))
 
 #' ### 8. Systematic cross-validation
+#' #### Static models
 #+allModelsCV, cache=TRUE, cache.lazy=FALSE
 replicates <- 100 ## number of replicates
 allModelsCV <- mclapply(1:replicates, function(foo){
@@ -1013,24 +1014,24 @@ allModelsCvC <- sapply(allModelsCvPredictions, function(x){
 			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
 			foo <<- foo +1		
 			apply(x, 2 , function(p){						
-						survConcordance(osYr[!trainIdx,] ~ p)
+						survConcordance(osYr[!trainIdx,] ~ p)$concordance
 					})
 		})
 apply(allModelsCvC,1,quantile)
-boxplot(t(allModelsCvC), ylim=c(0,0.5), notch=TRUE, ylab="OXS R2", border=colModels[2:6], las=2, lty=1, pch=16, staplewex=0)
+boxplot(t(allModelsCvC), ylim=c(0,0.5), notch=TRUE, ylab="Concordance", border=colModels, las=2, lty=1, pch=16, staplewex=0)
 
 #+ allModelsCvBoxplot, fig.width=2, fig.height=1.5
 par(mar=c(3,3,1,1),bty="n", mgp=c(2,.5,0), las=2)
-r <- sapply(as.data.frame(lapply(as.data.frame(t(apply(-allModelsCvC,1,rank))),factor, levels=1:6)),table)
-o <- order(colMeans(allModelsCvC))
-boxplot(allModelsCvC[,o], notch=TRUE, ylab="Concordance", staplewex=0, lty=1, pch=16, xaxt="n")
-rotatedLabel(1:6, rep(par("usr")[3],6), colnames(allModelsCvC)[o])
+r <- sapply(as.data.frame(lapply(as.data.frame(t(apply(-allModelsCvC,2,rank))),factor, levels=1:7)),table)
+o <- order(apply(allModelsCvC,1,median))
+boxplot(t(allModelsCvC[o,]), notch=TRUE, ylab="Concordance", staplewex=0, lty=1, pch=16, xaxt="n")
+rotatedLabel(1:7, rep(par("usr")[3],7), rownames(allModelsCvC)[o])
 
 #+ allModelsCvRank, fig.width=2, fig.height=1.5
 par(mar=c(3,3,3,1), xpd=NA, las=2, mgp=c(2,.5,0))
-barplot(r[,o]/replicates, col=set1[c(3,2,4,1,5,7)], ylab="Fraction", names.arg=rep("",ncol(r))) -> b
+barplot(r[,o]/replicates, col=c(set1[c(3,2,4,1,5,7)],"grey"), ylab="Fraction", names.arg=rep("",ncol(r))) -> b
 rotatedLabel(b, rep(par("usr")[3],6), colnames(allModelsCvC)[o])
-legend(par("usr")[1],1.5, fill=set1[c(3,2,4,1,5,7)], legend=1:6, bty="n", border=NA, horiz=TRUE, title="Rank")
+legend(par("usr")[1],1.5, fill=c(set1[c(3,2,4,1,5,7)],"grey"), legend=1:6, bty="n", border=NA, horiz=TRUE, title="Rank")
 
 
 #' Brier scores
@@ -1121,15 +1122,32 @@ for(i in 1:dim(allModelsCvAuc)[2]){
 }
 legend("bottomright", colnames(allModelsCvPredictions[[1]]), bty="n", lty=1, col=colModels)
 
+
+#' Wisdom of the Krauts?
+foo <- 1
+allModelsCvCKraut <- sapply(allModelsCvPredictions, function(x){
+			set.seed(foo)
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			foo <<- foo +1		
+			r <- rowMeans(apply(x, 2 , rank))
+			survConcordance(osYr[!trainIdx,] ~ r)$concordance
+		})
+quantile(allModelsCvCKraut)
+boxplot(cbind(t(allModelsCvC),allModelsCvCKraut), notch=TRUE, ylab="Concordance", border=c(colModels,1), las=2, lty=1, pch=16, staplewex=0)
+
+ranks <- apply(apply(-cbind(t(allModelsCvC),kraut=allModelsCvCKraut),1,rank, ties.method="random"),1,function(x) table(factor(x, levels=1:8)))
+ranks <- ranks[,order(1:8 %*% ranks)]
+
 #' Clean up.. 
 rm(allModelsCV)
 
+#' #### Time-dep models
 
 #+ allModelsCVTD, cache=TRUE
 replicates <- 100 ## number of replicates
 allModelsCVTD <- mclapply(1:replicates, function(foo){
 			set.seed(foo)
-			trainIdx <- sample(1:nrow(dataFrameOsTD)%%5 +1 )[tplSplitOs]!=1 ## sample 1/5
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )[tplSplitOs]!=1 ## sample 1/5
 			c <- coxph(osTD[trainIdx] ~ 1, data=dataFrameOsTD[trainIdx,mainIdxOsTD])
 			scopeStep <- as.formula(paste("osTD[trainIdx] ~", paste(colnames(dataFrameOsTD)[mainIdxOsTD], collapse="+")))
 			coxBICOsTrain <- step(c, scope=scopeStep, k = log(sum(trainIdx)), trace=0)
@@ -1152,10 +1170,10 @@ allModelsCVTD <- mclapply(1:replicates, function(foo){
 allModelsCvTdPredictions <- mclapply(seq_along(allModelsCVTD), function(foo){
 			set.seed(foo)
 			x <- allModelsCVTD[[foo]]
-			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
-			cbind(ELN=c(4,1,3,2)[clinicalData$M_Risk[!trainIdx]],
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )[tplSplitOs]!=1
+			cbind(ELN=c(4,1,3,2)[clinicalData$M_Risk[tplSplitOs][!trainIdx]],
 					sapply(x, function(y){
-								predictAllModels(y, newdata=dataFrame[!trainIdx,])
+								predictAllModels(y, newdata=dataFrameOsTD[!trainIdx,])
 							}))
 		}, mc.cores=10)
 
@@ -1164,30 +1182,30 @@ allModelsCvTdPredictions <- mclapply(seq_along(allModelsCVTD), function(foo){
 foo <- 1
 allModelsCvTdC <- sapply(allModelsCvTdPredictions, function(x){
 			set.seed(foo)
-			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )[tplSplitOs]!=1 ## sample 1/5
 			foo <<- foo +1		
 			apply(x, 2 , function(p){						
-						survConcordance(osYr[!trainIdx,] ~ p)
+						survConcordance(osYrTD[!trainIdx,] ~ p)$concordance
 					})
 		})
 apply(allModelsCvTdC,1,quantile)
-boxplot(t(allModelsCvTdC), ylim=c(0,0.5), notch=TRUE, ylab="OXS R2", border=colModels[2:6], las=2, lty=1, pch=16, staplewex=0)
+boxplot(t(allModelsCvTdC), ylim=c(0,0.5), notch=TRUE, ylab="Concordance", border=colModels, las=2, lty=1, pch=16, staplewex=0)
 
 
 #+ allModelsCvTdCBoxplot, fig.width=1.5, fig.height=1.5
 par(mar=c(3,3,1,1),bty="n", mgp=c(2,.5,0), las=2)
-r <- sapply(as.data.frame(lapply(as.data.frame(t(apply(-allModelsCvTdC,1,rank))),factor, levels=1:6)),table)
-o <- order(colMeans(allModelsCvTdC))
-boxplot(allModelsCvTdC[,o], notch=TRUE, ylab="Concordance", staplewex=0, lty=1, pch=16, xaxt="n")
-rotatedLabel(1:ncol(allModelsCvTdC), rep(par("usr")[3],ncol(allModelsCvTdC)), colnames(allModelsCvTdC)[o])
+r <- sapply(as.data.frame(lapply(as.data.frame(t(apply(-allModelsCvTdC,2,rank))),factor, levels=1:6)),table)
+o <- order(apply(allModelsCvTdC,1,median))
+boxplot(t(allModelsCvTdC[o,]), notch=TRUE, ylab="Concordance", staplewex=0, lty=1, pch=16, xaxt="n")
+rotatedLabel(1:nrow(allModelsCvTdC), rep(par("usr")[3],ncol(allModelsCvTdC)), rownames(allModelsCvTdC)[o])
 
 #+ allModelsCvTdCRank, fig.width=1.5, fig.height=1.5
 par(mar=c(3,3,3,1), xpd=NA, las=2, mgp=c(2,.5,0))
 barplot(r[,o]/replicates, col=set1[c(3,2,4,1,5,7)][1:ncol(allModelsCvTdC)], ylab="Fraction", names.arg=rep("",ncol(r))) -> b
 rotatedLabel(b, rep(par("usr")[3],ncol(allModelsCvTdC)), colnames(allModelsCvTdC)[o])
-legend(par("usr")[1],1.5, fill=set1[c(3,2,4,1,5,7)][1:ncol(allModelsCvTdC)], legend=1:ncol(allModelsCvTdC), bty="n", border=NA, horiz=TRUE, title="Rank")
+legend(par("usr")[1],1.5, fill=set1[c(3,2,4,1,5,7)][1:nrow(allModelsCvTdC)], legend=1:nrow(allModelsCvTdC), bty="n", border=NA, horiz=TRUE, title="Rank")
 
-
+#' #### Different RFX models
 
 #' RFX models with different interaction terms
 #+ allModelsCvRfx, cache=TRUE
@@ -1225,7 +1243,54 @@ legend(par("usr")[1],1.5, fill=set1[c(3,2,4,1,5,7)][1:ncol(allModelsCvRfxC)], le
 
 
 
+#' #### Inter-study CV
+#+ allModelsTrial, cache=TRUE
+allModelsTrial <- mclapply(levels(clinicalData$Study), function(foo){
+			#set.seed(foo)
+			trainIdx <- clinicalData$Study != foo 
+			c <- coxph(os[trainIdx] ~ 1, data=dataFrame[trainIdx,mainIdxOs])
+			scopeStep <- as.formula(paste("os[trainIdx] ~", paste(colnames(dataFrame)[mainIdxOs], collapse="+")))
+			coxBICOsTrain <- step(c, scope=scopeStep, k = log(sum(trainIdx)), trace=0)
+			coxAICOsTrain <- step(coxBICOsTrain, scope=scopeStep, k = 2, trace=0)
+			coxCPSSOsTrain <- CoxCPSSInteractions(dataFrame[!is.na(os) & trainIdx, mainIdxOs], na.omit(os[trainIdx]), bootstrap.samples=50, scope = which(groups %in% scope))
+			w <- colnames(dataFrame[mainIdxOs])
+			w <- setdiff(w, names(which(colSums(dataFrame[trainIdx,w])==0)))
+			coxRFXOsTrain <- CoxRFX(dataFrame[trainIdx,w], os[trainIdx], groups=groups[w], nu = if(foo=="AMLSG0704") 1 else 0) # add prior for 0704 (just one group member)
+			coxRFXOsTrain$Z <- NULL
+			w <- whichRFXOsGG
+			w <- setdiff(w, which(colSums(dataFrame[trainIdx,w])==0))
+			coxRFXOsGGc <- CoxRFX(dataFrame[trainIdx,w], os[trainIdx], groups=groups[w], which.mu=mainGroups, nu = if(foo=="AMLSG0704") 1 else 0)
+			coxRFXOsGGc$Z <- NULL
+			rForestOsTrain <- rfsrc(Surv(time, status) ~.,data= cbind(time = os[,1], status = os[,2], dataFrame[,mainIdxOs])[trainIdx,], ntree=100, importance="none")
+			return(list(
+							BIC=coxBICOsTrain,
+							AIC=coxAICOsTrain,
+							CPSS=coxCPSSOsTrain,
+							RFX=coxRFXOsTrain,
+							RFXgg=coxRFXOsGGc,
+							rForest=rForestOsTrain
+					))
+		}, mc.cores=3)
+names(allModelsTrial) <- levels(clinicalData$Study)
 
+allModelsTrialPredictions <- mclapply(names(allModelsTrial), function(foo){
+			x <- allModelsTrial[[foo]]
+			trainIdx <- clinicalData$Study != foo
+			cbind(ELN=c(4,1,3,2)[clinicalData$M_Risk[!trainIdx]],
+					sapply(x, function(y){
+								predictAllModels(y, newdata=dataFrame[!trainIdx,])
+							}))
+		}, mc.cores=10)
+names(allModelsTrialPredictions) <- names(allModelsTrial)
+
+allModelsTrialC <- sapply(names(allModelsTrial), function(foo){
+			trainIdx <- clinicalData$Study != foo
+			apply(allModelsTrialPredictions[[foo]], 2 , function(p){						
+						survConcordance(osYr[!trainIdx,] ~ p)$concordance
+					})
+		})
+
+allModelsTrialC
 
 
 		
@@ -1936,6 +2001,16 @@ plot(sapply(subsetGenes, function(x) sapply(x, function(y) y[[7]]*sum(y[[6]][1:5
 plot(sapply(subsetGenes, function(x) sapply(x, function(y) y[[7]]*sum(y[[6]][1:58]))), sapply(subsetGenes, function(x) sapply(x, function(y) {t <- try(sum(y[[3]][c("Genetics"),c("Genetics")])); ifelse(class(t)=="try-error",NA,t)})), xlab="Mean no. of drivers", ylab="Variance")
 plot(sapply(subsetGenes, function(x) sapply(x, function(y) y[[7]]*sum(y[[6]][1:58]))), sapply(subsetGenes, function(x) sapply(x, function(y) {t <- try(sum(y[[3]][c("GeneGene"),c("GeneGene")])); ifelse(class(t)=="try-error",NA,t)})), xlab="Mean no. of drivers", ylab="Variance")
 plot(sapply(subsetGenes, function(x) sapply(x, function(y) y[[7]]*sum(y[[6]][1:58]))), sapply(subsetGenes, function(x) sapply(x, function(y) {t <- try(sum(y[[3]][c("Genetics","GeneGene"),c("Genetics","GeneGene")])); ifelse(class(t)=="try-error",NA,t)})), xlab="Mean no. of drivers", ylab="Variance")
+
+#+ subsetGenesPlotTCGA, fig.width=2.5, fig.height=2.5
+plot(sapply(subsetGenes, function(x) sapply(x, function(y) y[[7]]*sum(y[[6]][1:58]))), sapply(subsetGenes, function(x) sapply(x, function(y) {t <- try(sum(y[[3]][c("Genetics","GeneGene"),c("Genetics","GeneGene")])); ifelse(class(t)=="try-error",NA,t)})), xlab="Mean no. of drivers", ylab=expression(paste(Var,"[",h[g],"]")), xlim=c(0,3.8), ylim=c(0,.35), pch=16, col=c("#00000044"))
+x <- c(0,3.7)
+s <- coxRFXFitOsTDGGc$sigma2["Genetics"]
+segments(c(2.3, 3.7), rep(par("usr")[3],2), c(2.3, 3.7), c(2.3, 3.7) * s, col="grey")
+segments( rep(par("usr")[1],2),  c(2.3, 3.7) * s, c(2.3, 3.7), c(2.3, 3.7) * s, col="grey")
+lines(x, x*s, col="red")
+par(xpd=NA)
+axis(at=c(2.3, 3.7), labels=c("111 genes", "TCGA (exome)"), tcl=0.5, side=1, mgp=c(-2.5,-2,0))
 
 #' 8. Extrapolations
 #' -----------------

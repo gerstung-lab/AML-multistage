@@ -46,11 +46,13 @@ image(x=rep(ncol(interactions),2)+c(2,3), y=(12:13) -0.5, z=matrix(1), col=brewe
 mtext(side=4, at=12:10, c("P > 0.05", "BH < 0.1", "Bf. < 0.05"), cex=.5, line=0.2)
 dev.off()
 
-colRamp <- colorRampPalette(set1[c(3,2,4,1)])
+colRamp <- colorRampPalette(set1[c(3,2,4,1,5)])
 
+t <- table(rowSums(genomicData, na.rm=TRUE))
 pdf("nOnc.pdf",4,3,pointsize=8)
-par(mar=c(3,3,0,0)+.1, mgp=c(2,0.5,0), bty="n")
-barplot(t,col=colRamp(11), xlab="Oncogenic mutations", ylab="# Cases")
+par(mar=c(3,3,.2,.2)+.1, mgp=c(2,0.5,0), bty="n")
+barplot(t/1540,col=colRamp(length(t)), xlab="Oncogenic mutations", ylab="Relative frequency", border=NA)
+abline(h=seq(0.05,0.25,0.05), col="white")
 dev.off()
 
 pdf("nOncSurv.pdf",3,2.5, pointsize=8)
@@ -127,10 +129,12 @@ for(g in levels(groups)){
 
 pdf("barplot.pdf", 7,2.5, pointsize=8)
 par(mar=c(5,4,1,1))
-s <- sort(colSums(dataFrame[groups %in% c("Genetics","Cytogenetics")]), d=TRUE)
-barplot(s/nrow(dataFrame), col=col1[as.character(groups[names(s)])], las=2, border=NA, ylab="Rel. frequency", names=NA)
+w <- c("Genetics","CNA","BT")
+s <- sort(colSums(dataFrame[groups %in% w]), d=TRUE)
+barplot(s/nrow(dataFrame), col=colGroups[as.character(groups[names(s)])], las=2, border=NA, ylab="Relative frequency", names=NA)
 rotatedLabel(.Last.value, rep(0, length(s)), names(s), cex=.5)
-legend("topright", fill=col1[c("Genetics","Cytogenetics")], c("Genetics","Cytogenetics"), bty="n", border=NA)
+legend("topright", fill=colGroups[w], w, bty="n", border=NA)
+abline(h=seq(0.05,0.25,0.05), col="lightgrey")
 dev.off()
 
 load("../cv.RData")
@@ -1566,46 +1570,7 @@ ResidualNonp <- function(fit){
 }
 
 
-allModelsTrial <- mclapply(levels(clinicalData$Study), function(foo){
-			#set.seed(foo)
-			trainIdx <- clinicalData$Study != foo 
-			c <- coxph(os[trainIdx] ~ 1, data=dataFrame[trainIdx,mainIdxOs])
-			scopeStep <- as.formula(paste("os[trainIdx] ~", paste(colnames(dataFrame)[mainIdxOs], collapse="+")))
-			coxBICOsTrain <- step(c, scope=scopeStep, k = log(sum(trainIdx)), trace=0)
-			coxAICOsTrain <- step(coxBICOsTrain, scope=scopeStep, k = 2, trace=0)
-			coxCPSSOsTrain <- CoxCPSSInteractions(dataFrame[!is.na(os) & trainIdx, mainIdxOs], na.omit(os[trainIdx]), bootstrap.samples=50, scope = which(groups %in% scope))
-			coxRFXOsTrain <- CoxRFX(dataFrame[trainIdx,mainIdxOs], os[trainIdx], groups=groups[mainIdxOs])
-			coxRFXOsTrain$Z <- NULL
-			coxRFXOsGGc <- CoxRFX(dataFrame[trainIdx,whichRFXOsGG], os[trainIdx], groups=groups[whichRFXOsGG], which.mu=mainGroups)
-			coxRFXOsGGc$Z <- NULL
-			rForestOsTrain <- rfsrc(Surv(time, status) ~.,data= cbind(time = os[,1], status = os[,2], dataFrame[,mainIdxOs])[trainIdx,], ntree=100, importance="none")
-			return(list(
-							BIC=coxBICOsTrain,
-							AIC=coxAICOsTrain,
-							CPSS=coxCPSSOsTrain,
-							RFX=coxRFXOsTrain,
-							RFXgg=coxRFXOsGGc,
-							rForest=rForestOsTrain
-					))
-		}, mc.cores=3)
-names(allModelsTrial) <- levels(clinicalData$Study)
 
-allModelsTrialPredictions <- mclapply(names(allModelsTrial), function(foo){
-			x <- allModelsCV[[foo]]
-			trainIdx <- clinicalData$Study != foo
-			cbind(ELN=c(4,1,3,2)[clinicalData$M_Risk[!trainIdx]],
-					sapply(x, function(y){
-								predictAllModels(y, newdata=dataFrame[!trainIdx,])
-							}))
-		}, mc.cores=10)
-
-
-allModelsTrialC <- sapply(names(allModelsTrial), function(foo){
-			trainIdx <- clinicalData$Study != foo
-			apply(allModelsTrialPredictions[[foo]], 2 , function(p){						
-						survConcordance(osYr[!trainIdx,] ~ p)
-					})
-		})
 
 apply(allModelsCvC,1,quantile)
 boxplot(t(allModelsCvC), ylim=c(0,0.5), notch=TRUE, ylab="OXS R2", border=colModels[2:6], las=2, lty=1, pch=16, staplewex=0)
@@ -1637,3 +1602,264 @@ tmp3 <- sapply(allModelsCV, function(x){
 			p <- predictAllModels(x[[4]], newdata=dataFrame[!trainIdx,])
 			survConcordance(os[!trainIdx]~p)$concordance
 		})
+
+#' Wisdom of the Krauts?
+foo <- 1
+allModelsCvCKraut <- sapply(allModelsCvPredictions, function(x){
+			set.seed(foo)
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			foo <<- foo +1		
+			r <- rowMeans(apply(x, 2 , rank))
+			survConcordance(osYr[!trainIdx,] ~ r)$concordance
+		})
+quantile(allModelsCvCKraut)
+boxplot(cbind(t(allModelsCvC),allModelsCvCKraut), notch=TRUE, ylab="Concordance", border=c(colModels,1), las=2, lty=1, pch=16, staplewex=0)
+
+ranks <- apply(apply(-cbind(t(allModelsCvC),kraut=allModelsCvCKraut),1,rank, ties.method="random"),1,function(x) table(factor(x, levels=1:8)))
+ranks <- ranks[,order(1:8 %*% ranks)]
+
+
+ 
+v <- 10^seq(-3,3, 0.01)
+pdf("CvVar.pdf", 2.5,2, pointsize=8)
+par(mar=c(3,3,1,1)+.1, mgp=c(2,0.5,0), bty="n")
+plot(v, CoxHD:::ConcordanceFromVariance(v), type="l", log='x', xlab="Var[h]", ylab="Concordance", ylim=c(0.5,1))
+abline(h=seq(0.5,1,0.1), col="grey")
+abline(v=10^seq(-3,3,1), col="grey")
+lines(v, CoxHD:::ConcordanceFromVariance(v), type="l", lwd=2)
+dev.off()
+
+
+cppFunction('int add(int x, int y, int z) {
+				int sum = x + y + z;
+				return sum;
+				}')
+
+
+rfxglm <- function(x,y, family, tol=1e-3, ...){
+	lambda <- 1
+	lambda0 <- 0
+	lambdaSeq <- function(x) {
+		xl <- log10(x)
+		10^seq(xl + 2, xl, length.out=100)
+	}
+	i <- 0
+	while(abs(lambda - lambda0) > tol){
+		fit <- glmnet(x,y,family, alpha=0, standardize=FALSE, lambda=lambdaSeq(lambda))
+		d <- dim(coef(fit))
+		lambda0 <- lambda
+		lambda <- 1/var(coef(fit)[,d[2]])
+		i <- i+1
+		cat(i,"\t",lambda,"\n")
+	}
+	fit
+}
+
+library(flexmix)
+n <- names(which(colSums(dataList$Genetics) > 50))
+#n <- c("NPM1","DNMT3A","FLT3_ITD","FLT3_TKD","IDH1")
+dl <- dataFrame[,n]
+dl <- reshape(dl, direction='long', varying=colnames(dl), v.names="presence", timevar="gene" )
+dl$gene <- factor(dl$gene, labels=n)
+fit1<-stepFlexmix(cbind(presence,1-presence)~ -1 + gene|id, data=dl, k=5, model=FLXglm(family="binomial"), nrep=1)
+1/(1+exp(-parameters(fit1)))
+fit2 <- flexmix(presence~gene|id, data=dl, k=5, model=FLXMRmultinom())
+1/(1+exp(-parameters(fit2)))
+
+
+y<-c(rep(0,30-2),rep(1,2),
+		rep(0,30-8),rep(1,8),
+		rep(0,30-15),rep(1,15),
+		rep(0,30-23),rep(1,23),
+		rep(0,30-27),rep(1,27))
+
+x<-c(rep(0,30),
+		rep(1,30),
+		rep(2,30),
+		rep(3,30),
+		rep(4,30))
+
+# Initial state
+state <- NULL
+
+# MCMC parameters
+nburn<-5000
+nsave<-10000
+nskip<-10
+ndisplay<-100
+mcmc <- list(nburn=nburn,nsave=nsave,nskip=nskip,ndisplay=ndisplay,
+		tune=1.1)
+
+prior <- list(a0=2,b0=1,beta0=rep(0,2), Sbeta0=diag(10000,2))
+
+# Fit the model
+fit1 <- DPbinary(y~x,prior=prior,mcmc=mcmc,state=state,status=TRUE) 
+fit1
+
+# Summary with HPD and Credibility intervals
+summary(fit1)
+summary(fit1,hpd=FALSE)
+
+# Plot model parameters (to see the plots gradually set ask=TRUE)
+plot(fit1)
+plot(fit1,nfigr=2,nfigc=2)	
+
+# Plot an specific model parameter (to see the plots gradually 
+# set ask=TRUE)
+plot(fit1,ask=FALSE,nfigr=1,nfigc=2,param="x")	
+plot(fit1,ask=FALSE,nfigr=1,nfigc=2,param="ncluster")	
+plot(fit1,ask=FALSE,param="link",nfigc=1,nfigr=1)
+
+# Table of Pseudo Contour Probabilities
+anova(fit1)
+
+# Predictive Distribution
+npred<-40  
+xnew<-cbind(rep(1,npred),seq(0,4,length=npred))
+
+pp<-predict(fit1,xnew)       
+
+plot(seq(0,4,length=npred),pp$pmean,type='l',ylim=c(0,1),
+		xlab="log2(concentration)",ylab="Probability")
+
+# Adding MLE estimates
+points(c(0,1,2,3,4),c(0.067,0.267,0.500,0.767,0.900),col="red")
+
+
+
+## NR3
+
+
+##Add one parent DP for each group
+#for(i in 1:num_groups){
+#	hdp <- hdp_adddp(hdp,
+#			numdp=1, # one parent DP for every cancer type
+#			pp=1, # index of parent DP
+#			cp=1+i) # index of alphaa and alphab for each DP
+#}
+#
+##Add one child DP for each sample
+#for (i in 1:num_groups){
+#	hdp <- hdp_adddp(hdp,
+#			info[[cancer_names[i]]]$num_samples, # one DP for every sample in that cancer type
+#			pp=(i+1), # parent DP for group i is the i-th+1 overall DP because of the grandparent at position 1
+#			cp=(1+num_groups+i)) # index of alphaa and alphab for each DP
+#}
+## Assign the data from each patient to a child DP
+#for (i in 1:num_groups){
+#	hdp <- hdp_setdata(hdp, info[[cancer_names[i]]]$dp_index, allmuts[info[[cancer_names[i]]]$allmuts_index,])
+#}
+
+library(hdp)
+
+set.seed(42)
+binomialImpute <- function(x) {x[is.na(x)] <- rbinom(sum(is.na(x)), 1, mean(x, na.rm=TRUE)); return(x)}
+d <- as.matrix(dataFrame[groups %in% c("Genetics","BT","CNA")])
+d[!d %in% c(0,1)] <- NA
+#genotypesImputed <- Matrix(apply(d,2, binomialImpute))
+genotypesImputed <- Matrix(round(ImputeMissing(d)))
+
+n <- ncol(genotypesImputed)
+shape <- 1
+invscale <- 1
+hdp <- hdp_init(ppindex=0, #index of the parent DP for initial DP
+		cpindex=1, #index of alphaa and alphab for initial DP
+		hh=rep(1/n,n), #params for base distn (uniform Dirichlet)
+		alphaa=shape,
+		alphab=invscale)
+
+
+hdp <- hdp_adddp(hdp,
+		numdp=nrow(genotypesImputed), # one DP for every sample in that cancer type
+		pp=1, # parent DP for group i is the i-th+1 overall DP because of the grandparent at position 1
+		cp=1) # index of alphaa and alphab for each DP
+
+# Assign the data from each patient to a child DP
+hdp <- hdp_setdata(hdp = hdp, dpindex=1:nrow(genotypesImputed)+1, data=genotypesImputed)
+
+# Activate the DPs with specified number of classes (signatures)
+hdp <- dp_activate(hdp, 1:(nrow(genotypesImputed)+1), 5)
+
+#20 25000 1000 20 10
+
+
+set.seed(42)
+
+burnin <- 5000
+postsamples <- 10000
+spacebw <- 20
+cpsamples <- 10
+output <- hdp_posterior(hdp, #activated hdp structure
+		numburnin=burnin,
+		numsample=postsamples,
+		numspace=spacebw,
+		doconparam=cpsamples)
+
+pdf("plots.pdf")
+plot_hdp_lik(output$lik, burnin)
+
+plot_hdp_numclass_raw(output$numclass)
+plot_hdp_data_assigned(output$classqq, output$numclass)
+dev.off()
+
+
+
+sigs <- hdp_extract_signatures(output, prop.explained=0.99, cos.merge=0.95)
+
+o <- order(apply(sapply(sigs$sigs_nd_by_dp, colMeans),2,which.max))
+barplot(apply(sapply(sigs$sigs_nd_by_dp, colMeans),2,function(x) x/sum(x))[,o[o!=1]], col=1:10, border=NA)
+
+s <- Reduce("+",sigs$sigs_qq)/length(sigs$sigs_qq)
+rownames(s) <- colnames(genotypesImputed)
+
+apply(s, 2, function(x) paste(rownames(s)[order(x, decreasing = TRUE)[1:5]], collapse=":"))
+
+sigBayes <- function(genotype, sigs){
+	dSig <- function(sig,genotype){
+		dmultinom(genotype, prob=sig/sum(sig))
+	}
+	lik <- apply(sigs,2, dSig, genotype)
+	lik/sum(lik)
+}
+
+naiveBayes <- t(apply(genotypesImputed,1,sigBayes,s))
+
+bestGuess <- apply(naiveBayes, 1, which.max)-1
+
+## HDP transposed
+genotypesImputedTransposed <- t(genotypesImputed)
+m <- ncol(genotypesImputedTransposed)
+shape <- 1
+invscale <- 1
+hdpt <- hdp_init(ppindex=0, #index of the parent DP for initial DP
+		cpindex=1, #index of alphaa and alphab for initial DP
+		hh=rep(1/m,m), #params for base distn (uniform Dirichlet)
+		alphaa=shape,
+		alphab=invscale)
+
+
+hdpt <- hdp_adddp(hdpt,
+		numdp=nrow(genotypesImputedTransposed), # one DP for every sample in that cancer type
+		pp=1, # parent DP for group i is the i-th+1 overall DP because of the grandparent at position 1
+		cp=1) # index of alphaa and alphab for each DP
+
+# Assign the data from each patient to a child DP
+hdpt <- hdp_setdata(hdp = hdpt, dpindex=1:nrow(genotypesImputedTransposed)+1, data=genotypesImputedTransposed)
+
+# Activate the DPs with specified number of classes (signatures)
+hdpt <- dp_activate(hdpt, 1:(nrow(genotypesImputedTransposed)+1), 5)
+
+#20 25000 1000 20 10
+
+
+set.seed(42)
+
+burnin <- 5000
+postsamples <- 10000
+spacebw <- 20
+cpsamples <- 10
+outputTransposed <- hdp_posterior(hdpt, #activated hdp structure
+		numburnin=burnin,
+		numsample=postsamples,
+		numspace=spacebw,
+		doconparam=cpsamples)
