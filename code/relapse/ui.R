@@ -7,31 +7,35 @@
 library(shiny)
 library(CoxHD)
 load("predict.RData")
-pdid <- "other"
+data <- coxRFXCirTD$Z
 
 # Define UI for application that plots random distributions 
-shinyUI(pageWithSidebar(
+shinyUI(fluidPage(
 				
 				# Application title
-				headerPanel("AML prediction"),
+			    titlePanel("AML prediction tool"),
 				
-				# Sidebar with a slider input for number of observations
-				do.call("sidebarPanel", 
-						c(selectInput("pdid", "Select sample", c("other",rownames(coxRFXCirTD$Z)), selected = "1", multiple=FALSE),
-								lapply(c("transplantRel",names(sort(apply(coxRFXCirTD$Z,2,var)*coef(coxRFXCirTD)^2, decreasing=TRUE)[-100])), 
-										function(x) {
-											if(crGroups[x] %in% c("Genetics","CNA","BT","Treatment"))
-												radioButtons(x, paste(x, " (mean=",round(mean(coxRFXCirTD$Z[,x]), 2),"; HR_CIR=",round(exp(coef(coxRFXCirTD)[x]),2),"; HR_NRM=",round(exp(coef(coxRFXNrmTD)[x]),2),"; HR_PRM=",round(exp(coef(coxRFXPrsTD)[x]),2),")", sep=""), choices=c("present"= 1, "absent"=0, "NA"="NA"), selected="NA") 
-											else
-												numericInput(x, paste(x, " (mean=",round(mean(coxRFXCirTD$Z[,x]), 2),"; HR_CIR=",round(exp(coef(coxRFXCirTD)[x]),2),"; HR_NRM=",round(exp(coef(coxRFXNrmTD)[x]),2),"; HR_PRM=",round(exp(coef(coxRFXPrsTD)[x]),2),")", sep=""), ifelse(pdid=="other",NA,coxRFXCirTD$Z[pdid,x]) )
-										}
-								))
-				),
-				# Show a plot of the generated distribution
-				mainPanel(
-						plotOutput(outputId="KM",height="600px"),
-						tableOutput(outputId = "Risk"),
-						tableOutput(outputId = "Tab")
-				)
+				fluidRow(
+							# Sidebar with a slider input for number of observations
+							column(3, 
+									wellPanel(
+												selectInput("pdid", "Select sample", c("reset",rownames(data)), selected = "1", multiple=FALSE) ## select sample
+											),
+									wellPanel(
+												uiOutput("ui")
+											)
+							),
+							
+							# Show a plot of the generated distribution
+							column(8,
+									plotOutput(outputId="KM",height="600px"),
+									tabsetPanel(
+											tabPanel('Risk',
+													dataTableOutput("Risk")),
+											tabPanel("Coefficients",
+													dataTableOutput("Tab"))
+									))
+
+						)
 		))
 

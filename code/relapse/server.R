@@ -9,20 +9,46 @@ library(RColorBrewer)
 library(CoxHD)
 load("predict.RData")
 set1 <- brewer.pal(8, "Set1")
-
+data <- coxRFXCirTD$Z
 # Define server logic required to generate and plot a random distribution
 shinyServer(function(input, output) {
 			getData <- reactive({
 						l <- list()
-						if(input[["pdid"]]=="other"){
-							for(n in colnames(coxRFXCirTD$Z))
-								l[[n]] <- as.numeric(input[[n]])
-							out <- do.call("data.frame",l)
-						}else{
-							out <- coxRFXCirTD$Z[input[["pdid"]],,drop=FALSE]
-							#for(n in colnames(coxRFXCirTD$Z))
-							#	input[[n]] <- out[1,n]
+						for(n in colnames(data)){
+							l[[n]] <- as.numeric(input[[n]])
+							if(is.null(input[[n]])) l[[n]] <- NA
 						}
+						out <- do.call("data.frame",l)
+						return(out)
+	
+					})
+			output$ui <- renderUI({
+						pdid <- input[["pdid"]]
+						if(is.null(pdid)) pdid <- "reset"
+						if( pdid=="reset"){
+							#cat("reset\n")
+							defaults <- data[1,]
+							defaults[] <- NA
+						}else
+							defaults <- data[pdid,]
+						
+						defaults <- as.numeric(defaults)
+						names(defaults) <- colnames(data)
+						#cat(defaults,"\n")
+						
+						variables <- c("transplantRel",names(sort(apply(data,2,var)*coef(coxRFXCirTD)^2, decreasing=TRUE)[-100]))
+						lapply(variables, 
+												function(x) {
+													d <- defaults[x]
+													if(crGroups[x] %in% c("Genetics","CNA","BT","Treatment")){
+														if(!d %in% c(0,1)) d <- NA
+														d <- paste(d)
+														radioButtons(x, x, choices=c("present"= "1", "absent"="0", "NA"="NA"), selected=d)
+													}else{
+														numericInput(inputId=x, label=x, value=d, min=min(data[,x], na.rm=TRUE), max=max(data[,x],na.rm=TRUE) , step=1e-9)
+												}}
+										
+						)
 					})
 			plotRisk <- function(coxRFX, data,xlab="Days", ylab="Incidence", mark=NA) {
 				plot(survfit(coxRFX), xlab=xlab, ylab=ylab, mark=mark, conf.int=FALSE, fun=function(x) 1-x, ylim=c(0,1), xlim=c(0,2000))
@@ -45,20 +71,20 @@ shinyServer(function(input, output) {
 				legend(ifelse((1-inc[length(inc)])>.5, "bottomright","topright"), c("Population avg","Predicted","95% CI"),bty="n", lty=c(1,1,NA), fill=c(NA,NA,paste("#FF000044",sep="")), border=c(NA,NA,NA), col=c(1,2,NA))
 				return(list(inc=inc, r=r, x=x, hazardDist=hazardDist, r0 = coxRFX$means %*% coef(coxRFX), ciup=ciup, cilo=cilo, ciup2=ciup2, cilo2=cilo2))
 			}
-			output$Tab <- renderTable({
+			output$Tab <- renderDataTable({
 						d <- getData()
-						x <- t(ImputeMissing(coxRFXCirTD$Z[1:1540,], getData()))
-						data.frame(Input=t(d), Imputed=x, `Coef CIR`=coef(coxRFXCirTD), `Value CIR`= x*coef(coxRFXCirTD),
+						x <- t(ImputeMissing(data[1:1540,], getData()))
+						data.frame(Covariate=colnames(d),signif(data.frame(Input=t(d), Imputed=x, `Coef CIR`=coef(coxRFXCirTD), `Value CIR`= x*coef(coxRFXCirTD),
 								`Coef NRM`=coef(coxRFXNrmTD), `Value NRM`= x*coef(coxRFXNrmTD),
-								`Coef PRS`=coef(coxRFXPrsTD), `Value PRS`= x*coef(coxRFXPrsTD))
+								`Coef PRS`=coef(coxRFXPrsTD), `Value PRS`= x*coef(coxRFXPrsTD)),2))
 					})
-			output$Risk <- renderTable({
-						sapply(c("Cir","Nrm","Prs"), function(m){
+			output$Risk <- renderDataTable({
+						data.frame(Value=c("log hazard","s.d"),sapply(c("Cir","Nrm","Prs"), function(m){
 									fit <- get(paste("coxRFX",m,"TD", sep=""))
 									r <- PredictRiskMissing(fit, getData(),  var="var2")
 									c(`log hazard`=round(r[1,1] - mean(get(paste("coxRFX",m,"TD", sep=""))$Z %*% coef(get(paste("coxRFX",m,"TD", sep="")))),3),
 											`sd`=round(sqrt(r[1,2]),3))
-								})
+								}))
 					})
 			output$KM <- renderPlot({
 						par(mfrow=c(2,2), cex=1)
