@@ -9,13 +9,13 @@ library(RColorBrewer)
 library(CoxHD)
 load("predict.RData")
 set1 <- brewer.pal(8, "Set1")
-data <- coxRFXCirTD$Z
+#data <- coxRFXCirTD$Z
 # Define server logic required to generate and plot a random distribution
 shinyServer(function(input, output) {
 			getData <- reactive({
 						l <- list()
 						for(n in colnames(data)){
-							l[[n]] <- as.numeric(input[[n]])
+							l[[n]] <- ifelse(input[[n]]=="NA",NA,as.numeric(input[[n]]))
 							if(is.null(input[[n]])) l[[n]] <- NA
 						}
 						out <- do.call("data.frame",l)
@@ -38,15 +38,15 @@ shinyServer(function(input, output) {
 						
 						variables <- c("transplantRel",names(sort(apply(data,2,var)*coef(coxRFXCirTD)^2, decreasing=TRUE)[-100]))
 						lapply(variables, 
-												function(x) {
-													d <- defaults[x]
-													if(crGroups[x] %in% c("Genetics","CNA","BT","Treatment")){
-														if(!d %in% c(0,1)) d <- NA
-														d <- paste(d)
-														radioButtons(x, x, choices=c("present"= "1", "absent"="0", "NA"="NA"), selected=d)
-													}else{
-														numericInput(inputId=x, label=x, value=d, min=min(data[,x], na.rm=TRUE), max=max(data[,x],na.rm=TRUE) , step=1e-9)
-												}}
+								function(x) {
+									d <- defaults[x]
+									if(crGroups[x] %in% c("Genetics","CNA","BT","Treatment")){
+										if(!d %in% c(0,1)) d <- NA
+										d <- paste(d)
+										radioButtons(x, x, choices=c("present"= "1", "absent"="0", "NA"="NA"), selected=d)
+									}else{
+										numericInput(inputId=x, label=x, value=d, min=min(data[,x], na.rm=TRUE), max=max(data[,x],na.rm=TRUE) , step=1e-9)
+									}}
 										
 						)
 					})
@@ -74,7 +74,7 @@ shinyServer(function(input, output) {
 			output$Tab <- renderDataTable({
 						d <- getData()
 						x <- t(ImputeMissing(data[1:1540,], getData()))
-						data.frame(Covariate=colnames(d),signif(data.frame(Input=t(d), Imputed=x, `Coef CIR`=coef(coxRFXCirTD), `Value CIR`= x*coef(coxRFXCirTD),
+						data.frame(Covariate=colnames(d),signif(data.frame(Input=as.numeric(t(d)), Imputed=x, `Coef CIR`=coef(coxRFXCirTD), `Value CIR`= x*coef(coxRFXCirTD),
 								`Coef NRM`=coef(coxRFXNrmTD), `Value NRM`= x*coef(coxRFXNrmTD),
 								`Coef PRS`=coef(coxRFXPrsTD), `Value PRS`= x*coef(coxRFXPrsTD)),2))
 					})

@@ -31,6 +31,7 @@ set1 <- brewer.pal(8, "Set1")
 #' -------------
 #' ### Clinical
 #' Loading
+#+ clinicalData, cache=TRUE
 clinicalData <- read.table("../data/Ulm1.17_MG_Clinical.txt", sep="\t", header=TRUE, na.strings = "na", comment.char = "", quote="\"")
 clinicalData <- clinicalData[order(clinicalData$PDID),]
 clinicalData$ERDate <- as.Date(as.character(clinicalData$ERDate), "%d-%b-%y")
@@ -156,6 +157,7 @@ table(groups)
 #+ dataFrame, cache=TRUE
 poorMansImpute <- function(x) {x[is.na(x)] <- mean(x, na.rm=TRUE); return(x)}
 dataFrame <- as.data.frame(sapply(dataFrame, poorMansImpute))
+rownames(dataFrame) <- clinicalData$PDID
 
 #' ### Gene:Gene interactions
 #+ interactions, cache=TRUE, fig.width=6, fig.height=6
