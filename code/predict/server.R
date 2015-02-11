@@ -7,7 +7,7 @@
 library(shiny)
 library(RColorBrewer)
 library(CoxHD)
-load("predict.RData")
+load("predict2.RData")
 set1 <- brewer.pal(8, "Set1")
 #data <- coxRFXCirTD$Z
 # Define server logic required to generate and plot a random distribution
@@ -45,12 +45,12 @@ shinyServer(function(input, output) {
 										d <- paste(d)
 										radioButtons(x, x, choices=c("present"= "1", "absent"="0", "NA"="NA"), selected=d)
 									}else{
-										numericInput(inputId=x, label=x, value=d, min=min(data[,x], na.rm=TRUE), max=max(data[,x],na.rm=TRUE) , step=1e-9)
+										numericInput(inputId=x, label=x, value=d, min=min(data[,x], na.rm=TRUE), max=max(data[,x],na.rm=TRUE) , step=1e-3)
 									}}
 										
 						)
 					})
-			plotRisk <- function(coxRFX, data,xlab="Days", ylab="Incidence", mark=NA) {
+			plotRisk <- function(coxRFX, data,xlab="Days after diagnosis", ylab="Incidence", mark=NA) {
 				plot(survfit(coxRFX), xlab=xlab, ylab=ylab, mark=mark, conf.int=FALSE, fun=function(x) 1-x, ylim=c(0,1), xlim=c(0,2000))
 				#lines(survfit(coxRFX$surv ~ 1), lty=3, mark=NA, fun=function(x) 1-x)
 				abline(h=seq(0,1,.2), lty=3)
@@ -128,6 +128,8 @@ shinyServer(function(input, output) {
 						## Adjust cumulative distributions for competing risks
 						##cirAdj <- cumsum(c(1,diff(hazCir$inc)) * hazNrm$inc)
 						rs <- 1- (1-cir) * (1-hazPrs$inc) 
+						#p <- cumsum(c(1,diff(hazPrs$inc) * splinefun(nrmKM$time, nrmKM$surv)(hazPrs$x[-1])))
+						#rs <- cumsum(c(1,diff(cir)*(1-hazPrs$inc[-1]))) ### TODO: double check
 						rslo <- 1 - (1-hazCir$cilo) * (1-hazPrs$cilo)
 						rsup <- 1 - (1-hazCir$ciup) * (1-hazPrs$ciup)
 						rslo2 <- 1 - (1-hazCir$cilo2) * (1-hazPrs$cilo2)
@@ -152,8 +154,8 @@ shinyServer(function(input, output) {
 						#lines(hazNrm$x, hazCir$x, col=set1[4], lty=2)
 						#
 						lines(hazNrm$x, nrs, col=set1[2])
-						lines(hazCir$x, exp(-hrs -hnrs), col=set1[1])
-						lines(hazNrm$x, nrs*rs, col=set1[1], lty=2)
+						#lines(hazCir$x, exp(-hrs -hnrs), col=set1[1])
+						lines(hazNrm$x,nrs*rs, col=set1[1])
 						polygon(c(hazNrm$x, rev(hazNrm$x)), c(nrslo2, rev(nrsup2))*c(rslo2, rev(rsup2)), col=paste("#FF000044",sep=""), border=NA)
 						polygon(c(hazNrm$x, rev(hazNrm$x)), c(nrslo, rev(nrsup))*c(rslo, rev(rsup)), col=paste("#FF000044",sep=""), border=NA)
 						#lines(survfit(osCR ~ 1), mark=NA, conf.int=FALSE)

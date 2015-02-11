@@ -2294,9 +2294,13 @@ nrmData$transplantRel <- 0
 i <- !is.na(clinicalData$Recurrence_date)
 #prsData <- makeTimeDependent(dataFrame[w], timeTpl=alloTimeRel, timeSurv=as.numeric(clinicalData$Date_LF - clinicalData$Recurrence_date)+1, event=clinicalData$Status)
 prsData <- MakeTimeDependent(dataFrame[i,whichRFXCirTD], timeEvent=alloTimeCR1[i], timeStop=as.numeric(clinicalData$Date_LF- clinicalData$CR_date)[i], timeStart = as.numeric(clinicalData$Recurrence_date- clinicalData$CR_date)[i], status=clinicalData$Status[i])
-prsData$transplantCR1 <- nrmData$transplantCR1[1:nrow(dataFrame)][prsData$index]
+prsData$transplantCR1 <- rep(0,nrow(prsData))
+w <- sub("\\.1","",rownames(cirData))[cirData$status==1 & cirData$transplantCR1==1]
+prsData$transplantCR1[sub("\\.1","",rownames(prsData)) %in% w] <- 1
 prsData$transplantRel <- prsData$event
 prsData$event <- NULL
+w <- which(prsData$time1 == prsData$time2) ## 5 cases with LF=Rec
+prsData$time2[w] <- prsData$time2[w] + .5
 
 #' Fit models
 crGroups <- c(as.character(groups[whichRFXCirTD]), "Treatment","Treatment")
@@ -2304,7 +2308,6 @@ names(crGroups) <- c(names(dataFrame)[whichRFXCirTD],"transplantCR1","transplant
 coxRFXNrmTD <- CoxRFX(nrmData[names(crGroups)], Surv(nrmData$time1, nrmData$time2, nrmData$status), groups=crGroups, which.mu = mainGroups)
 coxRFXNrmTD$coefficients["transplantRel"] <- 0
 #prsData$time1[!is.na(prsData$time1)] <- 0
-prsData$time1[prsData$time1 >= prsData$time2] <- NA
 coxRFXPrsTD <-  CoxRFX(prsData[names(crGroups)], Surv(prsData$time1, prsData$time2, prsData$status), groups=crGroups, nu=1, which.mu = mainGroups)
 coxRFXCirTD <-  CoxRFX(cirData[names(crGroups)], Surv(cirData$time1, cirData$time2, cirData$status), groups=crGroups, which.mu = mainGroups)
 coxRFXCirTD$coefficients["transplantRel"] <- 0
@@ -2314,12 +2317,13 @@ osData$transplantCR1 <- osData$event
 osData$transplantRel <- osData$event
 w <- which(clinicalData$TPL_date > clinicalData$Recurrence_date | clinicalData$TPL_Phase != "CR1")  
 osData$transplantCR1[osData$index %in% w] <- 0
-#osData$transplantRel[!osData$index %in% w] <- 0
+osData$transplantRel[!osData$index %in% w] <- 0
+data <- osData[rev(!duplicated(rev(osData$index))),colnames(coxRFXCirTD$Z)]
 osData$transplantRel <- 0
 
 coxRFXOsCR <- CoxRFX(osData[names(crGroups)], Surv(osData$time1, osData$time2, osData$status), groups=crGroups, which.mu = mainGroups)
 
-#save(coxRFXCirTD, coxRFXNrmTD, coxRFXPrsTD, coxRFXOsCR, nrmData, cirData, prsData, osData, osCR, crGroups, file="../../../Projects/sandbox/relapse/predict.RData")
+#save(coxRFXCirTD, coxRFXNrmTD, coxRFXPrsTD, coxRFXOsCR, nrmData, cirData, prsData, osData, osCR, crGroups,data, file="../../../Projects/sandbox/relapse/predict.RData")
 
 #' Prediction of OS and Cross-validation
 #+concordanceCIRcv, cache=TRUE
@@ -2451,7 +2455,7 @@ for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 	Q[w] <- q
 	plot(NA,NA,  ylab="CIR", main=paste(l, "terciles"),  xlab="Years after CR", ylim=c(0,1), xlim=c(0,10), xaxs="i", yaxs="i")
 	abline(h=seq(0.2,0.8,0.2),lty=1, col='lightgrey')
-	fit <- survfit(Surv(time1/365, time2/365, status) ~ q + transplant1CR, data=cirData[w,])
+	fit <- survfit(Surv(time1/365, time2/365, status) ~ q + transplantCR1, data=cirData[w,])
 	## adjust for competing risk (NRM)
 	i <- c(0,diff(fit$surv))
 	s <- split(fit$surv, cumsum(i>0)) # split into strata
@@ -2614,8 +2618,9 @@ for(vcf in allCaveOut){
 #' Session
 #' -----
 #+ sessionInfo, eval=TRUE
-sessionInfo()
-		
+library(devtools)
+devtools::session_info()
+
 #' TODO's
 #' ------
 #' * Gene-wise contributions to reclassifaction

@@ -1729,3 +1729,27 @@ points(c(0,1,2,3,4),c(0.067,0.267,0.500,0.767,0.900),col="red")
 ## Lazy load all knitr cache
 for(f in dir("cache", pattern=".rdx", full.names = TRUE))
 	lazyLoad(sub(".rdx","",f))
+
+
+d <- cirData[c("time1","time2","status","transplantCR1","transplantRel","index")]
+d$status <- 0
+d <- rbind(d, prsData[c("time1","time2","status","transplantCR1","transplantRel","index")])
+plot(survfit(Surv(time1, time2, status)~1, data=d), mark=NA)
+s <- survfit(Surv(time1, time2, status)~1, data=cirData)
+t <- survfit(Surv(time1, time2, status, type="counting")~1, data=prsData)
+lines(s, col=2, mark=NA)
+lines(t, col=3, mark=NA)
+
+crAdjust <- function(surv1, surv2){
+	surv2 <- cumsum(c(1,diff(surv1$surv) * splinefun(surv2$time, surv2$surv, method="monoH.FC")(surv1$time[-1])))
+	data.frame(time=surv1$time, surv=surv2)
+}
+
+s2 <- cumsum(c(1,diff(s$surv) * splinefun(t$time, 1-t$surv, method="monoH.FC")(s$time[-1])))
+lines(s$time, s2, col=4)
+
+lines(s$time, 1-(1-s$surv)*(1-splinefun(t$time, t$surv, method="monoH.FC")(s$time)), col='brown')
+
+## double check
+s3 <- Surv(as.numeric(clinicalData$Date_LF-clinicalData$CR_date), clinicalData$Status & !is.na(clinicalData$Recurrence_date))
+lines(survfit(s3 ~ 1), col="orange", mark=NA, conf.int=FALSE)
