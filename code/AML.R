@@ -2328,24 +2328,25 @@ coxRFXOsCR <- CoxRFX(osData[names(crGroups)], Surv(osData$time1, osData$time2, o
 #' Prediction of OS and Cross-validation
 #+concordanceCIRcv, cache=TRUE
 PredictOS <- function(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, x =365){
-	getS <- function(coxRFX, data) {		
+	getS <- function(coxRFX, data, max.x=5000) {		
 		coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
 		data <- as.matrix(data[,match(colnames(coxRFX$Z),colnames(data))])
 		r <- PredictRiskMissing(coxRFX, data, var="var2")
 		H0 <- basehaz(coxRFX, centered = FALSE)
 		hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
-		x <- 0:5000
+		x <- c(0:max.x,max.x)
 		S <- exp(-hazardDist(x))
 		return(list(S=S, r=r, x=x, hazardDist=hazardDist, r0 = coxRFX$means %*% coef(coxRFX)))
 	}
-	hazCir <- getS(coxRFX = coxRFXCirTD, data = data)
-	hazNrm <- getS(coxRFX = coxRFXNrmTD, data = data)
-	hazPrs <- getS(coxRFX = coxRFXPrsTD, data = data)
+	hazCir <- getS(coxRFX = coxRFXCirTD, data = data, max.x=max(x))
+	hazNrm <- getS(coxRFX = coxRFXNrmTD, data = data, max.x=max(x))
+	hazPrs <- getS(coxRFX = coxRFXPrsTD, data = data, max.x=max(x))
 	
 	hazCir$Sadj <- cumsum(c(1,diff(hazCir$S)) * hazNrm$S)
 	hazNrm$Sadj <- cumsum(c(1,diff(hazNrm$S)) * hazCir$S)
 	
-	w <- hazCir$x == x
+	stopifnot(length(x)==1 | length(x) == nrow(data))
+	w <- match(x,hazCir$x)
 	nrs <- hazNrm$Sadj[w]^exp(hazNrm$r[,1])
 	nrsUp <- hazNrm$Sadj[w]^exp(hazNrm$r[,1] + 2*sqrt(hazNrm$r[,2]))
 	nrsLo <- hazNrm$Sadj[w]^exp(hazNrm$r[,1] - 2*sqrt(hazNrm$r[,2]))
