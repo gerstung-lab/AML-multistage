@@ -1734,22 +1734,70 @@ for(f in dir("cache", pattern=".rdx", full.names = TRUE))
 d <- cirData[c("time1","time2","status","transplantCR1","transplantRel","index")]
 d$status <- 0
 d <- rbind(d, prsData[c("time1","time2","status","transplantCR1","transplantRel","index")])
-plot(survfit(Surv(time1, time2, status)~1, data=d), mark=NA)
-s <- survfit(Surv(time1, time2, status)~1, data=cirData)
-t <- survfit(Surv(time1, time2, status, type="counting")~1, data=prsData)
-lines(s, col=2, mark=NA)
-lines(t, col=3, mark=NA)
+d$relapse <- 0
+d$relapse[1:nrow(cirData)] <- cirData$status
+survRel <- survfit(Surv(time1, time2, status)~1, data=d)
+plot(survRel, mark=NA)
+relFree <- survfit(Surv(time1, time2, relapse)~1, data=d, subset=1:nrow(cirData))
+survPrs <- survfit(Surv(time1, time2, status, type="counting")~1, data=prsData)
+lines(relFree, col=2, mark=NA)
+lines(survPrs, col=3, mark=NA)
 
 crAdjust <- function(surv1, surv2){
 	surv2 <- cumsum(c(1,diff(surv1$surv) * splinefun(surv2$time, surv2$surv, method="monoH.FC")(surv1$time[-1])))
 	data.frame(time=surv1$time, surv=surv2)
 }
 
-s2 <- cumsum(c(1,diff(s$surv) * splinefun(t$time, 1-t$surv, method="monoH.FC")(s$time[-1])))
-lines(s$time, s2, col=4)
+s2 <- cumsum(c(1,diff(relFree$surv) * splinefun(survPrs$time, 1-survPrs$surv, method="monoH.FC")(relFree$time[-1])))
+lines(relFree$time, s2, col=4)
 
-lines(s$time, 1-(1-s$surv)*(1-splinefun(t$time, t$surv, method="monoH.FC")(s$time)), col='brown')
+survPredict <- function(surv){
+	s <- survfit(surv~1)
+	splinefun(s$time, s$surv, method="monoH.FC")
+}
+
+### Different approach
+prsP <- survPredict(Surv(prsData$time2-prsData$time1, prsData$status))(0:5000)
+cirP <- survPredict(Surv(cirData$time1, cirData$time2, cirData$status))(0:5000)
+
+m <- matrix(0,5001,5001)
+for(j in 1:5000)
+	m[j,j:5001 ] <- (cirP[j]-cirP[j+1]) * (1-prsP[1:(5001-j+1)])
+
+n <- rep(1,5001)
+df <- diff(cirP)
+for(j in 1:5000)
+	n[j:5001 ] <- df[j] * (1-prsP[1:(5001-j+1)]) + n[j:5001] 
+
+plot(survRel)
+lines(n, col="brown")
+
+coxphPrs <- coxph(Surv(prsData$time2-prsData$time1, prsData$status)~ pspline(prsData$time1, df=10))
+timeDepPrs <- splinefun(prsData$time1[-coxphPrs$na.action], predict(coxphPrs))
+
+survPrsTdAdj <- rep(1,5001)
+df <- diff(cirP)
+td <- exp(timeDepPrs(1:5000))
+for(j in 1:5000)
+	survPrsTdAdj[j:5001 ] <- df[j] * (1-prsP[1:(5001-j+1)]^td[j]) + survPrsTdAdj[j:5001] 
+
+lines(survPrsTdAdj, col="blue")
+
+
+#lines(1-colSums(m, na.rm=TRUE), col='brown')
+
+#lines(s$time, 1-(1-s$surv)*(1-splinefun(t$time, t$surv, method="monoH.FC")(s$time)), col='brown')
 
 ## double check
 s3 <- Surv(as.numeric(clinicalData$Date_LF-clinicalData$CR_date), clinicalData$Status & !is.na(clinicalData$Recurrence_date))
 lines(survfit(s3 ~ 1), col="orange", mark=NA, conf.int=FALSE)
+
+##
+predictAbsCox <- function(fit, data, surv){
+	H0 <- basehaz(fit, centered = FALSE)
+	hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
+	max.x <- max(surv[,2])
+	x <- surv[,1]
+	S <- exp(-hazardDist(x))
+	S^exp(as.matrix(data[,names(coef(fit))])%*%coef(fit))
+}
