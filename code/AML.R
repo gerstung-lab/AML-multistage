@@ -1038,7 +1038,7 @@ legend(par("usr")[1],1.5, fill=c(set1[c(3,2,4,1,5,7)],"grey"), legend=1:6, bty="
 
 
 #' Brier scores
-#+ allModelsCv-Brier
+#+ allModelsCv-Brier, cache=TRUE
 foo <- 1
 allModelsCvBrier<- sapply(allModelsCV, function(x){
 			set.seed(foo)
@@ -1056,7 +1056,7 @@ boxplot(t(allModelsCvBrier)[,rep(0:5*3, 3) + rep(1:3, each=6)],notch=TRUE, ylab=
 
 
 #' GHCI
-#+ allModelsCv-GHCI
+#+ allModelsCv-GHCI, cache=TRUE
 allModelsCvGHCI<- sapply(allModelsCvPredictions, function(x){
 			apply(x[,2:6], 2 , function(p){
 						p <- GHCI(lpnew = na.omit(p))
@@ -1067,7 +1067,7 @@ boxplot(t(allModelsCvGHCI),notch=TRUE, ylab="GH C", border=colModels[2:6], las=2
 
 
 #' OXS R2 estimates
-#+ allModelsCv-OXS
+#+ allModelsCv-OXS, cache=TRUE
 foo <- 1
 allModelsCvOXS <- sapply(allModelsCvPredictions, function(x){
 			set.seed(foo)
@@ -1081,7 +1081,7 @@ apply(allModelsCvOXS,1,quantile)
 boxplot(t(allModelsCvOXS), ylim=c(0,0.5), notch=TRUE, ylab="OXS R2", border=colModels[2:6], las=2, lty=1, pch=16, staplewex=0)
 
 #' Nagelk R2 estimates
-#+ allModelsCv-Nagelk
+#+ allModelsCv-Nagelk, cache=TRUE
 foo <- 1
 allModelsCvNagelk <- sapply(allModelsCvPredictions, function(x){
 			set.seed(foo)
@@ -1095,7 +1095,7 @@ apply(allModelsCvNagelk,1,quantile)
 boxplot(t(allModelsCvNagelk), ylim=c(0,0.4), notch=TRUE, ylab="Nagelk's R2", border=colModels[2:6], las=2, lty=1, pch=16, staplewex=0)
 
 #' UnoC
-#+ allModelsCv-UnoC
+#+ allModelsCv-UnoC, cache=TRUE
 foo <- 1
 allModelsCvUnoC<- sapply(allModelsCvPredictions, function(x){
 			set.seed(foo)
@@ -1109,7 +1109,7 @@ apply(allModelsCvUnoC,1,quantile)
 boxplot(t(allModelsCvUnoC), notch=TRUE,  ylab="Uno's C", border=colModels, lty=1, pch=16, staplewex=0)
 
 #' AUC UNO
-#+ allModelsCv-AUCuno
+#+ allModelsCv-AUCuno, cache=TRUE
 t <- seq(0.1,5,0.1) #times
 allModelsCvAuc <- sapply(seq_along(allModelsCvPredictions), function(foo){
 			set.seed(foo)
