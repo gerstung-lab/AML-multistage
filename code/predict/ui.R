@@ -6,7 +6,7 @@
 
 library(shiny)
 library(CoxHD)
-load("predict2.RData")
+load("predict3.RData")
 #data <- coxRFXCirTD$Z
 
 # Define UI for application that plots random distributions 
@@ -21,7 +21,10 @@ shinyUI(fluidPage(
 									wellPanel(
 												selectInput("pdid", "Select sample", c("reset",rownames(data)), selected = "reset", multiple=FALSE) ## select sample
 											),
-									wellPanel(
+											wellPanel(
+													checkboxGroupInput("ciType", "Confidence intervals:", c("analytical","simulated"), selected = "analytical") ## CI type
+											),
+											wellPanel(
 												uiOutput("ui")
 											)
 							),
