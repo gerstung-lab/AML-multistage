@@ -2306,11 +2306,11 @@ prsData$time2[w] <- prsData$time2[w] + .5
 #' Fit models
 crGroups <- c(as.character(groups[whichRFXCirTD]), "Treatment","Treatment")
 names(crGroups) <- c(names(dataFrame)[whichRFXCirTD],"transplantCR1","transplantRel")
-coxRFXNrmTD <- CoxRFX(nrmData[names(crGroups)], Surv(nrmData$time1, nrmData$time2, nrmData$status), groups=crGroups, which.mu = mainGroups)
+coxRFXNrmTD <- CoxRFX(nrmData[names(crGroups)], Surv(nrmData$time1, nrmData$time2, nrmData$status), groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 coxRFXNrmTD$coefficients["transplantRel"] <- 0
 #prsData$time1[!is.na(prsData$time1)] <- 0
-coxRFXPrsTD <-  CoxRFX(prsData[names(crGroups)], Surv(prsData$time2 - prsData$time1, prsData$status), groups=crGroups, nu=1, which.mu = mainGroups)
-coxRFXCirTD <-  CoxRFX(cirData[names(crGroups)], Surv(cirData$time1, cirData$time2, cirData$status), groups=crGroups, which.mu = mainGroups)
+coxRFXPrsTD <-  CoxRFX(prsData[names(crGroups)], Surv(prsData$time2 - prsData$time1, prsData$status), groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
+coxRFXCirTD <-  CoxRFX(cirData[names(crGroups)], Surv(cirData$time1, cirData$time2, cirData$status), groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 coxRFXCirTD$coefficients["transplantRel"] <- 0
 
 osData <- MakeTimeDependent(dataFrame[whichRFXCirTD], timeEvent=alloTimeCR1, timeStop=as.numeric(clinicalData$Date_LF- clinicalData$CR_date), status=clinicalData$Status)
@@ -2322,11 +2322,25 @@ osData$transplantRel[!osData$index %in% w] <- 0
 data <- osData[rev(!duplicated(rev(osData$index))),colnames(coxRFXCirTD$Z)]
 osData$transplantRel <- 0
 
-coxRFXOsCR <- CoxRFX(osData[names(crGroups)], Surv(osData$time1, osData$time2, osData$status), groups=crGroups, which.mu = mainGroups)
+coxRFXOsCR <- CoxRFX(osData[names(crGroups)], Surv(osData$time1, osData$time2, osData$status), groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 
-#save(coxRFXCirTD, coxRFXNrmTD, coxRFXPrsTD, coxRFXOsCR, nrmData, cirData, prsData, osData, osCR, crGroups,data, file="../../../Projects/sandbox/relapse/predict.RData")
+#save(coxRFXCirTD, coxRFXNrmTD, coxRFXPrsTD, coxRFXOsCR, nrmData, cirData, prsData, osData, osCR, crGroups,data, file="../../code/predict/predict3.RData")
 
-#' Prediction of OS and Cross-validation
+#' #### Prediction of OS and Cross-validation
+#' Function to convolute CIR and PRM
+library(Rcpp)
+cppFunction('NumericVector computeTotalPrsC(NumericVector x, NumericVector diffCir, NumericVector prsP, NumericVector tdPrmBaseline, double risk) {
+				int xLen = x.size();
+				NumericVector rs(xLen);
+				for(int i = 0; i < xLen; ++i) rs[i] = 1;
+				for(int j = 1; j < xLen; ++j) 
+				for(int i = j; i < xLen; ++i){
+				rs[i] += diffCir[j-1] * (1-pow(prsP[i-j], tdPrmBaseline[j-1] * exp(risk)));
+				}
+				return rs;
+				}')
+
+#' Function to predict OS
 #+concordanceCIRcv, cache=TRUE
 PredictOS <- function(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, x =365){
 	### Step 1: Compute KM survival curves and log hazard
@@ -2340,28 +2354,29 @@ PredictOS <- function(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, x =365){
 		S <- exp(-hazardDist(x))
 		return(list(S=S, r=r, x=x, hazardDist=hazardDist, r0 = coxRFX$means %*% coef(coxRFX)))
 	}
-	hazCir <- getS(coxRFX = coxRFXCirTD, data = data, max.x=max(x))
-	hazNrm <- getS(coxRFX = coxRFXNrmTD, data = data, max.x=max(x))
-	hazPrs <- getS(coxRFX = coxRFXPrsTD, data = data, max.x=max(x))
+	kmCir <- getS(coxRFX = coxRFXCirTD, data = data, max.x=max(x))
+	kmNrm <- getS(coxRFX = coxRFXNrmTD, data = data, max.x=max(x))
+	kmPrs <- getS(coxRFX = coxRFXPrsTD, data = data, max.x=max(x))
 	
 	### Step 2: Adjust CIR and NRM curve for competing risks, accounting for hazard
-	hazCir$Sadj <- sapply(1:nrow(data), function(i) cumsum(c(1,diff(hazCir$S^exp(hazCir$r[i,1] - hazCir$r0))) * hazNrm$S ^ exp(hazNrm$r[i,1] - hazNrm$r0)))
-	hazNrm$Sadj <- sapply(1:nrow(data), function(i) cumsum(c(1,diff(hazNrm$S^exp(hazNrm$r[i,1] - hazNrm$r0))) * hazCir$S ^ exp(hazCir$r[i,1] - hazCir$r0))) ## array times x nrow(data)
+	kmCir$Sadj <- sapply(1:nrow(data), function(i) cumsum(c(1,diff(kmCir$S^exp(kmCir$r[i,1]))) * kmNrm$S ^ exp(kmNrm$r[i,1])))
+	kmNrm$Sadj <- sapply(1:nrow(data), function(i) cumsum(c(1,diff(kmNrm$S^exp(kmNrm$r[i,1]))) * kmCir$S ^ exp(kmCir$r[i,1]))) ## array times x nrow(data)
 	
+	#cat(dim(kmNrm$Sadj))
 	stopifnot(length(x)==1 | length(x) == nrow(data))
 	if(length(x)==nrow(data))
-		w <- match(x,hazCir$x)
-	else
-		w <- rep(match(x, hazCir$x), nrow(data))
-	y <- mapply(function(i,j) hazNrm$Sadj[i,j], w,1:length(w) ) # select time for each sample
+		w <- match(x,kmCir$x)
+	else if(length(x)==1)
+		w <- rep(match(x, kmCir$x), nrow(data))
+	y <- mapply(function(i,j) kmNrm$Sadj[i,j], w,1:length(w) ) # select time for each sample
 	nrs <- y
-	nrsUp <- y^exp(2*sqrt(hazNrm$r[,2]))
-	nrsLo <- y^exp(- 2*sqrt(hazNrm$r[,2]))
+	nrsUp <- y^exp(2*sqrt(kmNrm$r[,2]))
+	nrsLo <- y^exp(- 2*sqrt(kmNrm$r[,2]))
 
-	y <- mapply(function(i,j) hazCir$Sadj[i,j], w,1:length(w) ) # select time for each sample
+	y <- mapply(function(i,j) kmCir$Sadj[i,j], w,1:length(w) ) # select time for each sample
 	cir <- y
-	cirUp <- y^exp( 2*sqrt(hazCir$r[,2]))
-	cirLo <- y^exp( - 2*sqrt(hazCir$r[,2]))
+	cirUp <- y^exp( 2*sqrt(kmCir$r[,2]))
+	cirLo <- y^exp( - 2*sqrt(kmCir$r[,2]))
 	
 	### Step 3: Compute post-relapse survival
 	survPredict <- function(surv){
@@ -2370,24 +2385,20 @@ PredictOS <- function(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, x =365){
 	}
 	xx <- 0:max(x)
 	# Baseline Prs (measured from relapse)
-	prsP <- survPredict(Surv(prsData$time2-prsData$time1, prsData$status))(xx) 
+	kmPrs0 <- survPredict(Surv(prsData$time2-prsData$time1, prsData$status))(xx) 
 	# PRS baseline with spline-based dep on CR length)
 	coxphPrs <- coxph(Surv(time2-time1, status)~ pspline(time1, df=10), data=prsData) 
-	td <- exp(predict(coxphPrs, newdata=data.frame(time1=xx[-1])))						
+	tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time1=xx[-1])))						
 	rs <- sapply(1:nrow(data), function(i){
 				### Different approach				
 				xLen <- 1+floor(x)
-				cir <- hazCir$Sadj[1:xLen,i]^exp(hazCir$r[i,1])
-				rs <- rep(1,xLen)
-				df <- diff(cir)
-				#td <- exp(timeDepPrs(x[-1]))
-				for(j in xx[-1])
-					rs[j:xLen ] <- df[j] * (1-prsP[1:(xLen-j+1)]^(td[j] * exp(hazPrs$r[i,1] - hazPrs$r0))) + rs[j:xLen]
+				cir <- kmCir$Sadj[1:xLen,i]
+				rs <- computeTotalPrsC(x = xx, diffCir = diff(cir), prsP = kmPrs0, tdPrmBaseline = tdPrmBaseline, risk = kmPrs$r[i,1]-kmPrs$r0)
 				rs[xLen]
 			})
 	#rs <- 1 - (1-cir) * (1-hazPrs$S[w]^exp(hazPrs$r[,1]))
-	rsUp <- 1 - (1-cirUp) * (1-hazPrs$S[w]^exp(hazPrs$r[,1] + 2* sqrt(hazPrs$r[,2])))
-	rsLo <- 1 - (1-cirLo) * (1-hazPrs$S[w]^exp(hazPrs$r[,1] - 2* sqrt(hazPrs$r[,2])))
+	rsUp <- 1 - (1-cirUp) * (1-kmPrs$S[w]^exp(kmPrs$r[,1] + 2* sqrt(kmPrs$r[,2])))
+	rsLo <- 1 - (1-cirLo) * (1-kmPrs$S[w]^exp(kmPrs$r[,1] - 2* sqrt(kmPrs$r[,2])))
 	
 	if(any(1-(1-rs)-(1-nrs)<0)) warning("OS < 0 occured.")
 	return(data.frame(os=pmax(pmin(1-(1-rs)-(1-nrs),1),0), osUp = rsUp*nrsUp, osLo = rsLo*nrsLo, rs=rs, cir=cir, nrs=nrs))
@@ -2444,6 +2455,9 @@ concordanceCIRcv <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), f
 						return(list(C=C, coef=coef, allRisk365=allRisk365, allRisk1000=allRisk1000))
 					}, mc.cores=10)
 		})
+
+apply(apply(-sapply(concordanceCIRcv[[1]], `[[` , "C"),2,rank),1,function(x) table(factor(x, levels=1:6)))
+apply(apply(-sapply(concordanceCIRcv[[2]], `[[` , "C"),2,rank),1,function(x) table(factor(x, levels=1:6)))
 
 riskCol=set1[c(1,3,4,2)]
 names(riskCol) <- levels(clinicalData$M_Risk)
