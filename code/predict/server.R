@@ -7,14 +7,37 @@
 library(shiny)
 library(RColorBrewer)
 library(CoxHD)
+library(Rcpp)
 load("predict2.RData")
 set1 <- brewer.pal(8, "Set1")
+VARIABLES <- names(crGroups)[!crGroups %in% c("Nuisance","GeneGene")] 
+VARIABLES <- VARIABLES[order(apply(data[VARIABLES],2,var)*coef(coxRFXCirTD)[VARIABLES]^2, decreasing=TRUE)]
+
+computeTotalPrs <- function(x, diffCir, prsP, tdPrmBaseline, risk) {
+	xLen <- length(x)
+	rs <- rep(1,xLen)
+	for(j in x[-1])
+		rs[j:xLen ] <- diffCir[j] * (1-prsP[1:(xLen-j+1)]^(tdPrmBaseline[j] * exp(risk))) + rs[j:xLen]
+	return(rs)
+}
+
+cppFunction('NumericVector computeTotalPrsC(NumericVector x, NumericVector diffCir, NumericVector prsP, NumericVector tdPrmBaseline, double risk) {
+				int xLen = x.size();
+				NumericVector rs(xLen);
+				for(int i = 0; i < xLen; ++i) rs[i] = 1;
+				for(int j = 1; j < xLen; ++j) 
+					for(int i = j; i < xLen; ++i){
+						rs[i] += diffCir[j-1] * (1-pow(prsP[i-j], tdPrmBaseline[j-1] * exp(risk)));
+					}
+				return rs;
+				}')
+
 #data <- coxRFXCirTD$Z
 # Define server logic required to generate and plot a random distribution
 shinyServer(function(input, output) {
 			getData <- reactive({
 						l <- list()
-						for(n in colnames(data)){
+						for(n in VARIABLES){
 							l[[n]] <- ifelse(input[[n]]=="NA",NA,as.numeric(input[[n]]))
 							if(is.null(input[[n]])) l[[n]] <- NA
 						}
@@ -36,8 +59,7 @@ shinyServer(function(input, output) {
 						names(defaults) <- colnames(data)
 						#cat(defaults,"\n")
 						
-						variables <- c("transplantRel",names(sort(apply(data,2,var)*coef(coxRFXCirTD)^2, decreasing=TRUE)[-100]))
-						lapply(variables, 
+						lapply(VARIABLES, 
 								function(x) {
 									d <- defaults[x]
 									if(crGroups[x] %in% c("Genetics","CNA","BT","Treatment")){
@@ -50,8 +72,9 @@ shinyServer(function(input, output) {
 										
 						)
 					})
-			plotRisk <- function(coxRFX, data,xlab="Days after diagnosis", ylab="Incidence", mark=NA) {
-				plot(survfit(coxRFX), xlab=xlab, ylab=ylab, mark=mark, conf.int=FALSE, fun=function(x) 1-x, ylim=c(0,1), xlim=c(0,2000))
+			x <- 0:2000
+			plotRisk <- function(coxRFX, data,xlab="Days after diagnosis", ylab="Incidence", col="#FF0000",mark=NA) {
+				plot(survfit(coxRFX), xlab=xlab, ylab=ylab, mark=mark, conf.int=FALSE, fun=function(x) 1-x, ylim=c(0,1), xlim=c(0,2000), lty=2)
 				#lines(survfit(coxRFX$surv ~ 1), lty=3, mark=NA, fun=function(x) 1-x)
 				abline(h=seq(0,1,.2), lty=3)
 				abline(v=seq(0,2000,365), lty=3)
@@ -59,16 +82,16 @@ shinyServer(function(input, output) {
 				r <- PredictRiskMissing(coxRFX, data, var="var2")
 				H0 <- basehaz(coxRFX, centered = FALSE)
 				hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
-				x <- 0:2000
-				ciup2 <- exp(-hazardDist(x)*exp( rep(r[,1] + 2*sqrt(r[,2]) * c(1), each=length(x))))
-				cilo2 <- exp(-hazardDist(x)*exp( rep(r[,1] + 2*sqrt(r[,2]) * c(-1), each=length(x))))
-				ciup <- exp(-hazardDist(x)*exp( rep(r[,1] + sqrt(r[,2]) * c(1), each=length(x))))
-				cilo <- exp(-hazardDist(x)*exp( rep(r[,1] + sqrt(r[,2]) * c(-1), each=length(x))))
-				polygon( c(x, rev(x)), 1-c(ciup2, rev(cilo2)), col=paste("#FF000044",sep=""), border=NA)
-				polygon( c(x, rev(x)), 1-c(ciup, rev(cilo)), col=paste("#FF000044",sep=""), border=NA)
-				inc <- exp(-hazardDist(x)* exp(r[,1]))
-				lines( x, 1-inc, col="red", lwd=2)
-				legend(ifelse((1-inc[length(inc)])>.5, "bottomright","topright"), c("Population avg","Predicted","95% CI"),bty="n", lty=c(1,1,NA), fill=c(NA,NA,paste("#FF000044",sep="")), border=c(NA,NA,NA), col=c(1,2,NA))
+				lambda0 <- hazardDist(x)
+				ciup2 <- exp(-lambda0*exp( rep(r[,1] + 2*sqrt(r[,2]) * c(1), each=length(x))))
+				cilo2 <- exp(-lambda0*exp( rep(r[,1] + 2*sqrt(r[,2]) * c(-1), each=length(x))))
+				ciup <- exp(-lambda0*exp( rep(r[,1] + sqrt(r[,2]) * c(1), each=length(x))))
+				cilo <- exp(-lambda0*exp( rep(r[,1] + sqrt(r[,2]) * c(-1), each=length(x))))
+				polygon( c(x, rev(x)), 1-c(ciup2, rev(cilo2)), col=paste0(col,"44"), border=NA)
+				#polygon( c(x, rev(x)), 1-c(ciup, rev(cilo)), col=paste0(col,"44"), border=NA)
+				inc <- exp(-lambda0* exp(r[,1]))
+				lines( x, 1-inc, col=col, lwd=2)
+				legend(ifelse((1-inc[length(inc)])>.5, "bottomright","topright"), c("Population avg","Predicted","95% CI"),bty="n", lty=c(2,1,NA), fill=c(NA,NA,paste0(col,"44")), border=c(NA,NA,NA), col=c(1,col,NA))
 				return(list(inc=inc, r=r, x=x, hazardDist=hazardDist, r0 = coxRFX$means %*% coef(coxRFX), ciup=ciup, cilo=cilo, ciup2=ciup2, cilo2=cilo2))
 			}
 			output$Tab <- renderDataTable({
@@ -86,84 +109,73 @@ shinyServer(function(input, output) {
 											`sd`=round(sqrt(r[1,2]),3))
 								}))
 					})
+			## Convolution approach to PRM
+			survPredict <- function(surv){
+				s <- survfit(surv~1)
+				splinefun(s$time, s$surv, method="monoH.FC")
+			}
+			prsP <- survPredict(Surv(prsData$time2-prsData$time1, prsData$status))(x) # Baseline Prs (measured from relapse)
+			coxphPrs <- coxph(Surv(time2-time1, status)~ pspline(time1, df=10), data=prsData) # PRS baseline with spline-based dep on CR length)
+			#timeDepPrs <- splinefun(prsData$time1[-coxphPrs$na.action], predict(coxphPrs)) # spline interpolation
+			tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time1=x[-1])))	
+			
 			output$KM <- renderPlot({
-						par(mfrow=c(2,2), cex=1)
-						hazCir <- plotRisk(coxRFX = coxRFXCirTD, data = getData(), ylab="Incidence")
+						par(mfrow=c(2,2), cex=1, bty="n")
+						kmCir <- plotRisk(coxRFX = coxRFXCirTD, data = getData(), ylab="Incidence", col=set1[3])
 						#lines(compRisk$`1 recurrence`$time, compRisk$`1 recurrence`$est, lty=2)
 						title("Relapse")
-						hazNrm <- plotRisk(coxRFX = coxRFXNrmTD, data = getData(), ylab="Mortality")
+						kmNrm <- plotRisk(coxRFX = coxRFXNrmTD, data = getData(), ylab="Mortality", col=set1[2])
 						#lines(compRisk$`1 dead`$time, compRisk$`1 dead`$est, lty=2)
 						title("Non-relapse mortality")
-						hazPrs <- plotRisk(coxRFX = coxRFXPrsTD, data = getData(), ylab="Mortality")
+						kmPrs <- plotRisk(coxRFX = coxRFXPrsTD, data = getData(), ylab="Mortality",xlab="Days after relapse", col=set1[1])
 						title("Post-relapse mortality")
-						l <- length(hazCir$inc)
-						#M <- matrix(0, nrow=l-1, ncol=l)
-						#for(i in seq_along(hazCir$inc)[-l])
-						#	M[i,i:l] <- 1-hazPrs$inc[1:(l-i+1)]
-						#lrs <- rowMeans(1-(1-hazCir$inc) * sapply(seq_along(hazCir$x)[-length(hazCir$x)], function(i) c(rep(1, i), 1-hazPrs$inc[1:(length(hazPrs$inc)-i)])))
-						#rs <- 1-(1-hazCir$inc) * (1-hazPrs$inc[1000])
-						#rs <- 1- diff(1-hazCir$inc) %*% M
-						#nrm <- 1-(1-hazNrm$inc) * hazCir$inc
-						#cir <- 1-(1-hazCir$inc) * hazNrm$inc
+						l <- length(kmCir$inc)
+												
+						nrs <- cumsum(c(1,diff(kmNrm$inc) * splinefun(x, kmCir$inc)(x[-1]))) ## Correct KM estimate for competing risk
+						cir <- cumsum(c(1,diff(kmCir$inc) * splinefun(x, kmNrm$inc)(x[-1]))) ## Correct KM estimate for competing risk
 						
-						cirKM <- survfit(coxRFXCirTD$surv ~ 1)
-						nrmKM <- survfit(coxRFXNrmTD$surv ~ 1)							
+						xLen <- length(x)						
 						
-						#nrs <- cumsum(c(1,diff(hazNrm$inc) * hazCir$inc[-1]*.9)) ## Correct KM estimate for competing risk
-						nrs <- cumsum(c(1,diff(hazNrm$inc) * splinefun(cirKM$time, cirKM$surv)(hazNrm$x[-1]))) ## Correct KM estimate for competing risk
-					    nrslo <- cumsum(c(1,diff(hazNrm$cilo)) * hazCir$inc)
-						nrsup <- cumsum(c(1,diff(hazNrm$ciup)) * hazCir$inc)
-						nrslo2 <- cumsum(c(1,diff(hazNrm$cilo2)) * hazCir$inc)
-						nrsup2 <- cumsum(c(1,diff(hazNrm$ciup2)) * hazCir$inc)
+						rs <- computeTotalPrsC(x = x, diffCir = diff(cir), prsP = prsP, tdPrmBaseline = tdPrmBaseline, risk = kmPrs$r[,1]-kmPrs$r0)
+						# Sum up to OS
+						os <- 1-(1-nrs)-(1-rs)#nrs*rs
 						
+						## Confidence intervals
+						errOs <- kmCir$r[,2] + kmNrm$r[,2] + kmPrs$r[,2]
+						osUp <- os ^ exp(2* errOs)
+						osLo <- os ^ exp(-2*errOs)
 						
-						#cir <- cumsum(c(1,diff(hazCir$inc) * hazNrm$inc[-1] )) ## Correct KM estimate for competing risk
-						cir <- cumsum(c(1,diff(hazCir$inc)* splinefun(nrmKM$time, nrmKM$surv)(hazCir$x[-1])) ) ## Correct KM estimate for competing risk
-						cirlo <- cumsum(c(1,diff(hazCir$cilo))  * hazNrm$inc) 
-						cirup <- cumsum(c(1,diff(hazCir$ciup))  * hazNrm$inc) 
-						cirlo2 <- cumsum(c(1,diff(hazCir$cilo2))  * hazNrm$inc) 
-						cirup2 <- cumsum(c(1,diff(hazCir$ciup2))  * hazNrm$inc) 
+						## Simulate CI
+						osCiMc <- sapply(1:100, function(i){
+							r <- exp(rnorm(3,0,sqrt(c(kmCir$r[,2],kmNrm$r[,2],kmPrs$r[,2]))))
+							nrs <- cumsum(c(1,diff(kmNrm$inc^r[2]) * kmCir$inc[-1]^r[1])) ## Correct KM estimate for competing risk
+							cir <- cumsum(c(1,diff(kmCir$inc^r[1]) * kmNrm$inc[-1]^r[2])) ## Correct KM estimate for competing risk							
+							rs <- computeTotalPrsC(x = x, diffCir = diff(cir), prsP = prsP, tdPrmBaseline = tdPrmBaseline, risk = kmPrs$r[,1]-kmPrs$r0+log(r[3]))
+							return(1-(1-nrs)-(1-rs))
+						})
+						osCiMcQ <- apply(osCiMc,1,quantile, c(0.025,0.975))
 						
-						
-						## Adjust cumulative distributions for competing risks
-						##cirAdj <- cumsum(c(1,diff(hazCir$inc)) * hazNrm$inc)
-						rs <- 1- (1-cir) * (1-hazPrs$inc) 
-						#p <- cumsum(c(1,diff(hazPrs$inc) * splinefun(nrmKM$time, nrmKM$surv)(hazPrs$x[-1])))
-						#rs <- cumsum(c(1,diff(cir)*(1-hazPrs$inc[-1]))) ### TODO: double check
-						rslo <- 1 - (1-hazCir$cilo) * (1-hazPrs$cilo)
-						rsup <- 1 - (1-hazCir$ciup) * (1-hazPrs$ciup)
-						rslo2 <- 1 - (1-hazCir$cilo2) * (1-hazPrs$cilo2)
-						rsup2 <- 1 - (1-hazCir$ciup2) * (1-hazPrs$ciup2)
-						#rsAdj <- cumsum(c(1,diff(rs)) * hazNrm$inc)
-						##rsAdj <- 1- (1-cirAdj) * (1-hazPrs$inc) 
-			            ##nrsAdj <- cumsum(c(1,diff(hazNrm$inc)) * rsAdj)
-						
-						## Prob of relapse and death
-						## Hazard
-						hrs = -log(rs)
-						
-						## Total hazard
-						hnrs = -log(nrs)
-						
-						plot(survfit(coxRFXOsCR$surv ~ 1), xlab="Days", ylab="Fraction", mark=NA, conf.int=FALSE,  xlim=c(0,2000))
-						
-						lines(hazCir$x, rs, xlab="Time", ylab="Survival", ylim=c(0,1), type='l', col=set1[3])
+						plot(survfit(coxRFXOsCR$surv ~ 1), xlab="Days", ylab="Survival", mark=NA, conf.int=FALSE,  xlim=c(0,2000), ylim=c(0,1), lty=2, xaxs='r')
+						polygon(c(x, x[xLen]), c(nrs,1)  , border=NA, col=set1[2])
+						polygon(c(x, rev(x)), c(nrs, rev(1-(1-nrs)-(1-rs))),  border=NA, col=set1[3])
 						abline(h=seq(0,1,.2), lty=3)
 						abline(v=seq(0,2000,365), lty=3)
-						#lines(hazNrm$x, cirAdj, col=set1[4])
-						#lines(hazNrm$x, hazCir$x, col=set1[4], lty=2)
+						#lines(x, cirAdj, col=set1[4])
+						#lines(x, x, col=set1[4], lty=2)
 						#
-						lines(hazNrm$x, nrs, col=set1[2])
-						#lines(hazCir$x, exp(-hrs -hnrs), col=set1[1])
-						lines(hazNrm$x,nrs*rs, col=set1[1])
-						polygon(c(hazNrm$x, rev(hazNrm$x)), c(nrslo2, rev(nrsup2))*c(rslo2, rev(rsup2)), col=paste("#FF000044",sep=""), border=NA)
-						polygon(c(hazNrm$x, rev(hazNrm$x)), c(nrslo, rev(nrsup))*c(rslo, rev(rsup)), col=paste("#FF000044",sep=""), border=NA)
-						#lines(survfit(osCR ~ 1), mark=NA, conf.int=FALSE)
+						lines(x, os, col=set1[1], lwd=3)
+						lines(x, osUp, col=set1[1], lty=3)
+						lines(x, osLo, col=set1[1], lty=3)
+						lines(x, osCiMcQ[1,], col=set1[1], lty=2)
+						lines(x, osCiMcQ[2,], col=set1[1], lty=2)
+						#polygon(c(x, rev(x)), c(nrslo2, rev(nrsup2))*c(rslo2, rev(rsup2)), col=paste("#FF000044",sep=""), border=NA)
+						#polygon(c(x, rev(x)), c(nrslo, rev(nrsup))*c(rslo, rev(rsup)), col=paste("#FF000044",sep=""), border=NA)
 						x <- c(365,3*365)
-						y <- (nrs*rs)[x+1]
+						y <- (os)[x+1]
 						points(x,y, pch=16, col=set1[1])
+						segments(x, osLo[x+1] ,x,osUp[x+1], col=set1[1], lwd=2)
 						text(x, y, labels=round(y,2), pos=1)
-						legend("bottomright", col=set1[3:1], lty=1, c("Relapse","Non-relapse","Total"), bty="n")
+						legend(ifelse(os[2000] > .5,"bottomright","topright"), col=set1[c(2,3,1)], lty=c(NA,NA,1), fill=c(set1[c(2,3)],NA), border=NA, lwd=2 , c("Non-relapse","Relapse","Total"), box.lwd = 0, title="Death by", bg="#FFFFFF88")
 						title("Overall survival")
 					})
 
