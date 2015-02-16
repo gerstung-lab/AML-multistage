@@ -1801,3 +1801,14 @@ predictAbsCox <- function(fit, data, surv){
 	S <- exp(-hazardDist(x))
 	S^exp(as.matrix(data[,names(coef(fit))])%*%coef(fit))
 }
+
+p <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, d, x =365)
+s <- survfit(coxRFXOsCR)
+q <- s$surv[which.min(abs(s$time-365))] ^ predict(coxRFXOsCR, newdata=d)
+
+osCR <- Surv(osData$time1, osData$time2, osData$status)
+survConcordance(osCR ~ q)
+survConcordance(osCR ~ p$os)
+
+
+apply(apply(-sapply(concordanceCIRcv[[2]], `[[` , "C"),2,rank),1,function(x) table(factor(x, levels=1:6)))

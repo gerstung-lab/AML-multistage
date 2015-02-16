@@ -94,9 +94,15 @@ plot_hdp_data_assigned(output$classqq, output$numclass)
 #' AML classes
 #+ classes, results='asis', cache=TRUE
 posteriorMerged <- hdp_extract_signatures(output, prop.explained=0.99, cos.merge=0.95)
-posteriorMeans <- Reduce("+",posteriorMerged$sigs_qq)/length(posteriorMerged$sigs_qq)
-rownames(posteriorMeans) <- colnames(genotypesImputed)
-kable(round(posteriorMeans,1))
+#posteriorMeans <- Reduce("+",posteriorMerged$sigs_qq)/length(posteriorMerged$sigs_qq)
+posteriorSamples <- array(unlist(posteriorMerged$sigs_qq), dim=c(dim(posteriorMerged$sigs_qq[[1]]), length(posteriorMerged$sigs_qq)))
+rownames(posteriorSamples) <- colnames(genotypesImputed)
+colnames(posteriorSamples) <- 1:ncol(posteriorSamples) -1
+posteriorMeans <- rowMeans(posteriorSamples, dim=2)
+posteriorQuantiles <- apply(posteriorSamples, 1:2, quantile, c(0.05,.5,0.95))
+kable(posteriorQuantiles[2,,],1) # Posterior mode
+
+
 
 #' Most prevalent lesions
 genes <- apply(posteriorMeans, 2, function(x) paste(ifelse(x>10,rownames(posteriorMeans),"")[order(x, decreasing = TRUE)[1:5]], collapse=";"))
@@ -121,19 +127,21 @@ boxplot(apply(posteriorProbability,2,max) ~ dpClass, col=col, ylab="Probability"
 #+ DPbar, fig.width=8
 par(mar=c(6,3,1,1)+.1, cex=.8)
 o <- order(colSums(genotypesImputed), decreasing=TRUE)
-a <- t(sapply(split(as.data.frame(as.matrix(genotypesImputed)), dpClass), colSums)[o,])
-b <- barplot(a, col=col, las=2, legend=TRUE, border=NA, args.legend=list(border=NA), names.arg=rep("", ncol(genotypesImputed)))
+driverPrevalence <- t(sapply(split(as.data.frame(as.matrix(genotypesImputed)), dpClass), colSums)[o,])
+b <- barplot(driverPrevalence, col=col, las=2, legend=TRUE, border=NA, args.legend=list(border=NA), names.arg=rep("", ncol(genotypesImputed)))
 abline(h=seq(100,500,100), col="white")
 rotatedLabel(b, labels=colnames(genotypesImputed)[o])
 
+#' Driver signatures
 #+ DPbars, fig.width=8, fig.height=2
 par(mar=c(6,3,1,1)+.1, cex=.8)
 t <- table(dpClass)
 i <- 0; for(c in levels(dpClass)){i <- 1+i 
-	b <- barplot(a[c,]/t[i], col=col[i], las=2, legend=FALSE, border=NA,  names.arg=rep("", ncol(genotypesImputed)), main=paste("Class", i-1,t[i], "Patients","f =",round(t[i]/1540,2)), ylim=c(0,1))
+	b <- barplot(posteriorQuantiles[2,o,c]/t[i], col=col[i], las=2, legend=FALSE, border=NA,  names.arg=rep("", ncol(genotypesImputed)), main=paste("Class", i-1,t[i], "Patients","f =",round(t[i]/1540,2)), ylim=c(0,1))
+	segments(b, posteriorQuantiles[1,o,c]/t[i], b, posteriorQuantiles[2,o,c]/t[i], col="white")
+	segments(b, posteriorQuantiles[2,o,c]/t[i], b, posteriorQuantiles[3,o,c]/t[i], col=col[i])
 	rotatedLabel(b, labels=colnames(genotypesImputed)[o])
 }
-
 #' ### Clinical associations
 #+ DPclinical
 boxplot(clinicalData$wbc ~ factor(dpClass), log='y', xlab="Class",ylab="wbc", col=col)
