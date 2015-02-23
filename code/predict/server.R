@@ -8,10 +8,13 @@ library(shiny)
 library(RColorBrewer)
 library(CoxHD)
 library(Rcpp)
-load("predict3.RData")
+load("predictGG.RData")
 set1 <- brewer.pal(8, "Set1")
 VARIABLES <- names(crGroups)[!crGroups %in% c("Nuisance","GeneGene")] 
-VARIABLES <- VARIABLES[order(apply(data[VARIABLES],2,var)*coef(coxRFXCirTD)[VARIABLES]^2, decreasing=TRUE)]
+VARIABLES <- VARIABLES[order(apply(data[VARIABLES],2,var)*c(coef(coxRFXCirTD)[VARIABLES]^2+coef(coxRFXPrsTD)[VARIABLES]^2+coef(coxRFXNrmTD)[VARIABLES]^2), decreasing=TRUE)]
+INTERACTIONS <- names(crGroups)[crGroups %in% "GeneGene"] 
+NUISANCE <- names(crGroups)[crGroups %in% "Nuisance"] 
+
 
 computeTotalPrs <- function(x, diffCir, prsP, tdPrmBaseline, risk) {
 	xLen <- length(x)
@@ -23,12 +26,16 @@ computeTotalPrs <- function(x, diffCir, prsP, tdPrmBaseline, risk) {
 
 cppFunction('NumericVector computeTotalPrsC(NumericVector x, NumericVector diffCir, NumericVector prsP, NumericVector tdPrmBaseline, double risk) {
 				int xLen = x.size();
+				double h;
+                double r = exp(risk);
 				NumericVector rs(xLen);
 				for(int i = 0; i < xLen; ++i) rs[i] = 1;
-				for(int j = 1; j < xLen; ++j) 
-				for(int i = j; i < xLen; ++i){
-				rs[i] += diffCir[j-1] * (1-pow(prsP[i-j], tdPrmBaseline[j-1] * exp(risk)));
-				}
+				for(int j = 1; j < xLen; ++j){
+                 h = tdPrmBaseline[j-1] * r;
+				 for(int i = j; i < xLen; ++i){
+				  rs[i] += diffCir[j-1] * (1-pow(prsP[i-j], h));
+				 }
+                }
 				return rs;
 				}')
 
@@ -41,7 +48,14 @@ shinyServer(function(input, output) {
 							l[[n]] <- ifelse(input[[n]]=="NA",NA,as.numeric(input[[n]]))
 							if(is.null(input[[n]])) l[[n]] <- NA
 						}
+						for(n in INTERACTIONS){
+							s <- strsplit(n, ":")[[1]]
+							l[[n]] <- l[[s[1]]] * l[[s[2]]]
+						}
+						for(n in NUISANCE)
+							l[[n]] <- NA
 						out <- do.call("data.frame",l)
+						names(out) <- names(l)
 						return(out)
 						
 					})
@@ -121,13 +135,13 @@ shinyServer(function(input, output) {
 			
 			output$KM <- renderPlot({
 						par(mfrow=c(2,2), cex=1, bty="n")
-						kmCir <- plotRisk(coxRFX = coxRFXCirTD, data = getData(), ylab="Incidence", col=set1[3])
+						kmCir <- plotRisk(coxRFX = coxRFXCirTD, data = getData(), ylab="Incidence", xlab="Days after remission", col=set1[3])
 						#lines(compRisk$`1 recurrence`$time, compRisk$`1 recurrence`$est, lty=2)
 						title("Relapse")
-						kmNrm <- plotRisk(coxRFX = coxRFXNrmTD, data = getData(), ylab="Mortality", col=set1[2])
+						kmNrm <- plotRisk(coxRFX = coxRFXNrmTD, data = getData(), ylab="Mortality", xlab="Days after remission", col=set1[2])
 						#lines(compRisk$`1 dead`$time, compRisk$`1 dead`$est, lty=2)
 						title("Non-relapse mortality")
-						kmPrs <- plotRisk(coxRFX = coxRFXPrsTD, data = getData(), ylab="Mortality",xlab="Days after relapse", col=set1[1])
+						kmPrs <- plotRisk(coxRFX = coxRFXPrsTD, data = getData(), ylab="Mortality", xlab="Days after relapse", col=set1[1])
 						title("Post-relapse mortality")
 						l <- length(kmCir$inc)
 						
@@ -141,7 +155,7 @@ shinyServer(function(input, output) {
 						os <- 1-(1-nrs)-(1-rs)#nrs*rs
 						
 						xLen <- length(x)						
-						plot(survfit(coxRFXOsCR$surv ~ 1), xlab="Days", ylab="Survival", mark=NA, conf.int=FALSE,  xlim=c(0,2000), ylim=c(0,1), lty=2, xaxs='r')
+						plot(survfit(coxRFXOsCR), xlab="Days", ylab="Survival", mark=NA, conf.int=FALSE,  xlim=c(0,2000), ylim=c(0,1), lty=2, xaxs='r')
 						polygon(c(x, x[xLen]), c(nrs,1)  , border=NA, col=set1[2])
 						polygon(c(x, rev(x)), c(nrs, rev(1-(1-nrs)-(1-rs))),  border=NA, col=set1[3])
 						abline(h=seq(0,1,.2), lty=3)
@@ -163,11 +177,12 @@ shinyServer(function(input, output) {
 						}
 						if("simulated" %in% input$ciType){
 							## Simulate CI
-							osCiMc <- sapply(1:100, function(i){
+							nSim <- 200
+							osCiMc <- sapply(1:nSim, function(i){
 										r <- exp(rnorm(3,0,sqrt(c(kmCir$r[,2],kmNrm$r[,2],kmPrs$r[,2]))))
 										nrs <- cumsum(c(1,diff(kmNrm$inc^r[2]) * kmCir$inc[-1]^r[1])) ## Correct KM estimate for competing risk
-										cir <- cumsum(c(1,diff(kmCir$inc^r[1]) * kmNrm$inc[-1]^r[2])) ## Correct KM estimate for competing risk							
-										rs <- computeTotalPrsC(x = x, diffCir = diff(cir), prsP = prsP, tdPrmBaseline = tdPrmBaseline, risk = kmPrs$r[,1]-kmPrs$r0+log(r[3]))
+										diffCir <- diff(kmCir$inc^r[1]) * kmNrm$inc[-1]^r[2] ## Correct KM estimate for competing risk							
+										rs <- computeTotalPrsC(x = x, diffCir = diffCir, prsP = prsP, tdPrmBaseline = tdPrmBaseline, risk = kmPrs$r[,1]-kmPrs$r0+log(r[3]))
 										return(1-(1-nrs)-(1-rs))
 									})
 							osCiMcQ <- apply(osCiMc,1,quantile, c(0.025,0.975))

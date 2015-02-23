@@ -6,7 +6,7 @@
 
 library(shiny)
 library(CoxHD)
-load("predict3.RData")
+load("predictGG.RData")
 #data <- coxRFXCirTD$Z
 
 # Define UI for application that plots random distributions 
