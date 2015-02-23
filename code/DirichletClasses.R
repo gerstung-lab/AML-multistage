@@ -1,13 +1,13 @@
-# TODO: Add comment
-# 
-# Author: mg14
-###############################################################################
-
-
-#' Dirichlet Classification
+#' AML classification using Dirichlet Processes
 #' =======================
-
+#' <script type="text/javascript">
+#'     $(document).ready(function() {
+#'         $('#posteriorMedian').DataTable();
+#'     } );
+#' </script>
+#' 
 #' Code run on 
+options(markdown.HTML.header = "tmp.html")
 system("hostname -f", intern=TRUE)
 Sys.time()
 getwd()
@@ -92,16 +92,18 @@ plot_hdp_data_assigned(output$classqq, output$numclass)
 
 
 #' AML classes
-#+ classes, results='asis', cache=TRUE
+#+ posteriorMerged, cache=TRUE
 posteriorMerged <- hdp_extract_signatures(output, prop.explained=0.99, cos.merge=0.95)
+
+#+ classes, results='asis', cache=TRUE
 #posteriorMeans <- Reduce("+",posteriorMerged$sigs_qq)/length(posteriorMerged$sigs_qq)
 posteriorSamples <- array(unlist(posteriorMerged$sigs_qq), dim=c(dim(posteriorMerged$sigs_qq[[1]]), length(posteriorMerged$sigs_qq)))
 rownames(posteriorSamples) <- colnames(genotypesImputed)
 colnames(posteriorSamples) <- 1:ncol(posteriorSamples) -1
 posteriorMeans <- rowMeans(posteriorSamples, dim=2)
-posteriorQuantiles <- apply(posteriorSamples, 1:2, quantile, c(0.05,.5,0.95))
-kable(posteriorQuantiles[2,,],1) # Posterior mode
-
+posteriorQuantiles <- apply(posteriorSamples, 1:2, quantile, c(0.025,.5,0.975))
+posteriorMode <- apply(posteriorSamples, 1:2, function(x) {t <- table(x); as.numeric(names(t)[which.max(t)])})
+kable(posteriorQuantiles[2,,], "html", table.attr = 'id="posteriorMedian"') # Posterior median
 
 
 #' Most prevalent lesions
@@ -150,11 +152,33 @@ boxplot(clinicalData$AOD ~ factor(dpClass), xlab="Class",ylab="Age", col=col)
 boxplot(rowSums(genotypesImputed) ~ factor(dpClass), xlab="Class",ylab="# Mutations", col=col)
 
 #' ### Survival
+#' Simple coxph
 #+ DPsurvival
 plot(survfit(os ~ dpClass), col=col)
 legend("topright", legend = levels(dpClass), col=col, lty=1)
 kable(summary(survfit(os ~ dpClass))$table)
 summary(coxph(os ~ dpClass))
+
+#' Risk variance
+#+ RFX
+library(CoxHD)
+dataFrameOsTD <- dataFrame[tplSplitOs,]
+dataFrameOsTD[which(tplIndexOs), grep("TPL", colnames(dataFrameOsTD), value=TRUE)] <- 0 ## Set pre-tpl variables to zero 
+mainGroups <- grep("[A-Z][a-z]+[A-Z]",levels(groups), invert=TRUE, value=TRUE)
+mainIdx <- groups %in% mainGroups
+osTDIdx <- !grepl("TPL_efs", colnames(dataFrame))
+mainIdxOsTD <- mainIdx & osTDIdx
+whichRFXOsTDGG <- which((colSums(dataFrame)>=8 | mainIdxOsTD) & osTDIdx & groups %in% c(mainGroups,"GeneGene")) # ie, > 0.5%
+
+coxRFXFitOsTDGGc <- CoxRFX(dataFrameOsTD[,whichRFXOsTDGG], osTD, groups[whichRFXOsTDGG], which.mu=mainGroups) ## allow only the main groups to have mean different from zero.. 
+coxRFXFitOsTDGGc
+
+d <- cbind(dataFrameOsTD[,whichRFXOsTDGG],DP=t(posteriorProbability)[tplSplitOs,-1])
+coxRFXFitOsTDGGcDP <- CoxRFX(d, osTD, c(as.character(groups[whichRFXOsTDGG]),rep("DP", nlevels(dpClass)-1)), which.mu=mainGroups) ## allow only the main groups to have mean different from zero.. 
+coxRFXFitOsTDGGcDP
+
+PlotVarianceComponents(coxRFXFitOsTDGGcDP, col=set1)
+round(cov(PartialRisk(coxRFXFitOsTDGGcDP)),2)
 
 #' ### Phylogeny
 library(ape)
@@ -173,7 +197,7 @@ odds[odds<1e-3] = 1e-4
 odds[odds>1e3] = 1e4
 
 #+ plotInteractions, fig.width=6, fig.height=6
-odds[10^-abs(logPInt) > 0.5] = 1
+odds[10^-abs(logPInt) > 0.1] = 1
 logOdds=log10(odds)
 diag(logPInt) <- NA
 par(bty="n", mgp = c(2,.5,0), mar=c(4,4,4,4)+.1, las=2, tcl=-.33)
@@ -204,6 +228,45 @@ mtext(side=4, at=4, "Significance", las=2, line=-1,cex=.66)
 points(x=rep(ncol(logPInt),2)+2.5, y=1:2, pch=c("*","."))
 image(x=rep(ncol(logPInt),2)+c(2,3), y=(2:3) +0.5, z=matrix(1), col=brewer.pal(3,"BrBG"), add=TRUE)
 mtext(side=4, at=3:1, c("P > 0.05", "FDR < 0.1", "FWER < 0.05"), cex=.66, line=0.2)
+t <- c(0,table(geneToClass))
+s <- cumsum(t)+.5
+rect(s[-1],s[-1], s[-length(s)], s[-length(s)], border=col)
+
+
+#' Expected heatmap
+#+ heatmapExpected, fig.width=6, fig.height=6
+set.seed(42)
+t <- table(dpClass)
+pp <- t(t(posteriorMeans)/as.numeric(t))
+expectedOdds <- sapply(colnames(genotypesImputed), function(j){
+			sapply(colnames(genotypesImputed), function(i){
+						if(i==j) return(0)
+						P <- Reduce("+",lapply(seq_along(t), function(k) {t[k] * (pp[i,k] * c(1,-1) + c(0,1)) %o% c(pp[j,k]* c(1,-1) + c(0,1))}))/sum(t)
+						#res <- round(log10(M[1,1]*M[2,2]/M[1,2]/M[2,1]))
+						#if( sum(M[,1]) * sum(M[1,])/sum(M) < 5 & res < 0) res <- 0
+						#return(res)
+						M <- matrix(rmultinom(1,sum(t), P), ncol=2)
+						f <- fisher.test(round(M))
+						res <- pmin(pmax(round(log10(f$estimate)),-4),4)
+						if(f$p.value > 0.05)
+							res <- 0
+						return(res)
+					})
+		})
+
+par(bty="n", mgp = c(2,.5,0), mar=c(4,4,4,4)+.1, las=2, tcl=-.33)
+o = order(geneToClass, -colSums(genotypesImputed))
+image(x=1:ncol(expectedOdds), y=1:nrow(expectedOdds), expectedOdds[o,o], col=brewer.pal(9,"BrBG"), breaks=c(-4:0-.Machine$double.eps,0:4), xaxt="n", yaxt="n", xlab="",ylab="", xlim=c(0, ncol(expectedOdds)+3), ylim=c(0, ncol(expectedOdds)+3))
+l <- colnames(expectedOdds)[o]
+mtext(side=1, at=1:ncol(expectedOdds), l, cex=.66, font=ifelse(grepl("^[A-Z]",l),3,1), col=col[geneToClass[o]])
+mtext(side=2, at=1:ncol(expectedOdds), l, cex=.66, font=ifelse(grepl("^[A-Z]",l),3,1), col=col[geneToClass[o]])
+abline(h=0:ncol(expectedOdds)+.5, col="white", lwd=.5)
+abline(v=0:ncol(expectedOdds)+.5, col="white", lwd=.5)
+t <- c(0,table(geneToClass))
+s <- cumsum(t)+.5
+rect(s[-1],s[-1], s[-length(s)], s[-length(s)], border=col)
+
+
 
 #' Alternatively: Naive Bayes assignment
 sigBayes <- function(genotype, sigs){
@@ -215,6 +278,10 @@ sigBayes <- function(genotype, sigs){
 }
 
 naiveBayes <- t(apply(genotypesImputed,1,sigBayes,posteriorMeans))
+
+#' Save
+names(dpClass) <- clinicalData$PDID
+save(dpClass, posteriorMeans, posteriorQuantiles, posteriorProbability, file='dpClass.RData')
 
 #' ## Session
 devtools::session_info()
