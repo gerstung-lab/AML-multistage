@@ -1802,7 +1802,7 @@ predictAbsCox <- function(fit, data, surv){
 	S^exp(as.matrix(data[,names(coef(fit))])%*%coef(fit))
 }
 
-p <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, d, x =365)
+p <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, allData, x =365)
 s <- survfit(coxRFXOsCR)
 q <- s$surv[which.min(abs(s$time-365))] ^ exp(predict(coxRFXOsCR, newdata=d))
 
@@ -1810,5 +1810,111 @@ osCR <- Surv(osData$time1, osData$time2, osData$status)
 survConcordance(osCR ~ q)
 survConcordance(osCR ~ p$os)
 
+p <- sapply(1:10*365/2, function(i)  PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, d, x =round(i))$os)
+plot(1:10*365/2,cor(p,q), xlab="time", ylab='cor')
+plot(1:10*365/2,1-apply(p,2, function(x) survConcordance(osCR ~ x)$concordance))
 
 apply(apply(-sapply(concordanceCIRcv[[1]], `[[` , "C")[4:5,],2,rank),1,function(x) table(factor(x, levels=1:6)))
+
+
+a <- sapply(concordanceCIRcv[[2]], `[[` , "coef")
+a <- array(a, dim = c(dim(concordanceCIRcv[[2]][[1]]$coef), ncol(a)), dimnames=c(dimnames(concordanceCIRcv[[2]][[1]]$coef),NULL))
+m <- rowMeans(a,dim=2)
+m <- apply(a, 1:2, median)
+
+boxplot(t(a[,1,]))
+
+
+n <- coxRFXNrmTD
+n$coefficients <- m[,"NRMrfx"]
+
+r <- coxRFXPrsTD
+r$coefficients <- m[,"PRSrfx"]
+
+c <- coxRFXCirTD
+c$coefficients <- m[,"CIRrfx"]
+
+p <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, allData, x =365)
+q <- PredictOS(n, c, r, allData, x =365)
+
+plot(p$os, q$os)
+cor(p$os, q$os)
+
+survConcordance(osCR ~ p$os)
+survConcordance(osCR ~ q$os)
+
+## more bagging
+concordanceCIRbag <- mclapply(1:replicates, function(foo){
+			g <- crGroups
+			set.seed(foo)
+			trainIdx <- sample(1:nrow(dataFrame)%%2 +1 )!=1 ## sample 1/2
+			dNrm <- nrmData[nrmData$index %in% which(trainIdx),names(g)]
+			sNrm <- Surv(nrmData$time1, nrmData$time2, nrmData$status)[nrmData$index %in% which(trainIdx)]
+			coxRFXNrmTD <- CoxRFX(dNrm, sNrm, groups=g, nu=1, which.mu = mainGroups)
+			coxRFXNrmTD$coefficients["transplantRel"] <- 0
+			dPrs <- prsData[prsData$index %in% which(trainIdx), names(g)]
+			sPrs <- Surv(prsData$time2 - prsData$time1, prsData$status)[prsData$index %in% which(trainIdx)]
+			coxRFXPrsTD <-  CoxRFX(dPrs, sPrs, groups=g, nu=1, which.mu = mainGroups)
+			dCir <- cirData[cirData$index %in% which(trainIdx), names(g)]
+			sCir <- Surv(cirData$time1, cirData$time2, cirData$status)[cirData$index %in% which(trainIdx)]
+			coxRFXCirTD <-  CoxRFX(dCir, sCir, groups=g, which.mu = mainGroups)
+			coxRFXCirTD$coefficients["transplantRel"] <- 0
+			dOs <- osData[osData$index %in% which(trainIdx), names(g)]
+			sOs <- Surv(osData$time1, osData$time2, osData$status)[osData$index %in% which(trainIdx)]
+			coxRFXOsCR <- CoxRFX(dOs, sOs, groups=g, which.mu = mainGroups)
+			
+			allRisk365 <- PredictOS(coxRFXNrmTD = coxRFXNrmTD, coxRFXPrsTD = coxRFXPrsTD, coxRFXCirTD = coxRFXCirTD, allData, 365)
+			allRisk1000 <- PredictOS(coxRFXNrmTD = coxRFXNrmTD, coxRFXPrsTD = coxRFXPrsTD, coxRFXCirTD = coxRFXCirTD, allData, 1000)
+			
+			p365 <- -allRisk365[,1]
+			p1000 <-  -allRisk1000[,1]
+			pCIR <- as.matrix(cirData[names(g)]) %*% coef(coxRFXCirTD)
+			pPRS <- as.matrix(prsData[names(g)]) %*% coef(coxRFXPrsTD)
+			pNRM <- as.matrix(nrmData[names(g)]) %*% coef(coxRFXNrmTD)
+			pOS <- as.matrix(osData[names(g)]) %*% coef(coxRFXOsCR)
+			
+			Ctest <- c(
+					CIRrfx = survConcordance(Surv(time1, time2, status)~ pCIR, data=cirData, subset = cirData$index %in% which(!trainIdx) )$concordance,
+					PRSrfx = survConcordance(Surv(time2 - time1, status) ~ pPRS, data=prsData, subset=prsData$index %in% which(!trainIdx) )$concordance,
+					NRMrfx = survConcordance(Surv(time1, time2, status)~  pNRM, data=nrmData, subset=nrmData$index %in% which(!trainIdx) )$concordance,
+					OSrfx = survConcordance(Surv(time1, time2, status) ~ pOS, data=osData, subset=osData$index %in% which(!trainIdx) )$concordance,
+					OS365 = survConcordance(Surv(time1, time2, status) ~ p365, data=osData, subset=osData$index %in% which(!trainIdx) )$concordance,
+					OS1000 = survConcordance(Surv(time1,time2, status) ~ p1000, data=osData, subset=osData$index %in% which(!trainIdx) )$concordance
+			)
+			
+			Ctrain <- c(
+					CIRrfx = survConcordance(Surv(time1, time2, status)~ pCIR, data=cirData, subset = cirData$index %in% which(trainIdx) )$concordance,
+					PRSrfx = survConcordance(Surv(time2 - time1, status) ~ pPRS, data=prsData, subset=prsData$index %in% which(trainIdx) )$concordance,
+					NRMrfx = survConcordance(Surv(time1, time2, status)~  pNRM, data=nrmData, subset=nrmData$index %in% which(trainIdx) )$concordance,
+					OSrfx = survConcordance(Surv(time1, time2, status) ~ pOS, data=osData, subset=osData$index %in% which(trainIdx) )$concordance,
+					OS365 = survConcordance(Surv(time1, time2, status) ~ p365, data=osData, subset=osData$index %in% which(trainIdx) )$concordance,
+					OS1000 = survConcordance(Surv(time1,time2, status) ~ p1000, data=osData, subset=osData$index %in% which(trainIdx) )$concordance
+			)
+			
+			coef <- cbind(CIRrfx=coef(coxRFXCirTD), PRSrfx=coef(coxRFXPrsTD), NRMrfx=coef(coxRFXNrmTD),  OSrfx=coef(coxRFXOsCR))
+			
+			return(list(Ctest=Ctest, Ctrain=Ctrain, coef=coef, allRisk365=allRisk365, allRisk1000=allRisk1000))
+		}, mc.cores=20)
+
+		
+w <- sapply(concordanceCIRbag, class) != 'try-error'
+x <- sapply(concordanceCIRbag[w], function(x) c(x$Ctest, x$Ctrain))
+plot(x[,5], x[,11])
+		
+a <- sapply(concordanceCIRbag[w], `[[` , "coef")
+a <- array(a, dim = c(dim(concordanceCIRbag[w][[1]]$coef), ncol(a)), dimnames=c(dimnames(concordanceCIRbag[w][[1]]$coef),NULL))
+m <- rowMeans(a,dim=2)
+m <- apply(a, 1:2, median)
+
+n <- coxRFXNrmTD
+n$coefficients <- m[,"NRMrfx"]
+
+r <- coxRFXPrsTD
+r$coefficients <- m[,"PRSrfx"]
+
+c <- coxRFXCirTD
+c$coefficients <- m[,"CIRrfx"]
+
+r <- PredictOS(n, c, r, allData, x =365)
+
+survConcordance(osCR ~ r$os)
