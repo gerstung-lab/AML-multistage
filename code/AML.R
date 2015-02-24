@@ -86,6 +86,7 @@ tplIndexEfs <- (clinicalData$Time_Diag_TPL < clinicalData$efs & !is.na(clinicalD
 
 #' #### Overall survival
 #' OS
+#+ survival, cache=TRUE
 os <- Surv(clinicalData$OS, clinicalData$Status) #OS
 t <- clinicalData$Time_Diag_TPL
 t[is.na(t) | !clinicalData$TPL_Phase %in% "CR1" | !clinicalData$TPL_type %in% c("ALLO","FREMD") ] <- Inf ## Only allografts in CR1
@@ -802,6 +803,7 @@ abline(h=.5)
 #' 4. Test/train splits
 #' ----------------
 #' Train only on 2/3 of the data
+#+ trainIdx, cache=TRUE
 set.seed(42)
 trainIdx <- sample(c(TRUE,FALSE), nrow(dataFrame), replace=TRUE, prob=c(0.66,0.34))
 trainIdxEfsTD <- trainIdx[tplSplitEfs]
@@ -1553,13 +1555,16 @@ legend("topright", levels(tcgaClinical$C_Risk)[c(2,3,1)], fill=set1[c(3,2,1)], b
 
 #' #### CV revisited
 par(mar=c(3,3,1,1),bty="n", mgp=c(2,.5,0), las=2)
-o <- order(colMeans(allModelsCvTdC))
-boxplot(allModelsCvTdC[,o], notch=TRUE, ylab="Concordance", staplewex=0, lty=1, pch=16, xaxt="n", border="black")
-segments(1:6+.05,tcgaConcordance[1,c(1,3,7,6,8,5)]-tcgaConcordance[2,c(1,3,7,6,8,5)],1:6+.05,tcgaConcordance[1,c(1,3,7,6,8,5)], col='red')
-segments(1:6+.05,tcgaConcordance[1,c(1,3,7,6,8,5)],1:6+.05,tcgaConcordance[1,c(1,3,7,6,8,5)]+tcgaConcordance[2,c(1,3,7,6,8,5)], col='red')
-points(1:6+.05,tcgaConcordance[1,c(1,3,7,6,8,5)], col='red', pch=16, cex=2)
-rotatedLabel(1:6, rep(par("usr")[3],6), colnames(allModelsCvTdC)[o])
-legend("bottomright", c("CV x100", "TCGA +/- sd"), lty=c(1,1), bty="n", col=c(1,2), pch=c(22,16))
+x <- allModelsCvC[-5,]
+o <- order(apply(x,1,median))
+boxplot(t(x[o,]), notch=TRUE, ylab="Concordance", staplewex=0, lty=1, pch=16, xaxt="n", border="black")
+#segments(1:6+.05,tcgaConcordance[1,c(1,3,7,6,8,5)]-tcgaConcordance[2,c(1,3,7,6,8,5)],1:6+.05,tcgaConcordance[1,c(1,3,7,6,8,5)], col='red')
+#segments(1:6+.05,tcgaConcordance[1,c(1,3,7,6,8,5)],1:6+.05,tcgaConcordance[1,c(1,3,7,6,8,5)]+tcgaConcordance[2,c(1,3,7,6,8,5)], col='red')
+points(1:6+.05,tcgaConcordance[1,c(1,3,7,6,8,5)], col=set1[1], pch=16, cex=2)
+rotatedLabel(1:nrow(x), labels= rownames(x)[o])
+i <- 1; for(n in colnames(allModelsTrialC)) {
+	i<-i+1; points(allModelsTrialC[-5,n][o], col=set1[i], pch=16, cex=2)}
+legend("bottomright", c("CV x100", "TCGA", colnames(allModelsTrialC)), lty=c(1,1), bty="n", col=c(1,set1[1:4]), pch=c(22,16,16,16,16))
 
 
 #' #### Genomic models
@@ -2276,11 +2281,13 @@ mtext(side=1, expression(paste("Explained variance ",R^2)), line=2.5)
 #' --------------------
 #' ### Prelim
 #' Times for allografts pre and post relapse, after 1CR only
+#+ alloIdx
 alloIdx <- clinicalData$TPL_type %in% c("ALLO","FREMD") # only allografts
 alloTimeCR1 <- clinicalData$Time_1CR_TPL + .5 # +.5 to make > 0
 alloTimeCR1[!alloIdx | (clinicalData$TPL_date < clinicalData$Recurrence_date & !clinicalData$TPL_Phase %in% c("CR1","RD"))] <- NA
 
 #' Create data frames for each phase
+#+ postCR1Data, cache=TRUE
 whichRFXCirTD <- whichRFXOsTDGG[grep("TPL",names(whichRFXOsTDGG), invert=TRUE)] #mainIdx & !grepl("TPL", names(dataFrame)) & groups!="Nuisance"
 t <- clinicalData$Recurrence_date
 t[is.na(t)] <- as.Date(1e6, origin="2000-01-01")
@@ -2304,6 +2311,7 @@ w <- which(prsData$time1 == prsData$time2) ## 5 cases with LF=Rec
 prsData$time2[w] <- prsData$time2[w] + .5
 
 #' Fit models
+#+ postCR1Fits, cache=TRUE
 crGroups <- c(as.character(groups[whichRFXCirTD]), "Treatment","Treatment")
 names(crGroups) <- c(names(dataFrame)[whichRFXCirTD],"transplantCR1","transplantRel")
 coxRFXNrmTD <- CoxRFX(nrmData[names(crGroups)], Surv(nrmData$time1, nrmData$time2, nrmData$status), groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
@@ -2660,8 +2668,25 @@ PlotVarianceComponents(coxRFXPrsTD, col=colGroups)
 title(main="PRS")
 
 
+#' 11. Clinical and splines
+#' -----------------------
+#' Fit a spline through continuous covariates
+#+ clinicalSpline, fig.width=6, fig.height=6
+par(mfrow=c(3,3))
+clinicalSpline <- as.data.frame(sapply(dataFrame[groups %in% c("Clinical","Demographics")], function(x){
+					if(all(x[1:5] %in% 0:10)) return(x)
+					y <- log(x+min(x)+1e-3)
+					fit <- coxph(os ~ pspline(y, df=3), subset=trainIdx)
+					predict(fit, newdata=data.frame(y=y))
+				}))
+for(n in names(clinicalSpline)) if(!all(dataFrame[1:5,n] %in% 0:10))
+		plot(dataFrame[,n], clinicalSpline[,n], log='x', xlab=paste(n, '[observed]'), ylab = paste(n, '[spline]'))
 
-#' 10. Germline polymorphisms
+summary(coxph(os ~ ., data=clinicalSpline, subset=!trainIdx))$concordance
+summary(coxph(os ~ ., data=dataFrame[groups %in% c("Clinical","Demographics")]), subset=!trainIdx)$concordance
+
+
+#' 12. Germline polymorphisms
 #' ----------------------
 #+ eval=FALSE
 load("/Volumes/mg14/subclones/snps.RData")

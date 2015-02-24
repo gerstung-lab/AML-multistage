@@ -1918,3 +1918,41 @@ c$coefficients <- m[,"CIRrfx"]
 r <- PredictOS(n, c, r, allData, x =365)
 
 survConcordance(osCR ~ r$os)
+
+dtf <- as.data.frame(sapply(rev(h$height)[1:20], function(x){
+			c <- cut(d, x)
+			o <- order(unlist(c$lower))
+			Reduce("c",sapply(seq_along(c$lower), function(i) rep(i, length(unlist(c$lower[[i]])))))[o]
+		}))
+dtf$all <- 1:nrow(dtf)
+dtf$size <- 1
+treemap(dtf, index=c(paste0("V",1:5),"V20","all"), vSize='size', vCol="V1")
+
+
+vcTest <- function(x){
+	r <- t(sapply(levels(x$groups), function(l) {
+				n <- c(names(coef(x))[which(x$groups==l)],l)
+				w <- intersect(colnames(x$Hinv),n)
+				df <- sum(diag(solve(x$Hinv[w,w]) %*% x$V[w,w]))
+				c <- c(coef(x) - x$mu[l], x$mu[l])[w]
+				#z <- c %*% solve(x$Hinv[w,w]) %*% c
+				z <- sum(c^2/diag(x$Hinv[w,w]))
+				c(z=z, df=df)
+			}))
+	p <- pchisq(r[,"z"], r[,"df"], lower.tail=FALSE)
+	data.frame(r, p.value=p, sig=mg14:::sig2star(p))
+}
+
+
+## Clinical and splines
+clinicalSpline <- as.data.frame(sapply(dataFrame[groups=="Clinical"], function(x){
+			if(all(x[1:5] %in% 0:10)) return(x)
+			y <- log(x+min(x)+1e-3)
+			fit <- coxph(os ~ pspline(y, df=3), subset=trainIdx)
+			predict(fit, newdata=data.frame(y=y))
+		}))
+for(n in names(clinicalSpline)) if(!all(dataFrame[1:5,n] %in% 0:10))
+	plot(dataFrame[,n], clinicalSpline[,n], log='x', xlab=paste(n, '[observed]'), ylab = paste(n, '[spline]'))
+
+summary(coxph(os ~ ., data=clinicalSpline, subset=!trainIdx))$concordance
+summary(coxph(os ~ ., data=dataFrame[groups=="Clinical"]), subset=!trainIdx)$concordance
