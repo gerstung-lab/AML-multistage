@@ -927,6 +927,13 @@ coxAICOsTrain <- step(c, scope= scopeStep, k = 2, trace=0)
 summary(coxAICOsTrain)
 survConcordance(os[!trainIdx] ~ predict(coxAICOsTrain, newdata=dataFrame[!trainIdx,mainIdxOs]))
 
+#' #### Time-dep AIC and BIC
+c <- coxph(osTD ~ 1, data=dataFrameOsTD[mainIdxOsTD])
+scopeStep <- as.formula(paste("osTD ~", paste(colnames(dataFrameOsTD)[mainIdxOsTD], collapse="+")))
+coxBICOsTD <- step(c, scope=scopeStep, k = log(nrow(dataFrame)), trace=0)
+coxAICOsTD <- step(coxBICOsTD, scope=scopeStep, k = 2, trace=0)
+
+
 #' ### 7. Summary of different models
 #' #### Static models
 predictedRiskCV <- data.frame(
@@ -1291,13 +1298,52 @@ names(allModelsTrialPredictions) <- names(allModelsTrial)
 allModelsTrialC <- sapply(names(allModelsTrial), function(foo){
 			trainIdx <- clinicalData$Study != foo
 			apply(allModelsTrialPredictions[[foo]], 2 , function(p){						
-						survConcordance(osYr[!trainIdx,] ~ p)$concordance
+						unlist( survConcordance(osYr[!trainIdx,] ~ p)[c("concordance","std.err")])
 					})
-		})
+		}, simplify="array")
 
 allModelsTrialC
 
+#' ####
+#+ allModelsTrialTD, cache=TRUE
+allModelsTrialTD <- mclapply(levels(clinicalData$Study), function(foo){
+			#set.seed(foo)
+			trainIdx <- clinicalData$Study != foo 
+			c <- coxph(osTD[trainIdx] ~ 1, data=dataFrameOsTD[trainIdx,mainIdxOsTD])
+			scopeStep <- as.formula(paste("osTD[trainIdx] ~", paste(colnames(dataFrameOsTD)[mainIdxOsTD], collapse="+")))
+			coxBICOsTrain <- step(c, scope=scopeStep, k = log(sum(trainIdx)), trace=0)
+			coxAICOsTrain <- step(coxBICOsTrain, scope=scopeStep, k = 2, trace=0)
+			coxRFXOsTrain <- CoxRFX(dataFrameOsTD[trainIdx,mainIdxOsTD], osTD[trainIdx], groups=groups[mainIdxOsTD], nu = if(foo=="AMLSG0704") 1 else 0)
+			coxRFXOsTrain$Z <- NULL
+			coxRFXOsGGc <- CoxRFX(dataFrameOsTD[trainIdx,whichRFXOsTDGG], osTD[trainIdx], groups=groups[whichRFXOsTDGG], which.mu=mainGroups, nu = if(foo=="AMLSG0704") 1 else 0)
+			coxRFXOsGGc$Z <- NULL
+			
+			return(list(
+							BIC=coxBICOsTrain,
+							AIC=coxAICOsTrain,
+							RFX=coxRFXOsTrain,
+							RFXgg=coxRFXOsGGc							))
+		}, mc.cores=3)
+names(allModelsTrialTD) <- levels(clinicalData$Study)
 
+allModelsTrialTdPredictions <- mclapply(names(allModelsTrialTD), function(foo){
+			x <- allModelsTrialTD[[foo]]
+			trainIdx <- clinicalData$Study != foo
+			cbind(ELN=c(4,1,3,2)[clinicalData$M_Risk[!trainIdx]],
+					sapply(x, function(y){
+								predictAllModels(y, newdata=dataFrame[!trainIdx,])
+							}))
+		}, mc.cores=3)
+names(allModelsTrialTdPredictions) <- names(allModelsTrialTD)
+
+allModelsTrialTdC <- sapply(names(allModelsTrialTD), function(foo){
+			trainIdx <- clinicalData$Study != foo
+			apply(allModelsTrialTdPredictions[[foo]], 2 , function(p){						
+						unlist( survConcordance(osYr[!trainIdx,] ~ p)[c("concordance","std.err")])
+					})
+		}, simplify="array")
+
+allModelsTrialTdC
 		
 #' ### 6. Models on genomics only
 #+ genomicModels, cache=TRUE
@@ -1493,9 +1539,22 @@ survConcordance(tcgaSurvival[tcgaNkIdx] ~ tcgaPinaOs[tcgaNkIdx,1])
 survConcordance(tcgaSurvival[tcgaNkIdx] ~ tcgaRiskCPSSOs[tcgaNkIdx])
 
 
+#' #### ELN score
+ELN <- function(X, nkIdx){
+	factor(ifelse(X$inv3_t3_3==1 | X$t_6_9==1 | X$t_9_22==1 | X$minus5_5q==1 | X$mono17_17p_abn17p==1 | X$minus7==1 | X$complex==1 | X$t_MLL==1,
+			"Adverse",
+			ifelse(X$t_15_17==1 | X$t_8_21==1 | X$inv16_t16_16==1 | ((X$CEBPA_bi==1 |  X$CEBPA_mono==1 | (X$NPM1==1 & X$FLT3_ITD==0)) & nkIdx),
+					"Favorable",
+					ifelse(nkIdx & (X$FLT3_ITD==1 | X$NPM1==0 & X$FLT3_ITD==0), 
+							"Inter-1", "Inter-2"))), levels=rev(c("Adverse","Inter-1","Inter-2","Favorable")))
+}
+
+table(clinicalData$M_Risk, ELN(dataFrame, nkIdx))
+
 #' #### Other models
 tcgaRisk <- data.frame(
-		stdRisk = c(3,1,2)[tcgaClinical$C_Risk],
+		#stdRisk = c(3,1,2)[tcgaClinical$C_Risk],
+		ELN = as.numeric(ELN(tcgaDataImputed, tcgaNkIdx)),
 		tree = predict(tree, newdata=tcgaDataImputed),
 		rForest = predict(rForest, newdata = tcgaDataImputed, importance="none")$predicted,
 		PINAos = tcgaPinaOs[,1],
@@ -1553,18 +1612,58 @@ mtext(side=4, "Time", line=2.5)
 mtext(side=3, at = -log(l)/hazardDist(par("usr")[4]*10000*365), text=paste(100*l, "% survive", sep=""))
 legend("topright", levels(tcgaClinical$C_Risk)[c(2,3,1)], fill=set1[c(3,2,1)], bty="n", title="M risk")
 
+#' TCGA concordance time-dependent models
+tcgaDataTdImputed <- as.data.frame(ImputeMissing(dataFrame[mainIdxOsTD], newX=tcgaData[mainIdxOsTD]))
+tcgaRiskTD <- data.frame(
+		coxBICTD = predict(coxBICOsTD, newdata=tcgaDataTdImputed),
+		coxAICTD = predict(coxAICOsTD, newdata=tcgaDataTdImputed),
+		coxRFXTD = PredictRiskMissing(coxRFXFitOsTDGGc, tcgaData)[,1]
+		)
+tcgaConcordanceTD <- sapply(tcgaRiskTD, function(x) unlist(survConcordance(tcgaSurvival ~ x)[c("concordance","std.err")]))
+
 #' #### CV revisited
-par(mar=c(3,3,1,1),bty="n", mgp=c(2,.5,0), las=2)
-x <- allModelsCvC[-5,]
-o <- order(apply(x,1,median))
-boxplot(t(x[o,]), notch=TRUE, ylab="Concordance", staplewex=0, lty=1, pch=16, xaxt="n", border="black")
-#segments(1:6+.05,tcgaConcordance[1,c(1,3,7,6,8,5)]-tcgaConcordance[2,c(1,3,7,6,8,5)],1:6+.05,tcgaConcordance[1,c(1,3,7,6,8,5)], col='red')
-#segments(1:6+.05,tcgaConcordance[1,c(1,3,7,6,8,5)],1:6+.05,tcgaConcordance[1,c(1,3,7,6,8,5)]+tcgaConcordance[2,c(1,3,7,6,8,5)], col='red')
-points(1:6+.05,tcgaConcordance[1,c(1,3,7,6,8,5)], col=set1[1], pch=16, cex=2)
-rotatedLabel(1:nrow(x), labels= rownames(x)[o])
-i <- 1; for(n in colnames(allModelsTrialC)) {
-	i<-i+1; points(allModelsTrialC[-5,n][o], col=set1[i], pch=16, cex=2)}
-legend("bottomright", c("CV x100", "TCGA", colnames(allModelsTrialC)), lty=c(1,1), bty="n", col=c(1,set1[1:4]), pch=c(22,16,16,16,16))
+#+ concordanceCvTcga, fig.width=3.5, fig.height=2.5
+library(abind)
+par(mar=c(3,3.5,.5,.5),bty="n", mgp=c(2.5,.5,0), las=2,  lend=1, xpd=FALSE)
+o <- c(1,7,2,3,4,6)
+x <- rbind(allModelsCvC[o,], allModelsCvTdC[-c(1,4),])
+col <- brewer.pal(4,"Pastel1")
+#boxplot(t(x[o,]), notch=TRUE, ylab="Concordance", staplewex=0, lty=1, pch=16, xaxt="n", border="white", ylim=c(0.5,0.75), boxwex=.5)
+bplot <- function(x, at=1:ncol(x),..., ylim=range(x), xlab="", col="black", col.lines="grey"){
+	y <- apply(x,2,fivenum)
+	plot(at,y[3,], pch=NA, ..., ylim=ylim, xlab="", xaxt="n")
+	segments(at,y[1,],at,y[5,], col=col.lines, lwd=2)
+	segments(at,y[2,],at,y[4,], col=col.lines, lwd=4)
+	points(at,y[3,], pch=15, col=col)
+}
+s <- .2 #space
+a <- c(1:6, 7:9+.5)
+bplot(t(x), at=a-1.5*s,ylab="Concordance", ylim=c(0.5,0.75), xlim=range(a)+c(-.5,.5))
+abline(h=seq(.5,.75,.05), col="lightgrey")
+par(xpd=NA)
+t <- tcgaConcordance[,c(1,3,6,7,8,5)]
+z <- abind(abind(TCGA=t, allModelsTrialC[,o,]), abind(TCGA=tcgaConcordanceTD, allModelsTrialTdC[,-c(1,4),]), along=2)
+m <- sapply(1:ncol(z),function(i){
+			err <- 1 / sum(1/z[2,i,]^2)
+			avg <- sum(z[1,i,] /z[2,i,]^2) * err
+		c(avg,sqrt(err))})
+#segments(1:6+s/2,m[1,]-m[2,],1:6+s/2,m[1,]+m[2,], lwd=2, col="#00000044")
+#points(m[1,], pch=19, cex=1.5)
+#segments(a-s/2,t[1,]-t[2,],a-s/2,t[1,]+t[2,], col=paste0(col[1],"FF"), lwd=2)
+#points(a-s/2,t[1,], col=col[1], pch=16, cex=1)
+i <- 0; for(n in dimnames(z)[[3]]) { i<-i+1;
+	segments(a -s +s/2*i, z[1,,n] -  z[2,,n],a -s +s/2*i, z[1,,n]+ z[2,,n], col=paste0(col[i],"FF"), lwd=2)
+	points(a -s +s/2*i, z[1,,n], col=col[i], pch=16, cex=1)
+}
+segments(a -3/4*s, m[1,],a+s*5/4,m[1,], lwd=3)
+rotatedLabel(a, labels= rownames(x))
+legend("bottomright", 
+		c(
+				"random CV 4/5 x100", 
+				paste0("TCGA, (n=",nrow(na.omit(tcgaSurvival)),")"),
+				paste0(dimnames(allModelsTrialC)[[3]]," (n=",table(clinicalData$Study),")"),
+				"average"), 
+		lty=c(1,1), bg="white", col=c("grey",col[1:4], "black"), pch=c(15,16,16,16,16,16,NA))
 
 
 #' #### Genomic models
@@ -2423,6 +2522,8 @@ w <- which(clinicalData$TPL_date > clinicalData$Recurrence_date)
 allData$transplantCR1[allData$index %in% w] <- 0
 allData$transplantRel[!allData$index %in% w] <- 0
 
+allPredict <-  PredictOS(coxRFXNrmTD = coxRFXNrmTD, coxRFXPrsTD = coxRFXPrsTD, coxRFXCirTD = coxRFXCirTD, allData, 365)
+
 replicates <- 100 ## number of replicates
 concordanceCIRcv <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), function(g){ 
 			mclapply(1:replicates, function(foo){
@@ -2468,8 +2569,8 @@ concordanceCIRcv <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), f
 					}, mc.cores=10)
 		})
 
-apply(apply(-sapply(concordanceCIRcv[[1]], `[[` , "C"),2,rank),1,function(x) table(factor(x, levels=1:6)))
-apply(apply(-sapply(concordanceCIRcv[[2]], `[[` , "C"),2,rank),1,function(x) table(factor(x, levels=1:6)))
+apply(apply(-sapply(concordanceCIRcv[[1]], `[[` , "C")[4:6,],2,rank),1,function(x) table(factor(x, levels=1:3)))
+apply(apply(-sapply(concordanceCIRcv[[2]], `[[` , "C")[4:6,],2,rank),1,function(x) table(factor(x, levels=1:3)))
 
 
 concordanceCIRcvTrial <- mclapply(list(crGroups[crGroups %in% mainGroups], crGroups), function(g){ 
@@ -2650,23 +2751,38 @@ symbols(l[,1],l[,2], circles=rep(0.5, nrow(l)), inches=FALSE,add=TRUE)
 
 #' Who achieves CR?
 c <- as.numeric(clinicalData$CR_date - clinicalData$ERDate)
-e <- c < os[,1]
-e[is.na(e)] <- 0
+e <- is.na(c)
+#e[is.na(e)] <- 0
 c[is.na(c) &! is.na(os[,1])] <- os[is.na(c) &! is.na(os[,1]),1]
 cr <- Surv(time=pmin(c, os[,1]), event = e)
-coxRFXCr <- CoxRFX(dataFrame[whichRFXOsTDGG], cr, groups=groups[whichRFXOsTDGG], which.mu=mainGroups)
+coxRFXCr <- CoxRFX(dataFrame[whichRFXOsGG], cr, groups=groups[whichRFXOsGG], which.mu=mainGroups)
 
 #' Four plots comparing different intervals
 par(mfrow=c(2,2), xpd=FALSE)
-PlotVarianceComponents(coxRFXCr, col=colGroups)
+PlotVarianceComponents(coxRFXCr, col=colGroups, order=c(1,2,6,5,3,4,7,8))
 title(main="CR")
-PlotVarianceComponents(coxRFXCirTD, col=colGroups)
+PlotVarianceComponents(coxRFXCirTD, col=colGroups, order=c(1,2,6,5,3,4,7,8))
 title(main="CIR")
-PlotVarianceComponents(coxRFXNrmTD, col=colGroups)
+PlotVarianceComponents(coxRFXNrmTD, col=colGroups, order=c(1,2,6,5,3,4,7,8))
 title(main="NRM")
-PlotVarianceComponents(coxRFXPrsTD, col=colGroups)
+PlotVarianceComponents(coxRFXPrsTD, col=colGroups, order=c(1,2,6,5,3,4,7,8))
 title(main="PRS")
 
+#' As barplot
+allVarComp <- sapply(c("Cr","CirTD","NrmTD","PrsTD"), function(x){
+			m <- get(paste0("coxRFX",x))
+			Z <- get(sub("\\[.+","",as.character(m$call["data"])))
+			i <- if(x=="Cr") 1:1540 else Z$index
+			VarianceComponents(m, newZ=Z[!rev(duplicated(rev(i))),colnames(m$Z)])})
+z <- allVarComp[c(1,2,6,5,3,4,7,8),]#/rep(colSums(allVarComp[-9,]), each=8)
+b <- barplot(z, col=colGroups[rownames(allVarComp)[c(1,2,6,5,3,4,7,8)]], ylab="Variance [log hazard]")
+Z <- rbind(0,apply(z,2,cumsum))
+segments(b[-4]+.5,t(Z[,-4]),b[-1]-.5 ,t(Z[,-1]))
+#x <- seq(0,par("usr")[4],l=100)
+#y <- CoxHD:::ConcordanceFromVariance(x)
+#s <- spline(y,x,xout=pretty(y))
+#axis(side=4, at=s$y[s$y < par("usr")[4]], labels=s$x[s$y<par("usr")[4]])
+#mtext(side=4, "Concordance")
 
 #' 11. Clinical and splines
 #' -----------------------
