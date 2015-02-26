@@ -787,6 +787,14 @@ for(i in seq_along(m))
 	text(colnames(x)[i],x=(m[i] + strwidth(colnames(x)[i], units="user")/1.5)*c[i], y=(m[i] + strwidth(colnames(x)[i], units="user")/1.5)*s[i], srt = ((360/ncol(x) *(i-1)+90) %% 180) -90 )
 text(log(c(0.66,1,1.5))/(2*t)+1, c(0,0,0)-.1,labels=c(0.66,1,1.5), cex=.33)
 
+#' Log hazard and outcome
+#+ logHazOutcome, fig.width=4, fig.height=2
+t <- os
+c <- cut(t[,1], quantile(t[,1], seq(0,1,0.1), na.rm=TRUE))
+h <- coxRFXFitOsTDGGc$linear.predictors[rev(!duplicated(rev(tplSplitOs)))][order(tplSplitOs[rev(!duplicated(rev(tplSplitOs)))])]
+o <- order(h)
+plot(h[o], col= (brewer.pal(11,'RdBu'))[c[o]], type='h', xaxt="n", xlab='Patient', las=2, ylab="log hazard")
+
 #' #### Harrel's C
 #library(Hmisc)
 
