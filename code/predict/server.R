@@ -110,7 +110,8 @@ shinyServer(function(input, output) {
 			}
 			output$Tab <- renderDataTable({
 						d <- getData()
-						x <- t(ImputeMissing(data[1:1540,], getData()))
+						d <- d[,colnames(data)]
+						x <- t(ImputeMissing(data[1:1540,], d))
 						data.frame(Covariate=colnames(d),signif(data.frame(Input=as.numeric(t(d)), Imputed=x, `Coef CIR`=coef(coxRFXCirTD), `Value CIR`= x*coef(coxRFXCirTD),
 												`Coef NRM`=coef(coxRFXNrmTD), `Value NRM`= x*coef(coxRFXNrmTD),
 												`Coef PRS`=coef(coxRFXPrsTD), `Value PRS`= x*coef(coxRFXPrsTD)),2))
