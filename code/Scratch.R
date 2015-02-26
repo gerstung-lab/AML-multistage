@@ -1956,3 +1956,13 @@ for(n in names(clinicalSpline)) if(!all(dataFrame[1:5,n] %in% 0:10))
 
 summary(coxph(os ~ ., data=clinicalSpline, subset=!trainIdx))$concordance
 summary(coxph(os ~ ., data=dataFrame[groups=="Clinical"]), subset=!trainIdx)$concordance
+
+vcSimple <- function(fit){
+	groups <- fit$groups
+	Z <- fit$Z
+	sigma2 <- fit$sigma2
+	sapply(levels(groups), function(x) {
+				ix <- groups == x
+				sum(cov(as.matrix(Z[,ix, drop=FALSE]))) #* (sigma2[x] + fit$mu[x]^2)  
+			})
+}
