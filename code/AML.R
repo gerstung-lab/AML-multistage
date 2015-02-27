@@ -936,6 +936,7 @@ summary(coxAICOsTrain)
 survConcordance(os[!trainIdx] ~ predict(coxAICOsTrain, newdata=dataFrame[!trainIdx,mainIdxOs]))
 
 #' #### Time-dep AIC and BIC
+#+ coxBICosTD, cache=TRUE, warning=FALSE
 c <- coxph(osTD ~ 1, data=dataFrameOsTD[mainIdxOsTD])
 scopeStep <- as.formula(paste("osTD ~", paste(colnames(dataFrameOsTD)[mainIdxOsTD], collapse="+")))
 coxBICOsTD <- step(c, scope=scopeStep, k = log(nrow(dataFrame)), trace=0)
@@ -2306,7 +2307,7 @@ annot[grep("(^t_)|(_t)",n)] <- 2
 annot <- factor(annot, labels = c("Genetics","BT","CNA"))
 names(annot) <- n
 for(m in clinModels){
-	plotcvnet(m, X, main=names(clinModels)[i],  col0="black", cex=1, simple.annot = annot, col=colGroups[levels(annot)], xlim=c(0.5,35.5))
+	mg14:::plotcvnet(m, X, main=names(clinModels)[i],  col0="black", cex=1, simple.annot = annot, col=colGroups[levels(annot)], xlim=c(0.5,35.5))
 	i = i+1
 	legend("topright", col=c(pastel1[c(1,3)],"black")[c(1,3,2)], c(expression(paste("Explained variance ",R^2)), expression(paste("Lasso penalty ",lambda)), expression(paste("Model coefficient ", beta))), box.lty=0, bg="#FFFFFF33", pch=c(NA,NA,19), lty=c(1,1,NA), cex=.8, pt.cex = 1)
 }
@@ -2665,11 +2666,11 @@ legend("bottomright", lty=1, bty="n", paste(levels(clinicalData$M_Risk), table(c
 #+ cirSplits, fig.width=3, fig.height=3
 par(mfrow=c(2,2), mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0))
 r <- coxRFXCirTD$Z %*% coef(coxRFXCirTD) - cirData$transplantCR1 * coef(coxRFXCirTD)["transplantCR1"]
-Q <- numeric(nrow(cirData))
+qCir <- numeric(nrow(cirData))
 for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 	w <- which(clinicalData$M_Risk[cirData$index]==l)
 	q <- cut(r[w], quantile(r[w], seq(0,1,.33)), include.lowest=TRUE, labels=c("T1","T2","T3"))
-	Q[w] <- q
+	qCir[w] <- q
 	plot(NA,NA,  ylab="CIR", main=paste(l, "terciles"),  xlab="Years after CR", ylim=c(0,1), xlim=c(0,10), xaxs="i", yaxs="i")
 	abline(h=seq(0.2,0.8,0.2),lty=1, col='lightgrey')
 	fit <- survfit(Surv(time1/365, time2/365, status) ~ q + transplantCR1, data=cirData[w,])
@@ -2738,7 +2739,7 @@ text(1:3*3, 11, c("Best","Intermediate","Worst"), pos=3)
 
 #' Find prototypes
 prototypes <- sapply(levels(clinicalData$M_Risk)[c(2,4,3,1)], function(l) sapply(1:3, function(i){
-						d <- dist(t(t(coxRFXCirTD$Z[which(clinicalData$M_Risk[cirData$index]==l & Q==i &! is.na(clinicalData$CR_date[cirData$index])), ]) ))
+						d <- dist(t(t(coxRFXCirTD$Z[which(clinicalData$M_Risk[cirData$index]==l & qCir==i &! is.na(clinicalData$CR_date[cirData$index])), ]) ))
 						#d <- dist(t(t(coxRFXOsCR$Z[which(clinicalData$M_Risk[cirData$index]==l & Q==i &! is.na(clinicalData$CR_date[cirData$index])), ]) ))
 						as.numeric(names(which.min(rowMeans(as.matrix(d), na.rm=TRUE))))
 					}))
@@ -2752,9 +2753,9 @@ text(1:3*3, 11, c("Low","Intermediate","High"), pos=3)
 
 #+ starsCR, fig.width=4, fig.height=4
 s <- p - rep(colMeans(p), each=nrow(p))
-w <- sapply(split(1:1540, paste(clinicalData$M_Risk, Q[1:1540])), `[`, 1:12)
+w <- sapply(split(1:1540, paste(clinicalData$M_Risk, qCir[1:1540])), `[`, 1:12)
 w <- w[,!grepl("NA", colnames(w))][,c(4:6,10:12,7:9,1:3)]
-l <- stars(s[w,c("Clinical","Demographics","Genetics","GeneGene","CNA","BT","Treatment")] + .5, scale=FALSE, col.stars = mapply(function(i,j) {t <- try(c[i,j]); if(class(t)=="try-error") NA else t}, as.character(clinicalData$M_Risk[w]),Q[w]), labels="")
+l <- stars(s[w,c("Clinical","Demographics","Genetics","GeneGene","CNA","BT","Treatment")] + .5, scale=FALSE, col.stars = mapply(function(i,j) {t <- try(c[i,j]); if(class(t)=="try-error") NA else t}, as.character(clinicalData$M_Risk[w]),qCir[w]), labels="")
 symbols(l[,1],l[,2], circles=rep(0.5, nrow(l)), inches=FALSE,add=TRUE)
 
 #' Who achieves CR?
@@ -2766,6 +2767,7 @@ cr <- Surv(time=pmin(c, os[,1]), event = e)
 coxRFXCr <- CoxRFX(dataFrame[whichRFXOsGG], cr, groups=groups[whichRFXOsGG], which.mu=mainGroups)
 
 #' Four plots comparing different intervals
+#+ allVarComp, fig.width=4, fig.height=4
 par(mfrow=c(2,2), xpd=FALSE)
 PlotVarianceComponents(coxRFXCr, col=colGroups, order=c(1,2,6,5,3,4,7,8))
 title(main="CR")
@@ -2777,6 +2779,7 @@ PlotVarianceComponents(coxRFXPrsTD, col=colGroups, order=c(1,2,6,5,3,4,7,8))
 title(main="PRS")
 
 #' As barplot
+#+ allVarCompBar, fig.width=2.5, fig.height=2
 allVarComp <- sapply(c("Cr","CirTD","NrmTD","PrsTD"), function(x){
 			m <- get(paste0("coxRFX",x))
 			Z <- get(sub("\\[.+","",as.character(m$call["data"])))
@@ -2786,6 +2789,12 @@ z <- allVarComp[c(1,2,6,5,3,4,7,8),]#/rep(colSums(allVarComp[-9,]), each=8)
 b <- barplot(z, col=colGroups[rownames(allVarComp)[c(1,2,6,5,3,4,7,8)]], ylab="Variance [log hazard]")
 Z <- rbind(0,apply(z,2,cumsum))
 segments(b[-4]+.5,t(Z[,-4]),b[-1]-.5 ,t(Z[,-1]))
+
+z <- allVarComp[c(1,2,6,5,3,4,7,8),]/rep(colSums(allVarComp[-9,]), each=8)
+b <- barplot(z, col=colGroups[rownames(allVarComp)[c(1,2,6,5,3,4,7,8)]], ylab="Relative importance")
+Z <- rbind(0,apply(z,2,cumsum))
+segments(b[-4]+.5,t(Z[,-4]),b[-1]-.5 ,t(Z[,-1]))
+
 #x <- seq(0,par("usr")[4],l=100)
 #y <- CoxHD:::ConcordanceFromVariance(x)
 #s <- spline(y,x,xout=pretty(y))
