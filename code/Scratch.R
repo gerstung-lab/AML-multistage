@@ -1802,6 +1802,29 @@ predictAbsCox <- function(fit, data, surv){
 	S^exp(as.matrix(data[,names(coef(fit))])%*%coef(fit))
 }
 
+predictNpCox <- function(fit, risk = predict(fit), surv=fit$surv){
+	#H0 <- basehaz(fit, centered = FALSE)
+	#hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
+	#x <- seq(0,max(surv[,1]), l=1000)
+	#S <- exp(-hazardDist(x))
+	S <- survfit(fit)
+	
+	f <- surv
+	f[,2] <- 1-f[,2]
+	F <- survfit(f~1)
+	FCens <- splinefun( F$time,F$surv, method="monoH.FC")
+	
+	t <- S$time
+	SS <- sapply(seq_along(risk), function(i){
+				dS <- diff(S$surv^exp(risk[i]))
+				w <- which.min(abs(t - surv[i,1]))
+				#cat(w,"\n")
+				sum(c(0,-t[-1] * dS * pmin(pmax(ifelse(surv[i,2], FCens(t[-1]), 1-FCens(t[-1])),0),1)))
+			})
+	return(SS)
+}
+
+
 p <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, allData, x =365)
 s <- survfit(coxRFXOsCR)
 q <- s$surv[which.min(abs(s$time-365))] ^ exp(predict(coxRFXOsCR, newdata=d))

@@ -726,7 +726,7 @@ for(l in c("coxRFXFitOs","coxRFXFitOsMain","coxRFXFitOsTDGGc")){
 	x <- x/(2*sd(x)) + 1
 		c <- cut(t[s,1][h$order], quantile(t[,1], seq(0,1,0.1), na.rm=TRUE))
 	if(l=="coxRFXFitOsTDGGc")
-		x <- x[,c("Clinical","Demographics","Genetics","GeneGene","CNA","BT","Treatment")]
+		x <- x[,c("Demographics","Treatment","BT","CNA","Genetics","GeneGene","Clinical")]
 	stars(x[s,][h$order,]/2, scale=FALSE, locations=locations, key.loc=c(0,-3), col.lines=rep(1,(nStars^2)), col.stars = (brewer.pal(11,'RdBu'))[c])
 	symbols(locations[,1], locations[,2], circles=rep(.5,(nStars^2)), inches=FALSE, fg="grey", add=TRUE, lty=1)
 	title(main=l)
@@ -751,7 +751,7 @@ h <- hclust(dist(p[s,]))
 x <- p - rep(colMeans(p), each=nrow(p))
 x <- x/(2*sd(x)) + 1
 c <- cut(t[patients,1], quantile(t[,1], seq(0,1,0.1), na.rm=TRUE))
-x <- x[patients,c("Clinical","Demographics","Genetics","GeneGene","CNA","BT","Treatment")]
+x <- x[patients,c("Demographics","Treatment","BT","CNA","Genetics","GeneGene","Clinical")]
 locations <- expand.grid(seq_along(patients)* 1.5, 1)
 stars(x/2, scale=FALSE, locations=locations, key.loc=NA, col.lines=rep(1,(nStars^2)), col.stars = (brewer.pal(11,'RdBu'))[c])
 symbols(locations[,1], locations[,2], circles=rep(.5,length(patients)), inches=FALSE, fg="grey", add=TRUE, lty=1)
@@ -788,12 +788,21 @@ for(i in seq_along(m))
 text(log(c(0.66,1,1.5))/(2*t)+1, c(0,0,0)-.1,labels=c(0.66,1,1.5), cex=.33)
 
 #' Log hazard and outcome
-#+ logHazOutcome, fig.width=4, fig.height=2
+#+ logHazOutcome, fig.width=3, fig.height=2
+par(mar=c(3,3,3,1), mgp=c(2,.5,0))
 t <- os
-c <- cut(t[,1], quantile(t[,1], seq(0,1,0.1), na.rm=TRUE))
+s <- survfit(os~1)
+q <- quantile(t[,1], seq(0,1,.1))# q <- splinefun( s$surv, s$time,"monoH.FC")(seq(1,min(s$surv),l=10))
+c <- cut(t[,1], q, na.rm=TRUE)
 h <- coxRFXFitOsTDGGc$linear.predictors[rev(!duplicated(rev(tplSplitOs)))][order(tplSplitOs[rev(!duplicated(rev(tplSplitOs)))])]
 o <- order(h)
-plot(h[o], col= (brewer.pal(11,'RdBu'))[c[o]], type='h', xaxt="n", xlab='Patient', las=2, ylab="log hazard")
+plot(h[o], col= (brewer.pal(10,'RdBu'))[c[o]], type='h', xaxt="n", xlab='Patient', las=2, ylab="log hazard")
+u <- par("usr")
+q <- pmin(q,365*12)
+image(x=q/max(q)*500, y=c(u[4]-(u[4]-u[3])/20, u[4]), matrix(1:10), col= (brewer.pal(10,'RdBu')), add=TRUE)
+#axis(side=3, at=seq(1,500,l=11), labels=seq(0,1,.1))
+axis(side=3, at=pretty(q/365)/max(q)*365*500, labels=pretty(q/365))
+lines(ksmooth(seq_along(o),t[o,2]==0, bandwidth=50))
 
 #' #### Harrel's C
 #library(Hmisc)
@@ -1027,6 +1036,8 @@ allModelsCvPredictions <- mclapply(seq_along(allModelsCV), function(foo){
 							}))
 		}, mc.cores=10)
 
+colModels <- c("#888888", set1[c(2,1,4,3,5,7)])
+
 #' Harrel's C
 #+ allModelsCv-C
 foo <- 1
@@ -1069,7 +1080,6 @@ allModelsCvBrier<- sapply(allModelsCV, function(x){
 		})
 apply(allModelsCvBrier,1,quantile)
 rownames(allModelsCvBrier) <- paste(rep(names(allModelsCV[[1]]), each=3), rep(c(90,365,1000), length(allModelsCV[[1]])))
-colModels <- c("#888888", set1[c(2,1,4,3,5,7)])
 boxplot(t(allModelsCvBrier)[,rep(0:5*3, 3) + rep(1:3, each=6)],notch=TRUE, ylab="Brier score", border=rep(colModels[-1],3), las=2, lty=1, pch=16, staplewex=0)
 
 
@@ -2637,13 +2647,15 @@ names(riskCol) <- levels(clinicalData$M_Risk)
 #' Sources of mortality
 #+ mortality, fig.width=3, fig.height=3
 i <- 1
+rsStatus <- osData$status
+rsStatus[osData$index %in% nrmData$index[nrmData$status==1]] <- 0
 par(mfrow=c(2,2), mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0))
 for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 	plot(NA,NA, ylim=c(0,1),  xlab="Years", ylab="Mortality", xlim=c(0,10), yaxs='i', xaxs='i')
 	abline(h=seq(0.2,0.8,0.2),lty=1, col='lightgrey')
 	#abline(v=seq(1,9), col='lightgrey')
 	lines(survfit(Surv(time1/365, time2/365, status) ~ clinicalData$M_Risk[osData$index], data=osData, subset=clinicalData$M_Risk[osData$index]==l), col=riskCol[l],fun=function(x) 1-x ,mark=NA, lty=1, conf.int=FALSE)
-	rsKM <- survfit(Surv(time1/365, time2/365, status) ~ 1, data=osData, subset=  clinicalData$M_Risk[osData$index]==l)
+	rsKM <- survfit(Surv(time1/365, time2/365, rsStatus) ~ 1, data=osData, subset=  clinicalData$M_Risk[osData$index]==l)
 	nrsKM <- survfit(Surv(time1/365, time2/365, status) ~ 1, data=nrmData, subset=  clinicalData$M_Risk[nrmData$index]==l)
 	
 	rsCR <- cumsum(c(1,diff(rsKM$surv)) * splinefun(nrsKM$time, nrsKM$surv, method="monoH.FC")(rsKM$time))
@@ -2665,12 +2677,12 @@ legend("bottomright", lty=1, bty="n", paste(levels(clinicalData$M_Risk), table(c
 #' CIR Plots
 #+ cirSplits, fig.width=3, fig.height=3
 par(mfrow=c(2,2), mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0))
-r <- coxRFXCirTD$Z %*% coef(coxRFXCirTD) - cirData$transplantCR1 * coef(coxRFXCirTD)["transplantCR1"]
-qCir <- numeric(nrow(cirData))
+riskCirTD <- coxRFXCirTD$Z %*% coef(coxRFXCirTD) - cirData$transplantCR1 * coef(coxRFXCirTD)["transplantCR1"]
+quantileRiskCirTD <- numeric(nrow(cirData))
 for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 	w <- which(clinicalData$M_Risk[cirData$index]==l)
-	q <- cut(r[w], quantile(r[w], seq(0,1,.33)), include.lowest=TRUE, labels=c("T1","T2","T3"))
-	qCir[w] <- q
+	q <- cut(riskCirTD[w], quantile(riskCirTD[w], seq(0,1,.33)), include.lowest=TRUE, labels=c("T1","T2","T3"))
+	quantileRiskCirTD[w] <- q
 	plot(NA,NA,  ylab="CIR", main=paste(l, "terciles"),  xlab="Years after CR", ylim=c(0,1), xlim=c(0,10), xaxs="i", yaxs="i")
 	abline(h=seq(0.2,0.8,0.2),lty=1, col='lightgrey')
 	fit <- survfit(Surv(time1/365, time2/365, status) ~ q + transplantCR1, data=cirData[w,])
@@ -2678,6 +2690,8 @@ for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 	i <- c(0,diff(fit$surv))
 	s <- split(fit$surv, cumsum(i>0)) # split into strata
 	t <- split(fit$time, cumsum(i>0))
+	nrsKM <- survfit(Surv(time1/365, time2/365, status) ~ 1, data=nrmData, subset=  clinicalData$M_Risk[nrmData$index]==l)
+	
 	fit$surv <- unlist(sapply(seq_along(s), function(i) cumsum(c(1,diff(s[[i]])) * splinefun(nrsKM$time, nrsKM$surv, method="monoH.FC")(t[[i]])))) #adjust increments by nrs KM est
 	lines(fit, col=rep(sapply(2:0,function(x) colTrans(riskCol[l],x)), each=2), lty=c(1,3), mark=NA, xlab="Time after CR", fun=f)
 	legend("bottomright", lty=c(1,3), bty="n", c("no TPL","TPL"), col=riskCol[l])
@@ -2686,12 +2700,12 @@ for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 #' OS Plots
 #+ osSplits, fig.width=3, fig.height=3
 par(mfrow=c(2,2), mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0))
-r <- coxRFXOsCR$Z %*% coef(coxRFXOsCR) - osData$transplantCR1 * coef(coxRFXOsCR)["transplantCR1"]
-Q <- numeric(nrow(osData))
+riskOsCR <- coxRFXOsCR$Z %*% coef(coxRFXOsCR) - osData$transplantCR1 * coef(coxRFXOsCR)["transplantCR1"]
+quantileRiskOsCR <- numeric(nrow(osData))
 for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 	w <- which(clinicalData$M_Risk[osData$index]==l)
-	q <- cut(r[w], quantile(r[w], seq(0,1,.33)), include.lowest=TRUE, labels=c("T1","T2","T3"))
-	Q[w] <- q
+	q <- cut(riskOsCR[w], quantile(riskOsCR[w], seq(0,1,.33)), include.lowest=TRUE, labels=c("T1","T2","T3"))
+	quantileRiskOsCR[w] <- q
 	plot(NA,NA,  ylab="OS", main=paste(l, "terciles"),  xlab="Years after CR", ylim=c(0,1), xlim=c(0,10), xaxs="i", yaxs="i")
 	abline(h=seq(0.2,0.8,0.2),lty=1, col='lightgrey')
 	fit <- survfit(Surv(time1/365, time2/365, status) ~ q + transplantCR1, data=osData[w,])
@@ -2702,7 +2716,7 @@ for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 #' Prevalence of risk factors
 p <- lapply(levels(clinicalData$M_Risk), function(l) {
 			w <- which(clinicalData$M_Risk==l)
-			q <- cut(r[w], quantile(r[w], seq(0,1,.33)), include.lowest=TRUE, labels=c("T1","T2","T3"))
+			q <- cut(riskOsCR[w], quantile(riskOsCR[w], seq(0,1,.33)), include.lowest=TRUE, labels=c("T1","T2","T3"))
 			sapply(split(cirData[w, names(crGroups)], q), colMeans)
 		})
 names(p) <- levels(clinicalData$M_Risk)
@@ -2722,11 +2736,11 @@ for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 }
 
 #p <- as.data.frame(PartialRisk(coxRFXCirTD)[1:nrow(clinicalData),])
-p <- as.data.frame(PartialRisk(coxRFXOsCR)[1:nrow(clinicalData),])
+partialRiskOsCR <- as.data.frame(PartialRisk(coxRFXOsCR)[1:nrow(clinicalData),])
 s <- do.call("rbind",lapply(levels(clinicalData$M_Risk)[c(2,4,3,1)], function(l) {
 			w <- which(clinicalData$M_Risk==l)
-			q <- cut(r[w], quantile(r[w], seq(0,1,.33)), include.lowest=TRUE, labels=c("T1","T2","T3"))
-			t(sapply(split(p[w, ], q), colMeans) +.5 - colMeans(p))
+			q <- cut(riskOsCR[w], quantile(riskOsCR[w], seq(0,1,.33)), include.lowest=TRUE, labels=c("T1","T2","T3"))
+			t(sapply(split(partialRiskOsCR[w, ], q), colMeans) +.5 - colMeans(partialRiskOsCR))
 		}))
 
 #+relapseStars, fig.width=3,fig.heigh=3
@@ -2737,25 +2751,40 @@ symbols(g[,1], g[,2], circles=rep(1,12), inches=FALSE, add=TRUE)
 text(1, 0:3*3, names(riskCol[c(2,4,3,1)]), pos=2)
 text(1:3*3, 11, c("Best","Intermediate","Worst"), pos=3)
 
+#' Predictions with different TPLs
+#+survivalTpl, results='asis'
+w <- sort(unique(osData$index[which(quantileRiskOsCR==3 & clinicalData$M_Risk[osData$index]=="Favorable")]))
+d <- osData[rep(w, each=3),]
+d$transplantCR1 <- rep(c(0,1,0), length(w))
+d$transplantRel <- rep(c(0,0,1), length(w))
+p <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, d, x=1000)
+survivalTpl <- data.frame(PDID=rownames(dataFrame)[w], matrix(p$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse"))), os=osYr[w])
+survivalTpl[order(survivalTpl$CR1 -survivalTpl$Relapse),]
+
+plot(survivalTpl[,c(2,4)], xlab="Survival no TPL", ylab="Survival TPL")
+points(survivalTpl[,c(2,3)], pch=19)
+arrows(survivalTpl$None, survivalTpl$Relapse,survivalTpl$None, survivalTpl$CR1, length=0.05)
+
 #' Find prototypes
 prototypes <- sapply(levels(clinicalData$M_Risk)[c(2,4,3,1)], function(l) sapply(1:3, function(i){
-						d <- dist(t(t(coxRFXCirTD$Z[which(clinicalData$M_Risk[cirData$index]==l & qCir==i &! is.na(clinicalData$CR_date[cirData$index])), ]) ))
-						#d <- dist(t(t(coxRFXOsCR$Z[which(clinicalData$M_Risk[cirData$index]==l & Q==i &! is.na(clinicalData$CR_date[cirData$index])), ]) ))
-						as.numeric(names(which.min(rowMeans(as.matrix(d), na.rm=TRUE))))
+						#d <- dist(as.data.frame(coxRFXCirTD$Z[which(clinicalData$M_Risk[cirData$index]==l & quantileRiskCirTD==i &! is.na(clinicalData$CR_date[cirData$index])), ])) 
+						w <- which(clinicalData$M_Risk[cirData$index]==l & quantileRiskOsCR==i &! is.na(clinicalData$CR_date[cirData$index]))
+						d <- dist(t(t(coxRFXOsCR$Z[w, ]) ))
+						osData$index[w][which.min(rowMeans(as.matrix(d), na.rm=TRUE))]
 					}))
 
 c <- sapply(2:0, function(t) sapply(riskCol[c(2,4,3,1)], function(c) colTrans(c,t)))
 g <- expand.grid(1:3,1:4-1)*3
-stars(2*t(t(p[prototypes,])- colMeans(p))[,c("Clinical","Demographics","Genetics","CNA","BT","Treatment")] +1, scale=FALSE, col.stars=t(c), key.loc = c(13,0), locations=g, labels=NA)
+stars(2*t(t(partialRiskOsCR[prototypes,])- colMeans(partialRiskOsCR))[,c("Clinical","Demographics","Genetics","CNA","BT","Treatment")] +1, scale=FALSE, col.stars=t(c), key.loc = c(13,0), locations=g, labels=NA)
 symbols(g[,1], g[,2], circles=rep(1,12), inches=FALSE, add=TRUE)
 text(1, 0:3*3, names(riskCol[c(2,4,3,1)]), pos=2)
 text(1:3*3, 11, c("Low","Intermediate","High"), pos=3)
 
 #+ starsCR, fig.width=4, fig.height=4
-s <- p - rep(colMeans(p), each=nrow(p))
-w <- sapply(split(1:1540, paste(clinicalData$M_Risk, qCir[1:1540])), `[`, 1:12)
+s <- partialRiskOsCR - rep(colMeans(partialRiskOsCR), each=nrow(partialRiskOsCR))
+w <- sapply(split(1:1540, paste(clinicalData$M_Risk, quantileRiskCirTD[1:1540])), `[`, 1:12)
 w <- w[,!grepl("NA", colnames(w))][,c(4:6,10:12,7:9,1:3)]
-l <- stars(s[w,c("Clinical","Demographics","Genetics","GeneGene","CNA","BT","Treatment")] + .5, scale=FALSE, col.stars = mapply(function(i,j) {t <- try(c[i,j]); if(class(t)=="try-error") NA else t}, as.character(clinicalData$M_Risk[w]),qCir[w]), labels="")
+l <- stars(s[w,c("Clinical","Demographics","Genetics","GeneGene","CNA","BT","Treatment")] + .5, scale=FALSE, col.stars = mapply(function(i,j) {t <- try(c[i,j]); if(class(t)=="try-error") NA else t}, as.character(clinicalData$M_Risk[w]),quantileRiskCirTD[w]), labels="")
 symbols(l[,1],l[,2], circles=rep(0.5, nrow(l)), inches=FALSE,add=TRUE)
 
 #' Who achieves CR?
@@ -2872,6 +2901,17 @@ for(vcf in allCaveOut){
 			s[i, colnames(s) %in% genes] <- 1
 			i <- i+1
 		}
+		
+
+#' Add to git
+#' -----
+#+ git2r
+library(git2r)
+repo <- repository("..")
+config(repo, user.name="Moritz Gerstung", user.email="mg14@sanger.ac.uk")
+add(repo, c("doc/current","code/AML.R"))
+status(repo, untracked=FALSE)
+#commit(repo, paste("Autocommit", Sys.time(), system("hostname -f", intern=TRUE))) ## run after spin()
 		
 #' Session
 #' -----
