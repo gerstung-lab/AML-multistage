@@ -1989,3 +1989,4 @@ vcSimple <- function(fit){
 				sum(cov(as.matrix(Z[,ix, drop=FALSE]))) #* (sigma2[x] + fit$mu[x]^2)  
 			})
 }
+
