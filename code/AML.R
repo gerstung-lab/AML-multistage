@@ -2543,7 +2543,8 @@ allData$transplantRel[!allData$index %in% w] <- 0
 
 allPredict <-  PredictOS(coxRFXNrmTD = coxRFXNrmTD, coxRFXPrsTD = coxRFXPrsTD, coxRFXCirTD = coxRFXCirTD, allData, 365)
 
-#' #### Evalutate by random cross-validation
+#' ### Further evaluations 
+#' #### Random cross-validation
 #+concordanceCIRcv, cache=TRUE
 replicates <- 100 ## number of replicates
 concordanceCIRcv <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), function(g){ 
@@ -2594,12 +2595,13 @@ apply(apply(-sapply(concordanceCIRcv[[1]], `[[` , "C")[4:6,],2,rank),1,function(
 apply(apply(-sapply(concordanceCIRcv[[2]], `[[` , "C")[4:6,],2,rank),1,function(x) table(factor(x, levels=1:3)))
 
 #' Further diagnostics -- get test and train errors
+i <- 0
 concordanceCIRcvTrain <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), function(g){ 
 			i <- i+1
 			sapply(1:replicates, function(foo){
 						set.seed(foo)
 						trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 4/5
-						coef <- concordanceCIRcv[[i]][[foo]][["coef"]]/2
+						coef <- concordanceCIRcv[[i]][[foo]][["coef"]]
 						pCIR <- as.matrix(cirData[names(coef[,"CIRrfx"])]) %*% coef[,"CIRrfx"] 
 						pPRS <- as.matrix(prsData[names(coef[,"PRSrfx"])]) %*% coef[,"PRSrfx"] 
 						pNRM <- as.matrix(nrmData[names(coef[,"NRMrfx"])]) %*% coef[,"NRMrfx"]
@@ -2634,7 +2636,7 @@ plot(r[,2], coef(coxRFXPrsTD)); abline(0,1)
 plot(r[,3], coef(coxRFXNrmTD)); abline(0,1)
 plot(r[,4], coef(coxRFXOsCR)); abline(0,1)
 
-#' Fit NRM on clinical data only
+#' #### Fit NRM on clinical data only
 #+cncrdNRMclin
 cncrdNRMclin <- t(as.data.frame(mclapply(1:replicates, function(foo){
 							set.seed(foo)
@@ -2652,7 +2654,7 @@ cncrdNRMclin <- t(as.data.frame(mclapply(1:replicates, function(foo){
 plot(concordanceCIRcvTrain[[2]][3,2,] ,cncrdNRMclin[,2])
 abline(0,1)
 
-#' Get variance-based estimate of concordance
+#' #### Get variance-based estimate of concordance
 i <- 0
 concordanceCIRcvVar <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), function(g){ 
 			i <- i+1
@@ -2722,11 +2724,26 @@ concordanceCIRcvTrial <- mclapply(list(crGroups[crGroups %in% mainGroups], crGro
 dotplot(sapply(concordanceCIRcvTrial[[1]], `[[` , "C")[4:6,])
 dotplot(sapply(concordanceCIRcvTrial[[2]], `[[` , "C")[4:6,])
 		
-		
+#' #### Test for TPL:Age interactions
+#+tplAge
+# CIR
+c <- coxph(Surv(time1,time2,status)~transplantCR1*AOD_10, data=cirData)
+print(c)
+anova(c)
+#NRM
+c <- coxph(Surv(time1,time2,status)~transplantCR1*AOD_10, data=nrmData)
+print(c)
+anova(c)
+#PRS
+c <- coxph(Surv(time1,time2,status)~ transplantRel*AOD_10, data=prsData)
+print(c)
+anova(c)
+
+
+#' ### Sources of mortality
 riskCol=set1[c(1,3,4,2)]
 names(riskCol) <- levels(clinicalData$M_Risk)
 
-#' Sources of mortality
 #+ mortality, fig.width=3, fig.height=3
 i <- 1
 rsStatus <- osData$status
@@ -2834,21 +2851,34 @@ text(1, 0:3*3, names(riskCol[c(2,4,3,1)]), pos=2)
 text(1:3*3, 11, c("Best","Intermediate","Worst"), pos=3)
 
 #' Predictions with different TPLs
-#+survivalTpl, results='asis'
+#+survivalTpl, results='asis', cache=TRUE
 w <- sort(unique(osData$index[which(quantileRiskOsCR==3 & clinicalData$M_Risk[osData$index]=="Favorable")]))
-d <- osData[rep(w, each=3),]
-d$transplantCR1 <- rep(c(0,1,0), length(w))
-d$transplantRel <- rep(c(0,0,1), length(w))
-p <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, d, x=1000)
-survivalTpl <- data.frame(PDID=rownames(dataFrame)[w], matrix(p$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse"))), os=osYr[w])
+d <- osData[rep(1:nrow(dataFrame), each=3),]
+d$transplantCR1 <- rep(c(0,1,0), nrow(dataFrame))
+d$transplantRel <- rep(c(0,0,1), nrow(dataFrame))
+allPredictTpl <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, d, x=1000)
+m <- as.data.frame(matrix(allPredictTpl$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse"))))
+rownames(m) <- rownames(dataFrame)
+survivalTpl <- data.frame(PDID=rownames(dataFrame)[w], m[w,], os=osYr[w])
 kable(format(survivalTpl[order(survivalTpl$CR1 -survivalTpl$Relapse),], digits=3))
+
+m[patients,]
 
 #+survivalTplPlot
 plot(survivalTpl[,c(2,3)], xlab="Survival at 1,000 days without transplant", ylab="Survival at 1,000 days with transplant", pch=19)
 points(survivalTpl[,c(2,4)], pch=1)
 arrows(survivalTpl$None, survivalTpl$Relapse,survivalTpl$None, survivalTpl$CR1, length=0.05)
 abline(0,1)
-legend("bottomrigh", bty="n", pch=c(1,19),c("Relapse","CR1"), title="Allograft in")
+legend("bottomright", bty="n", pch=c(1,19),c("Relapse","CR1"), title="Allograft in")
+
+boxplot(m$CR1 - m$None ~ quantileRiskOsCR[1:1540] + clinicalData$M_Risk, las=2, col=t(outer(riskCol, 2:0, colTrans)), ylab="Survival gain TPL CR1 at 1000d")
+
+boxplot(m$Relapse - m$None ~ quantileRiskOsCR[1:1540] + clinicalData$M_Risk, las=2, col=t(outer(riskCol, 2:0, colTrans)), ylab="Survival gain TPL Relapse at 1000d")
+
+plot(m$CR1 - m$None ~ dataFrame$AOD_10)
+
+plot(m$CR1 - m$None ~ predict(coxRFXOsCR, newdata=osData[1:1540,]), xlab="Risk", ylab="Survival gain TPL CR1 at 1000d")
+lines(lowess(predict(coxRFXOsCR, newdata=osData[1:1540,]), m$CR1 - m$None), col='green')
 
 #' Find prototypes
 prototypes <- sapply(levels(clinicalData$M_Risk)[c(2,4,3,1)], function(l) sapply(1:3, function(i){
