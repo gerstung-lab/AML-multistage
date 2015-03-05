@@ -2857,12 +2857,11 @@ d <- osData[rep(1:nrow(dataFrame), each=3),]
 d$transplantCR1 <- rep(c(0,1,0), nrow(dataFrame))
 d$transplantRel <- rep(c(0,0,1), nrow(dataFrame))
 allPredictTpl <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, d, x=1000)
-m <- as.data.frame(matrix(allPredictTpl$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse"))))
-rownames(m) <- rownames(dataFrame)
-survivalTpl <- data.frame(PDID=rownames(dataFrame)[w], m[w,], os=osYr[w])
+m <- as.data.frame(matrix(allPredictTpl$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse"))), row.names=rownames(dataFrame))
+survivalTpl <- data.frame(m[w,], os=osYr[w], age=clinicalData$AOD[w])
 kable(format(survivalTpl[order(survivalTpl$CR1 -survivalTpl$Relapse),], digits=3))
 
-m[patients,]
+kable(m[patients,])
 
 #+survivalTplPlot
 plot(survivalTpl[,c(2,3)], xlab="Survival at 1,000 days without transplant", ylab="Survival at 1,000 days with transplant", pch=19)
@@ -2871,12 +2870,14 @@ arrows(survivalTpl$None, survivalTpl$Relapse,survivalTpl$None, survivalTpl$CR1, 
 abline(0,1)
 legend("bottomright", bty="n", pch=c(1,19),c("Relapse","CR1"), title="Allograft in")
 
+par(mar=c(7,5,1,1))
 boxplot(m$CR1 - m$None ~ quantileRiskOsCR[1:1540] + clinicalData$M_Risk, las=2, col=t(outer(riskCol, 2:0, colTrans)), ylab="Survival gain TPL CR1 at 1000d")
-
 boxplot(m$Relapse - m$None ~ quantileRiskOsCR[1:1540] + clinicalData$M_Risk, las=2, col=t(outer(riskCol, 2:0, colTrans)), ylab="Survival gain TPL Relapse at 1000d")
+boxplot(m$CR1 - m$Relapse ~ quantileRiskOsCR[1:1540] + clinicalData$M_Risk, las=2, col=t(outer(riskCol, 2:0, colTrans)), ylab="Survival gain TPL in CR1 over salvage at 1000d")
+abline(h=0)
 
+par(c(3,3,1,1))
 plot(m$CR1 - m$None ~ dataFrame$AOD_10)
-
 plot(m$CR1 - m$None ~ predict(coxRFXOsCR, newdata=osData[1:1540,]), xlab="Risk", ylab="Survival gain TPL CR1 at 1000d")
 lines(lowess(predict(coxRFXOsCR, newdata=osData[1:1540,]), m$CR1 - m$None), col='green')
 
@@ -3037,3 +3038,8 @@ devtools::session_info()
 #' TODO's
 #' ------
 #' * Gene-wise contributions to reclassifaction
+
+#' Aftermath
+#' --------
+#' system("git checkout master -- ../../code/AML.R")
+#' m <- paste("\"Autocommit", Sys.time(), system("hostname -f", intern=TRUE)),"\""); system(paste("git commit -a -m", m))
