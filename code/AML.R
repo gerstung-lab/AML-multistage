@@ -2471,7 +2471,6 @@ cppFunction('NumericVector computeTotalPrsC(NumericVector x, NumericVector diffC
 				}', rebuild=TRUE)
 
 #' Function to predict OS from  CIR, PRS and NRM
-#+concordanceCIRcv, cache=TRUE
 PredictOS <- function(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, x =365){
 	### Step 1: Compute KM survival curves and log hazard
 	getS <- function(coxRFX, data, max.x=5000) {		
@@ -2545,6 +2544,7 @@ allData$transplantRel[!allData$index %in% w] <- 0
 allPredict <-  PredictOS(coxRFXNrmTD = coxRFXNrmTD, coxRFXPrsTD = coxRFXPrsTD, coxRFXCirTD = coxRFXCirTD, allData, 365)
 
 #' #### Evalutate by random cross-validation
+#+concordanceCIRcv, cache=TRUE
 replicates <- 100 ## number of replicates
 concordanceCIRcv <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), function(g){ 
 			mclapply(1:replicates, function(foo){
