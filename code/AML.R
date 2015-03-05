@@ -2249,7 +2249,7 @@ C <- sapply(files[1:500], function(f){
 		})
 boxplot(t(C), staplewex=0, pch=16, lty=1, ylab="", ylab="Concordance", xaxt="n")
 rotatedLabel(labels=(sub(".concordant","", rownames(C))))
-abline(h=CoxHD:::concordanceFromVariance(var(tmp$fit10000$linear.predictors)))
+abline(h=CoxHD:::ConcordanceFromVariance(var(tmp$fit10000$linear.predictors)))
 
 #' #### Cohort size
 #+ cohort, fig.width=2.5, fig.height=2.5
@@ -2428,7 +2428,7 @@ prsData$event <- NULL
 w <- which(prsData$time1 == prsData$time2) ## 5 cases with LF=Rec
 prsData$time2[w] <- prsData$time2[w] + .5
 
-#' Fit models
+#' ### Fit models
 #+ postCR1Fits, cache=TRUE
 crGroups <- c(as.character(groups[whichRFXCirTD]), "Treatment","Treatment")
 names(crGroups) <- c(names(dataFrame)[whichRFXCirTD],"transplantCR1","transplantRel")
@@ -2452,7 +2452,7 @@ coxRFXOsCR <- CoxRFX(osData[names(crGroups)], Surv(osData$time1, osData$time2, o
 
 #save(coxRFXCirTD, coxRFXNrmTD, coxRFXPrsTD, coxRFXOsCR, nrmData, cirData, prsData, osData, crGroups,data, file="../../code/predict/predict3.RData")
 
-#' #### Prediction of OS and Cross-validation
+#' ### Prediction of OS and Cross-validation
 #' Function to convolute CIR and PRM
 library(Rcpp)
 cppFunction('NumericVector computeTotalPrsC(NumericVector x, NumericVector diffCir, NumericVector prsP, NumericVector tdPrmBaseline, double risk) {
@@ -2468,9 +2468,9 @@ cppFunction('NumericVector computeTotalPrsC(NumericVector x, NumericVector diffC
 				 }
                 }
 				return rs;
-				}', verbose=TRUE, rebuild=TRUE)
+				}', rebuild=TRUE)
 
-#' Function to predict OS
+#' Function to predict OS from  CIR, PRS and NRM
 #+concordanceCIRcv, cache=TRUE
 PredictOS <- function(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, x =365){
 	### Step 1: Compute KM survival curves and log hazard
@@ -2534,6 +2534,7 @@ PredictOS <- function(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, x =365){
 	return(data.frame(os=pmax(pmin(1-(1-rs)-(1-nrs),1),0), osUp = rsUp*nrsUp, osLo = rsLo*nrsLo, rs=rs, cir=cir, nrs=nrs))
 }
 
+#' Create a data.frame with all data in cr
 allData <- MakeTimeDependent(dataFrame[whichRFXCirTD], timeEvent=alloTimeCR1, timeStop=as.numeric(clinicalData$Date_LF- clinicalData$CR_date), status=clinicalData$Status)
 allData$transplantCR1 <- allData$event
 allData$transplantRel <- allData$event
@@ -2543,6 +2544,7 @@ allData$transplantRel[!allData$index %in% w] <- 0
 
 allPredict <-  PredictOS(coxRFXNrmTD = coxRFXNrmTD, coxRFXPrsTD = coxRFXPrsTD, coxRFXCirTD = coxRFXCirTD, allData, 365)
 
+#' #### Evalutate by random cross-validation
 replicates <- 100 ## number of replicates
 concordanceCIRcv <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), function(g){ 
 			mclapply(1:replicates, function(foo){
@@ -2591,7 +2593,87 @@ concordanceCIRcv <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), f
 apply(apply(-sapply(concordanceCIRcv[[1]], `[[` , "C")[4:6,],2,rank),1,function(x) table(factor(x, levels=1:3)))
 apply(apply(-sapply(concordanceCIRcv[[2]], `[[` , "C")[4:6,],2,rank),1,function(x) table(factor(x, levels=1:3)))
 
+#' Further diagnostics -- get test and train errors
+concordanceCIRcvTrain <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), function(g){ 
+			i <- i+1
+			sapply(1:replicates, function(foo){
+						set.seed(foo)
+						trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 4/5
+						coef <- concordanceCIRcv[[i]][[foo]][["coef"]]/2
+						pCIR <- as.matrix(cirData[names(coef[,"CIRrfx"])]) %*% coef[,"CIRrfx"] 
+						pPRS <- as.matrix(prsData[names(coef[,"PRSrfx"])]) %*% coef[,"PRSrfx"] 
+						pNRM <- as.matrix(nrmData[names(coef[,"NRMrfx"])]) %*% coef[,"NRMrfx"]
+						pOS <- as.matrix(osData[names(coef[,"OSrfx"])]) %*% coef[,"OSrfx"]
+						p365 <- -concordanceCIRcv[[i]][[foo]][["allRisk365"]]$os
+						p1000 <- -concordanceCIRcv[[i]][[foo]][["allRisk1000"]]$os
+						C <- sapply(list(train=which(trainIdx), test=which(!trainIdx)), function(w)
+									c(
+											CIRrfx = survConcordance(Surv(time1, time2, status)~ pCIR, data=cirData, subset = cirData$index %in% w )$concordance,
+											PRSrfx = survConcordance(Surv(time2 - time1, status) ~ pPRS, data=prsData, subset=prsData$index %in% w )$concordance,
+											NRMrfx = survConcordance(Surv(time1, time2, status)~  pNRM, data=nrmData, subset=nrmData$index %in% w )$concordance,
+											OSrfx = survConcordance(Surv(time1, time2, status) ~ pOS, data=osData, subset=osData$index %in% w )$concordance,
+											OS365 = survConcordance(Surv(time1, time2, status) ~ p365, data=osData, subset=osData$index %in% w )$concordance,
+											OS1000 = survConcordance(Surv(time1,time2, status) ~ p1000, data=osData, subset=osData$index %in% w )$concordance
+									))
+						return(C)
+					}, simplify='array')
+		})
 
+#' Plot test and training errors
+#+ concordanceCIRcvTrainTest
+for(i in 1:4){
+	plot(t(concordanceCIRcvTrain[[2]][i,,] ), main=rownames(concordanceCIRcvTrain[[2]])[i])
+	abline(0,1)
+}
+
+#' Plot coefficients v mean of subsampled coef
+#+ concordanceCIRcvMeanCoef
+r <- rowMeans(sapply(concordanceCIRcv[[2]], `[[` , "coef", simplify="array"), dim=2)
+plot(r[,1], coef(coxRFXCirTD)); abline(0,1)
+plot(r[,2], coef(coxRFXPrsTD)); abline(0,1)
+plot(r[,3], coef(coxRFXNrmTD)); abline(0,1)
+plot(r[,4], coef(coxRFXOsCR)); abline(0,1)
+
+#' Fit NRM on clinical data only
+#+cncrdNRMclin
+cncrdNRMclin <- t(as.data.frame(mclapply(1:replicates, function(foo){
+							set.seed(foo)
+							trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 4/5
+							g <- crGroups[crGroups %in% c("Clinical","Demographics","Nuisance","Treatment")]
+							dNrm <- nrmData[nrmData$index %in% which(trainIdx),names(g)]
+							sNrm <- Surv(nrmData$time1, nrmData$time2, nrmData$status)[nrmData$index %in% which(trainIdx)]
+							coxRFXNrmTD <- CoxRFX(dNrm, sNrm, groups=g, nu=1)
+							coxRFXNrmTD$coefficients["transplantRel"] <- 0
+							pNRM <- as.matrix(nrmData[names(g)]) %*% coef(coxRFXNrmTD)
+							C <- sapply(list(train=which(trainIdx), test=which(!trainIdx)), function(w)
+										NRMrfx = survConcordance(Surv(time1, time2, status)~  pNRM, data=nrmData, subset=nrmData$index %in% w )$concordance
+							)
+							return(C)}, mc.cores=10)))
+plot(concordanceCIRcvTrain[[2]][3,2,] ,cncrdNRMclin[,2])
+abline(0,1)
+
+#' Get variance-based estimate of concordance
+i <- 0
+concordanceCIRcvVar <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), function(g){ 
+			i <- i+1
+			sapply(1:replicates, function(foo){
+						set.seed(foo)
+						trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 4/5
+						coef <- concordanceCIRcv[[i]][[foo]][["coef"]]
+						pCIR <- as.matrix(cirData[names(coef[,"CIRrfx"])]) %*% coef[,"CIRrfx"] 
+						pPRS <- as.matrix(prsData[names(coef[,"PRSrfx"])]) %*% coef[,"PRSrfx"] 
+						pNRM <- as.matrix(nrmData[names(coef[,"NRMrfx"])]) %*% coef[,"NRMrfx"]
+						pOS <- as.matrix(osData[names(coef[,"OSrfx"])]) %*% coef[,"OSrfx"]
+						C <- sapply(list(train=which(trainIdx), test=which(!trainIdx)), function(w){
+									sapply(ls(sys.frame(-3),pattern='^p[A-Z]+'), function(x)
+												CoxHD:::ConcordanceFromVariance(var(get(x)[w], na.rm=TRUE)))[c(1,4,2,3)] 
+								})
+					}, simplify="array")})
+
+for(i in 1:4)
+{cat(rownames(concordanceCIRcvTrain[[2]])[i],"\n"); print(summary(data.frame(harrel=t(concordanceCIRcvTrain[[2]][i,1:2,]) , var=t(concordanceCIRcvVar[[2]][i,1:2,]))))}
+
+#' #### Cross-validation across trials
 concordanceCIRcvTrial <- mclapply(list(crGroups[crGroups %in% mainGroups], crGroups), function(g){ 
 			mclapply(levels(clinicalData$Study), function(study){
 						trainIdx <- clinicalData$Study != study
@@ -2759,11 +2841,14 @@ d$transplantCR1 <- rep(c(0,1,0), length(w))
 d$transplantRel <- rep(c(0,0,1), length(w))
 p <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, d, x=1000)
 survivalTpl <- data.frame(PDID=rownames(dataFrame)[w], matrix(p$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse"))), os=osYr[w])
-survivalTpl[order(survivalTpl$CR1 -survivalTpl$Relapse),]
+kable(format(survivalTpl[order(survivalTpl$CR1 -survivalTpl$Relapse),], digits=3))
 
-plot(survivalTpl[,c(2,4)], xlab="Survival no TPL", ylab="Survival TPL")
-points(survivalTpl[,c(2,3)], pch=19)
+#+survivalTplPlot
+plot(survivalTpl[,c(2,3)], xlab="Survival at 1,000 days without transplant", ylab="Survival at 1,000 days with transplant", pch=19)
+points(survivalTpl[,c(2,4)], pch=1)
 arrows(survivalTpl$None, survivalTpl$Relapse,survivalTpl$None, survivalTpl$CR1, length=0.05)
+abline(0,1)
+legend("bottomrigh", bty="n", pch=c(1,19),c("Relapse","CR1"), title="Allograft in")
 
 #' Find prototypes
 prototypes <- sapply(levels(clinicalData$M_Risk)[c(2,4,3,1)], function(l) sapply(1:3, function(i){
