@@ -1827,7 +1827,7 @@ predictNpCox <- function(fit, risk = predict(fit), surv=fit$surv){
 
 p <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, allData, x =365)
 s <- survfit(coxRFXOsCR)
-q <- s$surv[which.min(abs(s$time-365))] ^ exp(predict(coxRFXOsCR, newdata=d))
+q <- s$surv[which.min(abs(s$time-365))] ^ exp(predict(coxRFXOsCR, newdata=allData))
 
 osCR <- Surv(osData$time1, osData$time2, osData$status)
 survConcordance(osCR ~ q)
@@ -1990,3 +1990,71 @@ vcSimple <- function(fit){
 			})
 }
 
+EvalAbsolutePred <- function(prediction, surv, time, bins=seq(0,1,0.05)){
+	c <- cut(prediction, bins)
+	f <- survfit(surv ~ c)
+	e <- summary(f, time)
+	x <- sapply(strsplit(gsub("[a-z\\=\\(]|]","",e$strata),","), function(x) mean(as.numeric(x))); 
+	#w <- 1/(e$std.err+.Machine$double.eps)^2
+	w <- e$n[e$strata]
+	std.err = 1/sum(w, na.rm=TRUE)
+	mean.error = sum((e$surv-x)^2*w, na.rm=TRUE)*std.err
+	return(list(mean.error=mean.error, std.err=std.err, survfit=e, x=x))
+}
+
+absPredError <- EvalAbsolutePred(allPredict$os, Surv(allData$time1, allData$time2, allData$status), time=365)
+
+plot(absPredError$x, absPredError$survfit$surv, xlim=c(0,1), ylim=c(0,1))
+segments(absPredError$x, absPredError$survfit$lower,absPredError$x, absPredError$survfit$upper)
+abline(0,1)
+
+PredictAbsoluteCoxph <- function(coxRFXOsCR, allData, time) {
+	s <- survfit(coxRFXOsCR)
+	q <- s$surv[which.min(abs(s$time-time))] ^ exp(predict(coxRFXOsCR, newdata=allData))
+}
+q <- PredictAbsoluteCoxph(coxRFXOsCR = coxRFXOsCR, allData = allData, time=365)
+
+absPredErrorOs <- EvalAbsolutePred(q, Surv(allData$time1, allData$time2, allData$status), time=365)
+plot(absPredErrorOs$x, absPredErrorOs$survfit$surv, xlim=c(0,1), ylim=c(0,1))
+segments(absPredErrorOs$x, absPredErrorOs$survfit$lower,absPredErrorOs$x, absPredErrorOs$survfit$upper)
+abline(0,1)
+
+i <- 0
+absoluteErrorsCIRcv <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), function(g){ 
+			i <- i+1
+			sapply(1:replicates, function(foo){
+						set.seed(foo)
+						time <- 365
+						trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 4/5
+						coef <- concordanceCIRcv[[i]][[foo]][["coef"]]
+
+						lpCIR <- as.matrix(cirData[names(coef[,"CIRrfx"])]) %*% coef[,"CIRrfx"]
+						s <- survfit(Surv(time1, time2, status)~1, data=cirData, subset=cirData$index %in% which(trainIdx))
+						pCIR <- s$surv[which.min(abs(s$time-time))] ^ exp(lpCIR-mean(lpCIR[cirData$index %in%which(trainIdx)]))
+												
+						lpPRS <- as.matrix(prsData[names(coef[,"PRSrfx"])]) %*% coef[,"PRSrfx"] 
+						s <- survfit(Surv(time2- time1, status)~1, data=prsData, subset=prsData$index %in% which(trainIdx))
+						pPRS <- s$surv[which.min(abs(s$time-time))] ^ exp(lpPRS-mean(lpPRS[prsData$index %in% which(trainIdx)]))
+												
+						lpNRM <- as.matrix(nrmData[names(coef[,"NRMrfx"])]) %*% coef[,"NRMrfx"]
+						s <- survfit(Surv(time1, time2, status)~1, data=nrmData, subset=nrmData$index %in% which(trainIdx))
+						pNRM <- s$surv[which.min(abs(s$time-time))] ^ exp(lpNRM-mean(lpNRM[nrmData$index %in% which(trainIdx)]))
+						
+						lpOS <- as.matrix(osData[names(coef[,"OSrfx"])]) %*% coef[,"OSrfx"]
+						s <- survfit(Surv(time1, time2, status)~1, data=osData, subset=osData$index %in% which(trainIdx))
+						pOS <- s$surv[which.min(abs(s$time-time))] ^ exp(lpOS-mean(lpOS[osData$index %in% which(trainIdx)]))
+						
+						p365 <- concordanceCIRcv[[i]][[foo]][["allRisk365"]]$os
+						p1000 <- concordanceCIRcv[[i]][[foo]][["allRisk1000"]]$os
+						err <- sapply(list(train=which(trainIdx), test=which(!trainIdx)), function(w)
+									c(
+											CIRrfx = EvalAbsolutePred(pCIR[cirData$index %in% w ], Surv(cirData$time1, cirData$time2, cirData$status)[cirData$index %in% w ], time=365)$mean.error,
+											PRSrfx =  EvalAbsolutePred(pPRS[prsData$index %in% w ], Surv(prsData$time2- prsData$time1, prsData$status)[prsData$index %in% w ], time=365)$mean.error,
+											NRMrfx =  EvalAbsolutePred(pNRM[nrmData$index %in% w ], Surv(nrmData$time1, nrmData$time2, nrmData$status)[nrmData$index %in% w ], time=365)$mean.error,
+											OSrfx =  EvalAbsolutePred(pOS[osData$index %in% w ], Surv(osData$time1, osData$time2, osData$status)[osData$index %in% w ], time=365)$mean.error,
+											OS365 =  EvalAbsolutePred(p365[osData$index %in% w ], Surv(osData$time1, osData$time2, osData$status)[osData$index %in% w ], time=365)$mean.error,
+											OS1000 =  EvalAbsolutePred(p1000[osData$index %in% w ], Surv(osData$time1, osData$time2, osData$status)[osData$index %in% w ], time=1000)$mean.error
+									))
+						return(err)
+					}, simplify='array')
+		})
