@@ -170,6 +170,9 @@ shinyServer(function(input, output) {
 						if("analytical" %in% input$ciType){
 							## Confidence intervals
 							errOs <- kmCir$r[,2] + kmNrm$r[,2] + kmPrs$r[,2]
+							PlogP2 <- function(x) {(x * log(x))^2}
+							errOs <- kmNrm$r[,2] * PlogP2(kmNrm$inc) * (1-kmCir$inc * kmPrs$inc)^2 + kmCir$r[,2]  * (1-kmNrm$inc)^2* kmPrs$inc^2 * PlogP2(kmCir$inc) +  kmPrs$r[,2]  * (1-kmNrm$inc)^2* kmCir$inc^2 * PlogP2(kmPrs$inc)
+							errOs <- errOs / PlogP2(1-(1-kmNrm$inc)*(1-kmCir$inc*kmPrs$inc))
 							osUp <- os ^ exp(2* errOs)
 							osLo <- os ^ exp(-2*errOs)
 							lines(x, osUp, col=set1[1], lty=3)
