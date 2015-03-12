@@ -88,7 +88,8 @@ shinyServer(function(input, output) {
 										d <- paste(d)
 										radioButtons(x, x, choices=c("present"= "1", "absent"="0", "NA"="NA"), selected=d)
 									}else{
-										numericInput(inputId=x, label=sub(paste0("_",scaleFactors[x],"$"),"",x), value=d, min=min(data[,x]*scaleFactors[x], na.rm=TRUE), max=max(data[,x]*scaleFactors[x],na.rm=TRUE) , step=1e-3)
+										r <- range(data[,x]*scaleFactors[x], na.rm=TRUE)
+										numericInput(inputId=x, label=paste0(sub(paste0("_",scaleFactors[x],"$"),"",x), " [",r[1],"-",r[2],"]"), value=d, min=r[1], max=r[2] )
 									}}
 						
 						)
