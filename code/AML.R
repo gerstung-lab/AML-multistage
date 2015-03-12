@@ -1567,7 +1567,7 @@ survConcordance(tcgaSurvival[tcgaNkIdx] ~ tcgaRiskCPSSOs[tcgaNkIdx])
 
 #' #### ELN score
 ELN <- function(X, nkIdx){
-	factor(ifelse(X$inv3_t3_3==1 | X$t_6_9==1 | X$t_9_22==1 | X$minus5_5q==1 | X$mono17_17p_abn17p==1 | X$minus7==1 | X$complex==1 | X$t_MLL==1,
+	factor(ifelse(X$inv3_t3_3==1 | X$t_6_9==1 | X$t_9_22==1 | X$minus5_5q==1 | X$mono17_17p_abn17p==1 | X$minus7==1 | X$complex==1 | X$t_v_11==1,
 			"Adverse",
 			ifelse(X$t_15_17==1 | X$t_8_21==1 | X$inv16_t16_16==1 | ((X$CEBPA_bi==1 |  X$CEBPA_mono==1 | (X$NPM1==1 & X$FLT3_ITD==0)) & nkIdx),
 					"Favorable",
