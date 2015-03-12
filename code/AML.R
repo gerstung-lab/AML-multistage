@@ -420,6 +420,7 @@ coxRFXFitOsMain <- CoxRFX(dataFrame[,mainIdxOs], os, groups=groups[mainIdxOs])
 #' Coefficients
 par(mar=c(5,7,1,1))
 colGroups <- c(brewer.pal(12, "Paired")[c(10)],brewer.pal(12, "Paired")[c(6,4,3,5,12,9,1,2,7)],"#999999", brewer.pal(12, "Paired")[c(8)])
+colGroups <- colGroups[c(2:6,1,7:14)]
 names(colGroups) <- levels(groups)[order(toupper(levels(groups)))]
 plot(coxRFXFitEfs, col=colGroups, order=order(coxRFXFitEfs$mu), xlim=c(-2,2), xaxt="n", xlab="Hazard ratio")
 axis(side=1, at= log(c(0.1,0.2,0.5,1,2,5)), labels = c(0.1,0.2,0.5,1,2,5))
