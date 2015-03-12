@@ -15,6 +15,11 @@ VARIABLES <- VARIABLES[order(apply(data[VARIABLES],2,var)*c(coef(coxRFXCirTD)[VA
 INTERACTIONS <- names(crGroups)[crGroups %in% "GeneGene"] 
 NUISANCE <- names(crGroups)[crGroups %in% "Nuisance"] 
 
+scaleFactors <- rep(1, length(VARIABLES))
+names(scaleFactors) <- VARIABLES
+w <- crGroups[VARIABLES] %in% c("Demographics","Clinical")
+r <- regexpr("(?<=_)[0-9]+$", VARIABLES[w], perl=TRUE)
+scaleFactors[w][r!=-1] <- as.numeric(regmatches(VARIABLES[w],r))
 
 computeTotalPrs <- function(x, diffCir, prsP, tdPrmBaseline, risk) {
 	xLen <- length(x)
@@ -56,6 +61,7 @@ shinyServer(function(input, output) {
 							l[[n]] <- NA
 						out <- do.call("data.frame",l)
 						names(out) <- names(l)
+						out[VARIABLES] <- out[VARIABLES]/scaleFactors
 						return(out)
 						
 					})
@@ -71,6 +77,7 @@ shinyServer(function(input, output) {
 						
 						defaults <- as.numeric(defaults)
 						names(defaults) <- colnames(data)
+						defaults[VARIABLES] <- defaults[VARIABLES] * scaleFactors
 						#cat(defaults,"\n")
 						
 						lapply(VARIABLES, 
@@ -81,7 +88,7 @@ shinyServer(function(input, output) {
 										d <- paste(d)
 										radioButtons(x, x, choices=c("present"= "1", "absent"="0", "NA"="NA"), selected=d)
 									}else{
-										numericInput(inputId=x, label=x, value=d, min=min(data[,x], na.rm=TRUE), max=max(data[,x],na.rm=TRUE) , step=1e-3)
+										numericInput(inputId=x, label=sub(paste0("_",scaleFactors[x],"$"),"",x), value=d, min=min(data[,x]*scaleFactors[x], na.rm=TRUE), max=max(data[,x]*scaleFactors[x],na.rm=TRUE) , step=1e-3)
 									}}
 						
 						)
