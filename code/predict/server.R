@@ -100,7 +100,8 @@ shinyServer(function(input, output) {
 				#lines(survfit(coxRFX$surv ~ 1), lty=3, mark=NA, fun=function(x) 1-x)
 				abline(h=seq(0,1,.2), lty=3)
 				abline(v=seq(0,2000,365), lty=3)
-				coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
+				if(!is.null(coxRFX$na.action))
+					coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
 				r <- PredictRiskMissing(coxRFX, data, var="var2")
 				H0 <- basehaz(coxRFX, centered = FALSE)
 				hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
@@ -114,15 +115,24 @@ shinyServer(function(input, output) {
 				inc <- exp(-lambda0* exp(r[,1]))
 				lines( x, 1-inc, col=col, lwd=2)
 				legend(ifelse((1-inc[length(inc)])>.5, "bottomright","topright"), c("Population avg","Predicted","95% CI"),bty="n", lty=c(2,1,NA), fill=c(NA,NA,paste0(col,"44")), border=c(NA,NA,NA), col=c(1,col,NA))
-				return(list(inc=inc, r=r, x=x, hazardDist=hazardDist, r0 = coxRFX$means %*% coef(coxRFX), ciup=ciup, cilo=cilo, ciup2=ciup2, cilo2=cilo2))
+				par(new=T)
+				m <- colMeans(PartialRisk(coxRFX))
+				p <- (matrix(PartialRisk(coxRFX, dataImputed()), nrow=1) - m)/4 +.1
+				colnames(p) <- names(m)
+				l <- cbind(x=0.25,y=0.85)
+				r0 <- coxRFX$means %*% coef(coxRFX)
+				c <- cut(r[,1]-r0, quantile(coxRFX$linear.predictor,seq(0,1,l=12)))
+				stars((p[,c("Demographics","Treatment","BT","CNA","Genetics","GeneGene","Clinical"), drop=FALSE]), scale=FALSE, locations = l, xlim=c(0,1), ylim=c(0,1), lwd=1, col.stars=rev(brewer.pal(11,"RdBu"))[c])
+				symbols(l, circles=0.1, inches=FALSE, add=TRUE)
+				text(l[1]+cos(2*pi*0:6/7)*.12,l[2]+sin(2*pi*0:6/7)*.12,substr(c("Demographics","Treatment","BT","CNA","Genetics","GeneGene","Clinical"),1,5), cex=.66)
+				return(list(inc=inc, r=r, x=x, hazardDist=hazardDist, r0 = r0, ciup=ciup, cilo=cilo, ciup2=ciup2, cilo2=cilo2))
 			}
+			dataImputed <- reactive({ImputeMissing(data[1:1540,], getData()[,colnames(data)])})
 			output$Tab <- renderDataTable({
-						d <- getData()
-						d <- d[,colnames(data)]
-						x <- t(ImputeMissing(data[1:1540,], d))
-						data.frame(Covariate=colnames(d),signif(data.frame(Input=as.numeric(t(d)), Imputed=x, `Coef CIR`=coef(coxRFXCirTD), `Value CIR`= x*coef(coxRFXCirTD),
-												`Coef NRM`=coef(coxRFXNrmTD), `Value NRM`= x*coef(coxRFXNrmTD),
-												`Coef PRS`=coef(coxRFXPrsTD), `Value PRS`= x*coef(coxRFXPrsTD)),2))
+						x <- dataImputed()
+						data.frame(Covariate=colnames(x),signif(data.frame(Input=as.numeric(getData()[,colnames(data)]), Imputed=as.numeric(x), `Coef CIR`=coef(coxRFXCirTD), `Value CIR`= as.numeric(x)*coef(coxRFXCirTD),
+												`Coef NRM`=coef(coxRFXNrmTD), `Value NRM`= as.numeric(x)*coef(coxRFXNrmTD),
+												`Coef PRS`=coef(coxRFXPrsTD), `Value PRS`= as.numeric(x)*coef(coxRFXPrsTD)),2))
 					})
 			output$Risk <- renderDataTable({
 						data.frame(Value=c("log hazard","s.d"),sapply(c("Cir","Nrm","Prs"), function(m){
