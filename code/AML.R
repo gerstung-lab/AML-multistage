@@ -156,7 +156,7 @@ dim(dataFrame)
 
 #+ groups, cache=TRUE
 groups <- unlist(sapply(names(dataList), function(x) rep(x, ncol(dataList[[x]]))))
-groups[grepl("^(t_)|(inv)", colnames(dataFrame)) &! grepl(":", colnames(dataFrame))] <- "BT"
+groups[grepl("^(t_)|(inv)", colnames(dataFrame)) &! grepl(":", colnames(dataFrame))] <- "Fusions"
 groups[groups=="Cytogenetics"] <- "CNA"
 groups <- factor(groups)
 names(groups) <- colnames(dataFrame)
@@ -173,7 +173,7 @@ rownames(dataFrame) <- clinicalData$PDID
 genomicData <- cbind(dataList$Genetics, dataList$Cytogenetics)
 genomicData <- (sapply(unique(sub("(_ITD)|(_TKD)|(_other)|(_mono)|(_bi)|(_p172)|(_p140)","",colnames(genomicData))), function(x) rowSums(genomicData[grep(paste(x,"($|_.+)",sep=""), colnames(genomicData))])) > 0)+0
 genomicData <- genomicData[,colSums(genomicData, na.rm=TRUE)>=8]
-genomicGroups <- factor(grepl("^[a-z]", colnames(genomicData)) + grepl("t_*[0-9M]", colnames(genomicData) ), labels=c("Genetics","CNA","BT"))
+genomicGroups <- factor(grepl("^[a-z]", colnames(genomicData)) + grepl("t_*[0-9M]", colnames(genomicData) ), labels=c("Genetics","CNA","Fusions"))
 dim(genomicData)
 logPInt <- sapply(1:ncol(genomicData), function(i) sapply(1:ncol(genomicData), function(j) {f<- try(fisher.test(genomicData[,i], genomicData[,j]), silent=TRUE); if(class(f)=="try-error") 0 else ifelse(f$estimate>1, -log10(f$p.val),log10(f$p.val))} ))
 odds <- sapply(1:ncol(genomicData), function(i) sapply(1:ncol(genomicData), function(j) {f<- try(fisher.test(table(genomicData[,i], genomicData[,j])), silent=TRUE); if(class(f)=="try-error") f=NA else f$estimate} ))
@@ -571,7 +571,7 @@ print(xtable(data.frame(group = groups[whichRFXOsTDGG],coef=round(c,4), sd = rou
 #' Volcano plot
 #+ volcanoGGc, fig.width=3.3, fig.height=3
 par(mar=c(3,3,1,3)+.1,  bty="n", mgp=c(2,.5,0))
-i <- coxRFXFitOsTDGGc$groups %in% c("Genetics", "CNA","BT","GeneGene","Treatment")#apply(coxRFXFitOsTDGGc$Z,2,min) == 0 & apply(coxRFXFitOsTDGGc$Z,2,max) == 1
+i <- coxRFXFitOsTDGGc$groups %in% c("Genetics", "CNA","Fusions","GeneGene","Treatment")#apply(coxRFXFitOsTDGGc$Z,2,min) == 0 & apply(coxRFXFitOsTDGGc$Z,2,max) == 1
 plot(c, c^2/w2, log='', col=paste(colGroups[as.character(coxRFXFitOsTDGGc$groups)],"BB", sep=""), pch=ifelse(i,16,16), ylab="Chi2",xlab="log hazard", cex=ifelse(i, sqrt(colMeans(coxRFXFitOsTDGGc$Z[!rev(duplicated(rev(tplSplitOs))),])*50),1), xlim=range(c*1.2))
 #abline(h=qchisq(c(0.95,0.99,0.999), 1, lower.tail=TRUE), lty=c(1,2,3))
 p <- pchisq(c^2/w2,1,lower.tail=FALSE) ## pvalues coxRFX
@@ -733,7 +733,7 @@ for(l in c("coxRFXFitOs","coxRFXFitOsMain","coxRFXFitOsTDGGc")){
 	x <- x/(2*sd(x)) + 1
 		c <- cut(t[s,1][h$order], quantile(t[,1], seq(0,1,0.1), na.rm=TRUE))
 	if(l=="coxRFXFitOsTDGGc")
-		x <- x[,c("Demographics","Treatment","BT","CNA","Genetics","GeneGene","Clinical")]
+		x <- x[,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical")]
 	stars(x[s,][h$order,]/2, scale=FALSE, locations=locations, key.loc=c(0,-3), col.lines=rep(1,(nStars^2)), col.stars = (brewer.pal(11,'RdBu'))[c])
 	symbols(locations[,1], locations[,2], circles=rep(.5,(nStars^2)), inches=FALSE, fg="grey", add=TRUE, lty=1)
 	title(main=l)
@@ -748,7 +748,7 @@ patients <- c(
 		which(dataFrame$NPM1==1 & dataFrame$FLT3_ITD==0 & dataFrame$DNMT3A==0 & os[,1] > 2000)[1],
 		which(dataFrame$t_15_17==1 & os[,1] > 2000)[1]
 )
-genotype <- apply(dataFrame[groups %in% c("BT","CNA","Genetics")]==1, 1,function(x) paste(names(which(x)), collapse=";"))
+genotype <- apply(dataFrame[groups %in% c("Fusions","CNA","Genetics")]==1, 1,function(x) paste(names(which(x)), collapse=";"))
 
 t <- os
 p <- PartialRisk(coxRFXFitOsTDGGc, newZ=dataFrame[, whichRFXOsTDGG])
@@ -758,7 +758,7 @@ h <- hclust(dist(p[s,]))
 x <- p - rep(colMeans(p), each=nrow(p))
 x <- x/(2*sd(x)) + 1
 c <- cut(t[patients,1], quantile(t[,1], seq(0,1,0.1), na.rm=TRUE))
-x <- x[patients,c("Demographics","Treatment","BT","CNA","Genetics","GeneGene","Clinical")]
+x <- x[patients,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical")]
 locations <- expand.grid(seq_along(patients)* 1.5, 1)
 stars(x/2, scale=FALSE, locations=locations, key.loc=NA, col.lines=rep(1,(nStars^2)), col.stars = (brewer.pal(11,'RdBu'))[c])
 symbols(locations[,1], locations[,2], circles=rep(.5,length(patients)), inches=FALSE, fg="grey", add=TRUE, lty=1)
@@ -904,7 +904,7 @@ CoxCPSSInteractions
 #' #### CPSS on OS
 #+ CoxCPSSIntOs, cache=TRUE
 set.seed(42)
-scope <- c("Genetics","CNA","Treatment","BT")
+scope <- c("Genetics","CNA","Treatment","Fusions")
 coxCPSSIntOs <- CoxCPSSInteractions(dataFrame[!is.na(os),groups %in% mainGroups & osIdx], na.omit(os), bootstrap.samples=50, scope = which(groups %in% scope))
 selectedIntOs <- names(which(coxCPSSIntOs$Pi > 0.8))
 coxCPSSIntOs
@@ -1373,7 +1373,7 @@ allModelsTrialTdC
 		
 #' ### 6. Models on genomics only
 #+ genomicModels, cache=TRUE
-genomicsIndex <- groups %in% c("Genetics","CNA", "BT")
+genomicsIndex <- groups %in% c("Genetics","CNA", "Fusions")
 coxRFXOsGenomics <- CoxRFX(dataFrame[genomicsIndex], os, groups=groups[genomicsIndex])
 coxCPSSOsGenomics <- CoxCPSSInteractions(dataFrame[genomicsIndex], os, bootstrap.samples=500)
 coxCPSSOsGenomics
@@ -2198,7 +2198,7 @@ load(files[1], envir = tmp)
 #' #### P-values
 #' Plot the P-values as a function of Np\beta^2.
 #+ pVarSchoenfeld, fig.width=2, fig.height=2, cache=TRUE
-w <- groups[whichRFXOsTDGG] %in% c("Genetics","BT","CNA", "GeneGene") ## Which groups
+w <- groups[whichRFXOsTDGG] %in% c("Genetics","Fusions","CNA", "GeneGene") ## Which groups
 psi <- mean(os[,2]) ## Fraction of uncensored observations
 plot(colSums(simDataFrame[names(whichRFXOsTDGG[w])]) * tmp$simCoef[whichRFXOsTDGG[w]]^2 , CoxHD:::WaldTest( tmp$fit10000)$p[w], log="yx", pch=NA, xlab=expression(psi *N *p *beta^2), ylab="P-value", ylim=c(1e-50,1))
 for(f in files[1:50]){
@@ -2224,12 +2224,12 @@ power <- function(beta, N, p, psi=0.5, alpha=0.05){
 x <- seq(-2,2,0.01)
 y <- 10^seq(-4,0,0.01)
 colLevels <- colorRampPalette(brewer.pal(9, "Reds")[-(1:2)])(11)
-g <- c("BT","CNA","Genetics","GeneGene")
+g <- c("Fusions","CNA","Genetics","GeneGene")
 xObs <- matrix(exp(rep(coxRFXFitOsTDGGc$mu[g], each=2) + c(-1,1) * rep(sqrt(coxRFXFitOsTDGGc$sigma2[g]),each=2)), nrow=2) ## Mean log haz +/- sd
 yObsQ <- sapply(split(colMeans(dataFrameOsTD[whichRFXOsTDGG]), groups[whichRFXOsTDGG]),quantile, c(0.05,0.5,0.95))[,g] ## 5,50,95% frequency quantiles
 
 contour(outer(x,y,function(x,y) power(x,1540,y)), x=exp(x),y=y, log='xy', xlab="Hazard ratio", ylab="Mutation frequency", main="N=1540", col=colLevels)
-rect(xObs[1,],yObsQ[1,],xObs[2,],yObsQ[3,], border = colGroups[c("BT","CNA","Genetics","GeneGene")])
+rect(xObs[1,],yObsQ[1,],xObs[2,],yObsQ[3,], border = colGroups[c("Fusions","CNA","Genetics","GeneGene")])
 #segments(exp(coxRFXFitOsTDGGc$mu[g]),yObsQ[1,],exp(coxRFXFitOsTDGGc$mu[g]),yObsQ[3,], col = colGroups[g])
 #segments(xObs[1,],yObsQ[2,],xObs[2,],yObsQ[2,], col = colGroups[g])
 
@@ -2267,7 +2267,7 @@ cohort <- function(beta, p, psi=0.5, alpha=0.05, power=0.5){
 x <- seq(-2,2, 0.01)
 y <- 10^seq(-3,0, 0.01)
 contour(outer(x,y,function(x,y) cohort(x,y, alpha=0.05/100)), x=exp(x),y=y, log='xy', xlab="Hazard ratio", ylab="Mutation frequency",  col=colLevels, levels=c(10,20,50,100,200,500,1000,2000,5000,10000,20000))
-rect(xObs[1,],yObsQ[1,],xObs[2,],yObsQ[3,], border = colGroups[c("BT","CNA","Genetics","GeneGene")])
+rect(xObs[1,],yObsQ[1,],xObs[2,],yObsQ[3,], border = colGroups[c("Fusions","CNA","Genetics","GeneGene")])
 effects <- c("NPM1","TP53","inv3_t3_3","t_15_17","inv16_t16_16","CEBPA_bi","FLT3_ITD","complex","NPM1:FLT3_ITD:DNMT3A") ## A few interesting variables
 points(exp(coef(coxRFXFitOsTDGGc)[effects]), colMeans(dataFrame[effects]), col=colGroups[as.character(groups[effects])], pch=19)
 text(labels=effects,exp(coef(coxRFXFitOsTDGGc)[effects]), colMeans(dataFrame[effects]), pos=ifelse(sign(coef(coxRFXFitOsTDGGc)[effects])==1,4,2))
@@ -2299,7 +2299,7 @@ legend("topright", legend=c("P < 0.05 *","P < 0.001 ***"), lty=c(1,3), bty="n")
 #+ clinicalGlmnet, cache=TRUE
 library(glmnet)
 Y <- StandardizeMagnitude(cbind(dataList$Clinical, dataList$Demographics))
-X <- as.matrix(dataFrame[groups %in% c("Genetics","CNA","BT")])
+X <- as.matrix(dataFrame[groups %in% c("Genetics","CNA","Fusions")])
 set.seed(42)
 clinModels = lapply(Y, function(y){
 			if (class(y) %in% c("numeric","integer")){
@@ -2321,7 +2321,7 @@ i = 1
 n <- colnames(X)
 annot <- 3 - 2 * grepl("^[A-Z]",n) 
 annot[grep("(^t_)|(_t)",n)] <- 2
-annot <- factor(annot, labels = c("Genetics","BT","CNA"))
+annot <- factor(annot, labels = c("Genetics","Fusions","CNA"))
 names(annot) <- n
 for(m in clinModels){
 	mg14:::plotcvnet(m, X, main=names(clinModels)[i],  col0="black", cex=1, simple.annot = annot, col=colGroups[levels(annot)], xlim=c(0.5,35.5))
@@ -2335,7 +2335,7 @@ z <- sapply(clinModels,function(x){ ## Creating matrix
 			j <<- j+1
 			w <- which.min(x$cvm)
 			c <- x$glmnet.fit$beta[,w]
-			yj <- sapply(c("Genetics","CNA","BT"), function(i){
+			yj <- sapply(c("Genetics","CNA","Fusions"), function(i){
 						w <- names(groups[groups == i])
 						X[,w] %*% c[w] 
 					})
@@ -2373,13 +2373,13 @@ w <- order(R2[nrow(R2),])
 o <- order(annot,rowSums(r, na.rm=TRUE))
 image(y=1:ncol(z)-.5, x=1:nrow(z), z[o,w], breaks=c(-2,seq(-0.1,0.1,l=51)), col=c("grey",colorRampPalette(brewer.pal(9,"RdYlBu"))(50)), xaxt="n", yaxt="n", xlab="", ylab="", ylim=c(0,ncol(z)+1))
 #abline(v=c(18.5,27.5), lwd=0.5)
-rotatedLabel(y0=rep(0.5,nrow(z)), labels=gsub("_","/",rownames(z))[o], x0=1:nrow(z), font=c(rep(3,sum(groups=="Genetics")),rep(1,sum(groups%in%c("CNA","BT")))), col = colGroups[as.character(annot[o])], cex=0.9)
+rotatedLabel(y0=rep(0.5,nrow(z)), labels=gsub("_","/",rownames(z))[o], x0=1:nrow(z), font=c(rep(3,sum(groups=="Genetics")),rep(1,sum(groups%in%c("CNA","Fusions")))), col = colGroups[as.character(annot[o])], cex=0.9)
 mtext(side=2, line=.2, text=colnames(z)[w], las=2, at=1:ncol(z)-.5)
 text(y=rep(1:ncol(z)-.5, each=nrow(r)), x=rep(1:nrow(r), ncol(z)), r[o,w] * (0!=(z[o,w])), cex=0.66, font=ifelse(r[o,w] <= rep(s[ncol(r):1], each=nrow(r)), 2,1))
 points(y=rep(1:ncol(z)-.5, each=nrow(r)), x=rep(1:nrow(r), ncol(z)), pch=ifelse(is.na(z[o,w]) | z[o,w]==0, ".",NA))
 mtext(side=1, at=sum(groups=="Genetics")/2, "Genetics", col=colGroups["Genetics"], line=2.5 )
 mtext(side=1, at=sum(groups=="CNA")/2 + sum(groups=="Genetics"), "CNA", col=colGroups["CNA"], line=2.5 )
-mtext(side=1, at=sum(groups=="Tranlocations")/2 + sum(groups%in%c("Genetics","BT")), "BT", col=colGroups["BT"], line=2.5 )
+mtext(side=1, at=sum(groups=="Tranlocations")/2 + sum(groups%in%c("Genetics","Fusions")), "Fusions", col=colGroups["Fusions"], line=2.5 )
 ## Legends
 mtext(side=3, "Model coefficients", at = 7, line=0.5)
 clip(-10,50,0,15)
@@ -2932,7 +2932,7 @@ s <- do.call("rbind",lapply(levels(clinicalData$M_Risk)[c(2,4,3,1)], function(l)
 #+relapseStars, fig.width=3,fig.heigh=3
 c <- sapply(2:0, function(t) sapply(riskCol[c(2,4,3,1)], function(c) colTrans(c,t)))
 g <- expand.grid(1:3,1:4-1)*3
-stars(2*s[,c("Clinical","Demographics","Genetics","GeneGene","CNA","BT","Treatment")], scale=FALSE, col.stars=t(c), key.loc = c(13,0), locations=g, labels=NA)
+stars(2*s[,c("Clinical","Demographics","Genetics","GeneGene","CNA","Fusions","Treatment")], scale=FALSE, col.stars=t(c), key.loc = c(13,0), locations=g, labels=NA)
 symbols(g[,1], g[,2], circles=rep(1,12), inches=FALSE, add=TRUE)
 text(1, 0:3*3, names(riskCol[c(2,4,3,1)]), pos=2)
 text(1:3*3, 11, c("Best","Intermediate","Worst"), pos=3)
@@ -2979,7 +2979,7 @@ prototypes <- sapply(levels(clinicalData$M_Risk)[c(2,4,3,1)], function(l) sapply
 
 c <- sapply(2:0, function(t) sapply(riskCol[c(2,4,3,1)], function(c) colTrans(c,t)))
 g <- expand.grid(1:3,1:4-1)*3
-stars(2*t(t(partialRiskOsCR[prototypes,])- colMeans(partialRiskOsCR))[,c("Clinical","Demographics","Genetics","CNA","BT","Treatment")] +1, scale=FALSE, col.stars=t(c), key.loc = c(13,0), locations=g, labels=NA)
+stars(2*t(t(partialRiskOsCR[prototypes,])- colMeans(partialRiskOsCR))[,c("Clinical","Demographics","Genetics","CNA","Fusions","Treatment")] +1, scale=FALSE, col.stars=t(c), key.loc = c(13,0), locations=g, labels=NA)
 symbols(g[,1], g[,2], circles=rep(1,12), inches=FALSE, add=TRUE)
 text(1, 0:3*3, names(riskCol[c(2,4,3,1)]), pos=2)
 text(1:3*3, 11, c("Low","Intermediate","High"), pos=3)
@@ -2988,7 +2988,7 @@ text(1:3*3, 11, c("Low","Intermediate","High"), pos=3)
 s <- partialRiskOsCR - rep(colMeans(partialRiskOsCR), each=nrow(partialRiskOsCR))
 w <- sapply(split(1:1540, paste(clinicalData$M_Risk, quantileRiskCirTD[1:1540])), `[`, 1:12)
 w <- w[,!grepl("NA", colnames(w))][,c(4:6,10:12,7:9,1:3)]
-l <- stars(s[w,c("Clinical","Demographics","Genetics","GeneGene","CNA","BT","Treatment")] + .5, scale=FALSE, col.stars = mapply(function(i,j) {t <- try(c[i,j]); if(class(t)=="try-error") NA else t}, as.character(clinicalData$M_Risk[w]),quantileRiskCirTD[w]), labels="")
+l <- stars(s[w,c("Clinical","Demographics","Genetics","GeneGene","CNA","Fusions","Treatment")] + .5, scale=FALSE, col.stars = mapply(function(i,j) {t <- try(c[i,j]); if(class(t)=="try-error") NA else t}, as.character(clinicalData$M_Risk[w]),quantileRiskCirTD[w]), labels="")
 symbols(l[,1],l[,2], circles=rep(0.5, nrow(l)), inches=FALSE,add=TRUE)
 
 #' Who achieves CR?
