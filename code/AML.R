@@ -116,7 +116,7 @@ osYrTD[,1] <- osYrTD[,1]/365
 #' ### 2. Covariates
 #' #### All data as list
 dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
-		Cytogenetics = clinicalData[,50:74],
+		Cytogenetics = clinicalData[,grep("^(t_)|(inv)|(abn)|(plus)|(minus)|(mono)|(complex)",colnames(clinicalData))],
 		Nuisance = data.frame( MakeInteger(clinicalData$Study)[,1:2], Date=scale(as.numeric(clinicalData$ERDate), scale=FALSE), MissingCyto=is.na(clinicalData$t_15_17)+0),
 		Treatment = data.frame(ATRA = clinicalData$ATRA_arm, VPA=clinicalData$VPA, TPL_efs=tplIndexEfs, TPL_os=tplIndexOs),
 		Demographics = clinicalData[,c("AOD","gender")],
