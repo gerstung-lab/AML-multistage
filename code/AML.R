@@ -45,6 +45,13 @@ clinicalData$ATRA_arm[is.na(clinicalData$ATRA_arm)] <- 0
 colnames(clinicalData) <- gsub('\\.',"",colnames(clinicalData))
 clinicalData <- clinicalData[!is.na(clinicalData$TypeAML),] ## remove unknown patients
 clinicalData$PDID <- factor(as.character(clinicalData$PDID))
+t <- read.table("../../data/Ulm1.9_sm_Clinical.txt", header=T, sep="\t", na.strings = "na",comment.char = "", quote="\"")
+karyotypes <- t$karyotype[match(rownames(dataFrame),t$PDID)]
+rm(t)
+clinicalData$t_9_11 <- grepl("t\\(9;11\\)\\(p22;q23\\)", karyotypes) + 0 # t(9;11)
+clinicalData$t_v_11 <- clinicalData$t_MLL &! clinicalData$t_9_11
+clinicalData$t_MLL <- NULL
+
 dim(clinicalData)
 
 #' ### Mutation data
@@ -2944,16 +2951,17 @@ kable(format(survivalTpl[order(survivalTpl$CR1 -survivalTpl$Relapse),], digits=3
 kable(m[patients,])
 
 #+survivalTplPlot
-plot(survivalTpl[,c(2,3)], xlab="Survival at 1,000 days without transplant", ylab="Survival at 1,000 days with transplant", pch=19)
-points(survivalTpl[,c(2,4)], pch=1)
+plot(survivalTpl[,c(1,2)], xlab="Survival at 1,000 days without transplant", ylab="Survival at 1,000 days with transplant", pch=19)
+points(survivalTpl[,c(1,3)], pch=1)
 arrows(survivalTpl$None, survivalTpl$Relapse,survivalTpl$None, survivalTpl$CR1, length=0.05)
 abline(0,1)
 legend("bottomright", bty="n", pch=c(1,19),c("Relapse","CR1"), title="Allograft in")
 
 par(mar=c(7,5,1,1))
-boxplot(m$CR1 - m$None ~ quantileRiskOsCR[1:1540] + clinicalData$M_Risk, las=2, col=t(outer(riskCol, 2:0, colTrans)), ylab="Survival gain TPL CR1 at 1000d")
-boxplot(m$Relapse - m$None ~ quantileRiskOsCR[1:1540] + clinicalData$M_Risk, las=2, col=t(outer(riskCol, 2:0, colTrans)), ylab="Survival gain TPL Relapse at 1000d")
-boxplot(m$CR1 - m$Relapse ~ quantileRiskOsCR[1:1540] + clinicalData$M_Risk, las=2, col=t(outer(riskCol, 2:0, colTrans)), ylab="Survival gain TPL in CR1 over salvage at 1000d")
+f <- factor(clinicalData$M_Risk, levels=levels(clinicalData$M_Risk)[c(2,4,3,1)])
+boxplot(m$CR1 - m$None ~ quantileRiskOsCR[1:1540]  + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL CR1 at 1000d")
+boxplot(m$Relapse - m$None ~ quantileRiskOsCR[1:1540]  + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL Relapse at 1000d")
+boxplot(m$CR1 - m$Relapse ~ quantileRiskOsCR[1:1540] + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL in CR1 over salvage at 1000d")
 abline(h=0)
 
 par(c(3,3,1,1))
