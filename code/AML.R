@@ -2051,7 +2051,7 @@ subsetPatients <- lapply(subsets, function(s){
 						fit <- CoxRFX(dataFrameOsTD[tplSplitOs[trn], whichRFXOsTDGG], osTD[tplSplitOs[trn]], groups[whichRFXOsTDGG], which.mu=mainGroups, nu = 0.1)
 						C <- survConcordance(osTD[tplSplitOs[tst]]~predict(fit, newdata=dataFrameOsTD[tplSplitOs[tst], whichRFXOsTDGG]))
 						ROC <- survivalROC(Stime=os[!is.na(os) & tst,1], status=os[!is.na(os) & tst,2], marker = predict(fit, newdata=dataFrame[tst, whichRFXOsTDGG]), predict.time = 850, method="KM", cut.values=seq(-5,5,0.1))
-						list(C, ROC, trn, tst, coef(fit))}, mc.cores=20)
+						list(C, ROC, trn, tst, coef(fit))}, mc.cores=10)
 		})
 
 #+ subsetPatientsPlot, fig.width=2, fig.height=2
@@ -2127,7 +2127,7 @@ subsetGenes <- lapply(subsets, function(s){
 						fit <- CoxRFX(dataFrameOsTD[, whichRFXOsTDGG[ix]], osTD, groups[whichRFXOsTDGG[ix]], which.mu=mainGroups, nu = 0.1)
 						S <- cov(PartialRisk(fit))
 						list(C, ROC, S, trainIdx, testIdx, ix, mean(rowMeans(dataFrame[setdiff(genes,g)])))
-					}, mc.cores=20)
+					}, mc.cores=10)
 		})
 
 #+ subsetGenesPlot, fig.width=2, fig.height=2
