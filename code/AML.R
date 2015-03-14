@@ -46,7 +46,7 @@ colnames(clinicalData) <- gsub('\\.',"",colnames(clinicalData))
 clinicalData <- clinicalData[!is.na(clinicalData$TypeAML),] ## remove unknown patients
 clinicalData$PDID <- factor(as.character(clinicalData$PDID))
 t <- read.table("../data/Ulm1.9_sm_Clinical.txt", header=T, sep="\t", na.strings = "na",comment.char = "", quote="\"")
-karyotypes <- t$karyotype[match(rownames(dataFrame),t$PDID)]
+karyotypes <- t$karyotype[match(clinicalData$PDID,t$PDID)]
 rm(t)
 clinicalData$t_9_11 <- grepl("t\\(9;11\\)\\(p22;q23\\)", karyotypes) + 0 # t(9;11)
 clinicalData$t_v_11 <- clinicalData$t_MLL &! clinicalData$t_9_11
