@@ -1058,7 +1058,6 @@ allModelsCvC <- sapply(allModelsCvPredictions, function(x){
 					})
 		})
 apply(allModelsCvC,1,quantile)
-boxplot(t(allModelsCvC), ylim=c(0,0.5), notch=TRUE, ylab="Concordance", border=colModels, las=2, lty=1, pch=16, staplewex=0)
 
 #+ allModelsCvBoxplot, fig.width=2, fig.height=1.5
 par(mar=c(3,3,1,1),bty="n", mgp=c(2,.5,0), las=2)
@@ -1568,7 +1567,7 @@ survConcordance(tcgaSurvival[tcgaNkIdx] ~ tcgaRiskCPSSOs[tcgaNkIdx])
 
 #' #### ELN score
 ELN <- function(X, nkIdx){
-	factor(ifelse(X$inv3_t3_3==1 | X$t_6_9==1 | X$t_9_22==1 | X$minus5_5q==1 | X$mono17_17p_abn17p==1 | X$minus7==1 | X$complex==1 | X$t_v_11==1,
+	factor(ifelse(X$inv3_t3_3==1 | X$t_6_9==1 | X$minus5_5q==1 | X$mono17_17p_abn17p==1 | X$minus7==1 | X$complex==1 | X$t_v_11==1,
 			"Adverse",
 			ifelse(X$t_15_17==1 | X$t_8_21==1 | X$inv16_t16_16==1 | ((X$CEBPA_bi==1 |  X$CEBPA_mono==1 | (X$NPM1==1 & X$FLT3_ITD==0)) & nkIdx),
 					"Favorable",
@@ -2153,7 +2152,10 @@ axis(at=c(2.3, 3.7), labels=c("111 genes", "TCGA (exome)"), tcl=0.5, side=1, mgp
 #+ simData, cache=TRUE
 set.seed(42)
 SimDataNonp
-simData <- SimDataNonp(dataFrame[mainIdxOsTD], nData = 10000, m=10)
+d <- as.matrix(dataFrame[mainIdxOsTD])
+w <- groups[mainIdxOsTD] %in% c("Genetics","Fusions","CNA")
+d[w][! as.matrix(d[w]) %in% c(0,1)] <- NA # remove those imputed ones
+simData <- SimDataNonp(d, nData = 10000, m=10)
 names(simData) <- names(dataFrame[mainIdxOsTD])
 
 #' Merge into data.frame
@@ -2172,7 +2174,7 @@ simDataFrame <- simDataFrame[,colnames(simDataFrame)  %in% names(whichRFXOsTDGG)
 simDataFrame$`NPM1:FLT3_ITD:DNMT3A` <- simDataFrame$NPM1 * simDataFrame$FLT3_ITD * simDataFrame$DNMT3A
 dim(simDataFrame)
 
-#' #### Basie simulations
+#' #### Basic simulations
 simGroups <- factor(c(as.character(g), rep("GeneGene", ncol(simDataFrame)-length(g))))
 names(simGroups) <- colnames(simDataFrame)
 simCoef <- CoxHD:::SimCoef(coxRFXFitOsTDGGc, groups = simGroups)
@@ -2188,7 +2190,8 @@ save(coxRFXFitOsTDGGc, whichRFXOsTDGG, simDataFrame, simGroups, os, mainGroups, 
 #' ### 2. Simulation code
 #' The following code is run on the farm
 #+ farmulations, cache=FALSE
-read_chunk('Farmulations2.R')
+read_chunk('Farmulations2.R', labels="farmulationsCode")
+#+ farmulationsCode, eval=FALSE
 
 #' ### 3. Analysis
 #' Read files
@@ -2458,7 +2461,7 @@ osData$transplantRel <- 0 # Note: confounded by relapse
 
 coxRFXOsCR <- CoxRFX(osData[names(crGroups)], Surv(osData$time1, osData$time2, osData$status), groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 
-#save(coxRFXCirTD, coxRFXNrmTD, coxRFXPrsTD, coxRFXOsCR, nrmData, cirData, prsData, osData, crGroups,data, file="../../code/predict/predict3.RData")
+#save(coxRFXCirTD, coxRFXNrmTD, coxRFXPrsTD, coxRFXOsCR, nrmData, cirData, prsData, osData, crGroups, data, file="../../code/predict/predictGG.RData")
 
 #' ### Prediction of OS and Cross-validation
 #' Function to convolute CIR and PRM
