@@ -1,4 +1,4 @@
-load("simData2.RData")
+load("sim2Data.RData")
 library(mg14)
 library(CoxHD)
 library(parallel)
