@@ -83,7 +83,7 @@ shinyServer(function(input, output) {
 						lapply(VARIABLES, 
 								function(x) {
 									d <- defaults[x]
-									if(crGroups[x] %in% c("Genetics","CNA","BT","Treatment")){
+									if(crGroups[x] %in% c("Genetics","CNA","Fusions","Treatment")){
 										if(!d %in% c(0,1)) d <- NA
 										d <- paste(d)
 										radioButtons(x, x, choices=c("present"= "1", "absent"="0", "NA"="NA"), selected=d)
@@ -123,9 +123,9 @@ shinyServer(function(input, output) {
 				l <- cbind(x=0.25,y=ifelse((1-inc[length(inc)])>.8,0.3,.85))
 				r0 <- coxRFX$means %*% coef(coxRFX)
 				c <- cut(r[,1]-r0, quantile(coxRFX$linear.predictor,seq(0,1,l=12)))
-				stars((p[,c("Demographics","Treatment","BT","CNA","Genetics","GeneGene","Clinical"), drop=FALSE]), scale=FALSE, locations = l, xlim=c(0,1), ylim=c(0,1), lwd=1, col.stars=rev(brewer.pal(11,"RdBu"))[c])
+				stars((p[,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical"), drop=FALSE]), scale=FALSE, locations = l, xlim=c(0,1), ylim=c(0,1), lwd=1, col.stars=rev(brewer.pal(11,"RdBu"))[c])
 				symbols(l, circles=rds, inches=FALSE, add=TRUE)
-				text(l[1]+cos(2*pi*0:6/7)*2*rds,l[2]+sin(2*pi*0:6/7)*2*rds,substr(c("Demographics","Treatment","BT","CNA","Genetics","GeneGene","Clinical"),1,5), cex=.66)
+				text(l[1]+cos(2*pi*0:6/7)*2*rds,l[2]+sin(2*pi*0:6/7)*2*rds,substr(c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical"),1,5), cex=.66)
 				return(list(inc=inc, r=r, x=x, hazardDist=hazardDist, r0 = r0, ciup=ciup, cilo=cilo, ciup2=ciup2, cilo2=cilo2))
 			}
 			dataImputed <- reactive({ImputeMissing(data[1:1540,], getData()[,colnames(data)])})
