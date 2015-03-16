@@ -2154,7 +2154,7 @@ set.seed(42)
 SimDataNonp
 d <- as.matrix(dataFrame[mainIdxOsTD])
 w <- groups[mainIdxOsTD] %in% c("Genetics","Fusions","CNA")
-d[w][! as.matrix(d[w]) %in% c(0,1)] <- NA # remove those imputed ones
+d[,w][! as.matrix(d[,w]) %in% c(0,1)] <- NA # remove those imputed ones
 simData <- SimDataNonp(d, nData = 10000, m=10)
 names(simData) <- names(dataFrame[mainIdxOsTD])
 
