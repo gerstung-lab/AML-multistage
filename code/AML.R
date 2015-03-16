@@ -2175,6 +2175,7 @@ simDataFrame$`NPM1:FLT3_ITD:DNMT3A` <- simDataFrame$NPM1 * simDataFrame$FLT3_ITD
 dim(simDataFrame)
 
 #' #### Basic simulations
+set.seed(42)
 simGroups <- factor(c(as.character(g), rep("GeneGene", ncol(simDataFrame)-length(g))))
 names(simGroups) <- colnames(simDataFrame)
 simCoef <- CoxHD:::SimCoef(coxRFXFitOsTDGGc, groups = simGroups)
@@ -2260,7 +2261,7 @@ C <- sapply(files[1:500], function(f){
 		})
 boxplot(t(C), staplewex=0, pch=16, lty=1, ylab="", ylab="Concordance", xaxt="n")
 rotatedLabel(labels=(sub(".concordant","", rownames(C))))
-abline(h=CoxHD:::ConcordanceFromVariance(var(tmp$fit10000$linear.predictors)))
+abline(h=CoxHD:::ConcordanceFromVariance(var(simRisk)))
 
 #' #### Cohort size
 #+ cohort, fig.width=2.5, fig.height=2.5
@@ -3134,4 +3135,4 @@ devtools::session_info()
 #' Aftermath
 #' --------
 #' system("git checkout master -- ../../code/AML.R")
-#' m <- paste("\"Autocommit", Sys.time(), system("hostname -f", intern=TRUE),"\""); system(paste("git commit -a -m", m))
+#' spin("../../code/AML.R"); m <- paste("\"Autocommit", Sys.time(), system("hostname -f", intern=TRUE),"\""); system(paste("git commit -a -m", m))
