@@ -11,7 +11,7 @@ jobIndex <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
 set.seed(jobIndex)
 simCoef <- CoxHD:::SimCoef(coxRFXFitOsTDGGc, groups = simGroups)
 simRisk <- as.matrix(simDataFrame[names(whichRFXOsTDGG)]) %*% simCoef[names(whichRFXOsTDGG)]
-simRisk <- simRisk - colMeans(simDataFrame[names(whichRFXOsTDGG)]) %*% simCoef[names(whichRFXOsTDGG)]
+simRisk <- simRisk - (colMeans(simDataFrame[names(whichRFXOsTDGG)]) %*% simCoef[names(whichRFXOsTDGG)])[1]
 simSurv <- SimSurvNonp(simRisk, os)
 
 for(n in nData){
