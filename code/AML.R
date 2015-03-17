@@ -2261,29 +2261,34 @@ abline(h=CoxHD:::ConcordanceFromVariance(var(simRisk)))
 
 #' #### Mean prediction error
 #+ predError100-10000, fig.width=2, fig.height=2, cache=TRUE
-s <- get(paste0("w",n), envir=tmp)
-simSurv <- tmp$simSurv
-R <- sapply(files[1:10], function(f){
-			load(f)
+R <- sapply(files[1:50], function(f){
+			load(f, envir=.GlobalEnv)
 			r <- c(sapply(tmp$nData, function(n){
-								x <- as.matrix(simDataFrame[s, names(whichRFXOsTDGG)])
 								f <- get(paste0("fit",n))
+								assign("s", get(paste0("w",n)), envir=.GlobalEnv)
+								x <- as.matrix(simDataFrame[s, names(whichRFXOsTDGG)])
 								h <- x %*% coef(f)
 								#z <- t(t(x)-colMeans(x))
 								#e <- rowSums(z %*% f$var2 * z) 
 								#return(mean(e))
-								S <- survfit(f, newdata = as.data.frame(t(colMeans(x))))
+								S <- try(survfit(f, newdata = as.data.frame(t(colMeans(x)))))
+								if(class(S)[1]=="try-error") return(NA)
 								w <- which.min(abs(S$time-365))
 								hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
-								p <- S^exp(h)
-								q <- S^exp(simRisk[get(paste0("w",n))])
-								mean(abs(p-q))
+								p <- S$surv[w]^exp(h - mean(h))
+								q <- S$surv[w]^exp(simRisk[s])
+								abs(p-q)
 							}))
 			names(r) <- c(nData)
 			return(r)
 		})
-boxplot(t(R), staplewex=0, pch=16, lty=1, ylab="", ylab="Concordance", xaxt="n", log='y')
-rotatedLabel(labels=(sub(".concordant","", rownames(R))))
+#m <- matrix(aperm(apply(R,1:2,function(x) sample(unlist(x),100)), c(3,1,2)), ncol=7)
+#boxplot(m, staplewex=0, pch=16, lty=1, ylab="", ylab="Prediction error", xaxt="n", log='y', ylim=c(1e-3,1))
+q <- apply(R,1,function(x) quantile(unlist(x),c(0.025,0.25,0.5,0.75,0.975)))
+plot(nData,q[3,], log='xy', ylim=c(1e-2,1), type='l', ylab="Prediction error", lwd=2, xlab="Cohort size")
+polygon(c(nData,rev(nData)), c(q[1,], rev(q[5,])), border=NA, col="#88888844")
+polygon(c(nData,rev(nData)), c(q[2,], rev(q[4,])), border=NA, col="#88888844")
+#rotatedLabel(labels=(sub(".concordant","", rownames(q))))
 
 
 #' #### Cohort size
