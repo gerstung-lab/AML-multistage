@@ -8,7 +8,7 @@ library(shiny)
 library(RColorBrewer)
 library(CoxHD)
 library(Rcpp)
-load("predictGG.RData")
+load("predictGG.RData", envir=globalenv())
 set1 <- brewer.pal(8, "Set1")
 VARIABLES <- names(crGroups)[!crGroups %in% c("Nuisance","GeneGene")] 
 VARIABLES <- VARIABLES[order(apply(data[VARIABLES],2,var)*c(coef(coxRFXCirTD)[VARIABLES]^2+coef(coxRFXPrsTD)[VARIABLES]^2+coef(coxRFXNrmTD)[VARIABLES]^2), decreasing=TRUE)]
