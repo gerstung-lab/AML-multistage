@@ -3144,6 +3144,7 @@ for(vcf in allCaveOut){
 #' -----
 #+ git2r
 library(git2r)
+for(f in dir("../doc/current/figure", pattern="*.pdf", full.names=TRUE)) system(paste("pdfdate", f)) ## Fix pdf dates
 repo <- repository("..")
 config(repo, user.name="Moritz Gerstung", user.email="mg14@sanger.ac.uk")
 add(repo, c("doc/current","code/AML.R"))
