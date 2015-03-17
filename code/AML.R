@@ -2251,17 +2251,45 @@ for(N in c(100,1000,10000)){
 }
 
 #' #### Concordance
-#+ concordance100-1000, fig.width=2, fig.height=2, cache=TRUE
+#+ concordance100-10000, fig.width=2, fig.height=2, cache=TRUE
 C <- sapply(files[1:500], function(f){
 			load(f)
-			c(`100`=survConcordance(SimSurvNonp(simRisk[w100], os)~fit100$linear.predictors)$concordance,
-					`1000`=survConcordance(SimSurvNonp(simRisk[w1000], os)~fit1000$linear.predictors)$concordance,
-					`10000`=survConcordance(SimSurvNonp(simRisk, os)~fit10000$linear.predictors)$concordance,
-					Truth=survConcordance(SimSurvNonp(simRisk, os)~simRisk)$concordance)
+			r <- c(sapply(tmp$nData, function(n){
+								survConcordance(SimSurvNonp(simRisk[get(paste0('w',n))], os)~get(paste0("fit",n))$linear.predictors)$concordance
+							}),survConcordance(SimSurvNonp(simRisk, os)~simRisk)$concordance)
+			names(r) <- c(nData,"Truth")
+			return(r)
 		})
 boxplot(t(C), staplewex=0, pch=16, lty=1, ylab="", ylab="Concordance", xaxt="n")
 rotatedLabel(labels=(sub(".concordant","", rownames(C))))
 abline(h=CoxHD:::ConcordanceFromVariance(var(simRisk)))
+
+#' #### Mean prediction error
+#+ predError100-10000, fig.width=2, fig.height=2, cache=TRUE
+s <- get(paste0("w",n), envir=tmp)
+simSurv <- tmp$simSurv
+R <- sapply(files[1:10], function(f){
+			load(f)
+			r <- c(sapply(tmp$nData, function(n){
+								x <- as.matrix(simDataFrame[s, names(whichRFXOsTDGG)])
+								f <- get(paste0("fit",n))
+								h <- x %*% coef(f)
+								#z <- t(t(x)-colMeans(x))
+								#e <- rowSums(z %*% f$var2 * z) 
+								#return(mean(e))
+								S <- survfit(f, newdata = as.data.frame(t(colMeans(x))))
+								w <- which.min(abs(S$time-365))
+								hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
+								p <- S^exp(h)
+								q <- S^exp(simRisk[get(paste0("w",n))])
+								mean(abs(p-q))
+							}))
+			names(r) <- c(nData)
+			return(r)
+		})
+boxplot(t(R), staplewex=0, pch=16, lty=1, ylab="", ylab="Concordance", xaxt="n", log='y')
+rotatedLabel(labels=(sub(".concordant","", rownames(R))))
+
 
 #' #### Cohort size
 #+ cohort, fig.width=2.5, fig.height=2.5
