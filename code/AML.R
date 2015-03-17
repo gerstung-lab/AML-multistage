@@ -735,13 +735,13 @@ for(l in c("coxRFXFitOs","coxRFXFitOsMain","coxRFXFitOsTDGGc")){
 		c <- cut(t[s,1][h$order], quantile(t[,1], seq(0,1,0.1), na.rm=TRUE))
 	if(l=="coxRFXFitOsTDGGc")
 		x <- x[,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical")]
-	stars(x[s,][h$order,]/2, scale=FALSE, locations=locations, key.loc=c(0,-3), col.lines=rep(1,(nStars^2)), col.stars = (brewer.pal(11,'RdBu'))[c])
+	mg14:::stars(x[s,][h$order,]/2, scale=FALSE, locations=locations, key.loc=c(0,-3), col.lines=rep(1,(nStars^2)), col.stars = (brewer.pal(11,'RdBu'))[c], density=ifelse(t[s,2][h$order],NA,72))
 	symbols(locations[,1], locations[,2], circles=rep(.5,(nStars^2)), inches=FALSE, fg="grey", add=TRUE, lty=1)
 	title(main=l)
 }
 
 #' #### Selected stars
-#+ patientStars, fig.width=4, fig.height=1.5
+#+ patientStars, fig.width=4, fig.height=3
 patients <- c(
 		which(dataFrame$`TP53`==1 & dataFrame$complex==1 & os[,1] < 300 & os[,2]==1)[1],
 		which(dataFrame$`NPM1:FLT3_ITD:DNMT3A`==1 & os[,1] < 300 & os[,2]==1)[1],
@@ -755,13 +755,12 @@ t <- os
 p <- PartialRisk(coxRFXFitOsTDGGc, newZ=dataFrame[, whichRFXOsTDGG])
 p <- p[,colnames(p)!="Nuisance"]
 locations <- 1.5*hilbertCurve(log2(nStars)) #2*expand.grid(1:nStars,1:nStars)
-h <- hclust(dist(p[s,]))
 x <- p - rep(colMeans(p), each=nrow(p))
 x <- x/(2*sd(x)) + 1
 c <- cut(t[patients,1], quantile(t[,1], seq(0,1,0.1), na.rm=TRUE))
 x <- x[patients,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical")]
 locations <- expand.grid(seq_along(patients)* 1.5, 1)
-stars(x/2, scale=FALSE, locations=locations, key.loc=NA, col.lines=rep(1,(nStars^2)), col.stars = (brewer.pal(11,'RdBu'))[c])
+mg14:::stars(x/2, scale=FALSE, locations=locations, key.loc=NA, col.lines=rep(1,(nStars^2)), col.stars = (brewer.pal(11,'RdBu'))[c], density=ifelse(t[patients,2],NA,72))
 symbols(locations[,1], locations[,2], circles=rep(.5,length(patients)), inches=FALSE, fg="grey", add=TRUE, lty=1)
 text(locations[,1], locations[,2]-1,labels=clinicalData$PDID[patients], pos=1)
 l <- apply(dataFrame[patients,c("gender","AOD_10","TPL_os","wbc_100")], 1,paste, collapse=";")
@@ -2677,7 +2676,7 @@ plot(r[,3], coef(coxRFXNrmTD)); abline(0,1)
 plot(r[,4], coef(coxRFXOsCR)); abline(0,1)
 
 #' #### Fit NRM on clinical data only
-#+cncrdNRMclin
+#+cncrdNRMclin, cache=TRUE
 cncrdNRMclin <- t(as.data.frame(mclapply(1:replicates, function(foo){
 							set.seed(foo)
 							trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 4/5
@@ -2695,6 +2694,7 @@ plot(concordanceCIRcvTrain[[2]][3,2,] ,cncrdNRMclin[,2])
 abline(0,1)
 
 #' #### Get variance-based estimate of concordance
+#+ concordanceCIRcvVar, cache=TRUE
 i <- 0
 concordanceCIRcvVar <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), function(g){ 
 			i <- i+1
@@ -2716,6 +2716,7 @@ for(i in 1:4)
 {cat(rownames(concordanceCIRcvTrain[[2]])[i],"\n"); print(summary(data.frame(harrel=t(concordanceCIRcvTrain[[2]][i,1:2,]) , var=t(concordanceCIRcvVar[[2]][i,1:2,]))))}
 
 #' #### Cross-validation across trials
+#+ concordanceCIRcvTrial, cache=TRUE
 concordanceCIRcvTrial <- mclapply(list(crGroups[crGroups %in% mainGroups], crGroups), function(g){ 
 			mclapply(levels(clinicalData$Study), function(study){
 						trainIdx <- clinicalData$Study != study
@@ -3144,7 +3145,7 @@ for(vcf in allCaveOut){
 #' -----
 #+ git2r
 library(git2r)
-for(f in dir("../doc/current/figure", pattern="*.pdf", full.names=TRUE)) system(paste("pdfdate", f)) ## Fix pdf dates
+for(f in dir("../doc/current/figure", pattern="*.pdf", full.names=TRUE)) system(paste("~/bin/pdfdate", f)) ## Fix pdf dates
 repo <- repository("..")
 config(repo, user.name="Moritz Gerstung", user.email="mg14@sanger.ac.uk")
 add(repo, c("doc/current","code/AML.R"))
@@ -3159,7 +3160,6 @@ devtools::session_info()
 
 #' TODO's
 #' ------
-#' * Gene-wise contributions to reclassifaction
 
 #' Aftermath
 #' --------
