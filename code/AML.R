@@ -570,25 +570,24 @@ library(xtable)
 print(xtable(data.frame(group = groups[whichRFXOsTDGG],coef=round(c,4), sd = round(sqrt(w2),4), boot=sig2star(pchisq(c^2/v,1, lower.tail=FALSE)), var2=sig2star(pchisq(c^2/w2,1, lower.tail=FALSE)),var=sig2star(pchisq(c^2/w,1, lower.tail=FALSE)))),  type="html")
 
 #' Volcano plot
-#+ volcanoGGc, fig.width=3.3, fig.height=3
-par(mar=c(3,3,1,3)+.1,  bty="n", mgp=c(2,.5,0))
+#+ volcanoGGc, fig.width=3, fig.height=3
+par(mar=c(3,3,1,1)+.1,  bty="n", mgp=c(2,.5,0))
 i <- coxRFXFitOsTDGGc$groups %in% c("Genetics", "CNA","Fusions","GeneGene","Treatment")#apply(coxRFXFitOsTDGGc$Z,2,min) == 0 & apply(coxRFXFitOsTDGGc$Z,2,max) == 1
-plot(c, c^2/w2, log='', col=paste(colGroups[as.character(coxRFXFitOsTDGGc$groups)],"BB", sep=""), pch=ifelse(i,16,16), ylab="Chi2",xlab="log hazard", cex=ifelse(i, sqrt(colMeans(coxRFXFitOsTDGGc$Z[!rev(duplicated(rev(tplSplitOs))),])*50),1), xlim=range(c*1.2))
-#abline(h=qchisq(c(0.95,0.99,0.999), 1, lower.tail=TRUE), lty=c(1,2,3))
 p <- pchisq(c^2/w2,1,lower.tail=FALSE) ## pvalues coxRFX
+plot(c, 1/p, log='y', col=paste(colGroups[as.character(coxRFXFitOsTDGGc$groups)],"BB", sep=""), pch=ifelse(i,16,16), ylab="P-value",xlab="log hazard", cex=ifelse(i, sqrt(colMeans(coxRFXFitOsTDGGc$Z[!rev(duplicated(rev(tplSplitOs))),])*50),1), xlim=range(c*1.2))
+#abline(h=qchisq(c(0.95,0.99,0.999), 1, lower.tail=TRUE), lty=c(1,2,3))
 w <- which(p.adjust(p,"BY") < 0.1)
-points(c[w], (c^2/w2)[w],  pch=1, cex=ifelse(i[w], sqrt(colMeans(coxRFXFitOsTDGGc$Z[!rev(duplicated(rev(tplSplitOs))),w])*50),1))
+points(c[w], 1/p[w],  pch=1, cex=ifelse(i[w], sqrt(colMeans(coxRFXFitOsTDGGc$Z[!rev(duplicated(rev(tplSplitOs))),w])*50),1))
 w <- which(p.adjust(p,"bonf") < 0.05)
 par(xpd=NA)
-text(c[w], (c^2/w2)[w], names(c[w]), pos=3)
-pp <- pretty(pchisq(par("usr")[3:4],1,lower.tail=FALSE, log=TRUE)/log(10))
-q <- qchisq(pp*log(10),1,lower.tail=FALSE, log.p=TRUE)
-axis(side=4, at = q[q<par("usr")[4]], labels=pp[q<par("usr")[4]])
-mtext(side=4, "log10 P-value", line=1.5)
+text(c[w], 1/p[w], names(c[w]), pos=3)
 u <- par("usr")
 f <- c(0.01,0.05,0.1,0.2,0.5)
 s <- sqrt(f*50)
-legend("topright",legend=f, pch=16, pt.cex=s, bty='n', col="grey")
+legend("topright",legend=f, pch=16, pt.cex=s, bty='n', col=paste("#88888888"))
+par(xpd=FALSE)
+abline(h=1/0.05, lty=2)
+abline(h=1/max(p[which(p.adjust(p,"BY") < 0.1)]), lty=3)
 
 #' P-values and random model
 #+ pValuesMain, fig.width=2.5, fig.height=2.5, cache=TRUE
@@ -610,9 +609,6 @@ v <- t(sapply(parBoot, function(x) {t <- try(VarianceComponents(x, newZ=dataFram
 boxplot(v, border=colGroups[colnames(v)], lty=1, pch=16, staplewex=0, ylab="variance comp.", las=2)
 abline(h=0, lty=3)
 points(VarianceComponents(coxRFXFitOsTDGGc),  pch=19)
-
-round(cov(v), 2)
-
 
 rm(parBoot)
 
