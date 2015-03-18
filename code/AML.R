@@ -2260,8 +2260,8 @@ rotatedLabel(labels=(sub(".concordant","", rownames(C))))
 abline(h=CoxHD:::ConcordanceFromVariance(var(simRisk)))
 
 #' #### Mean prediction error
-#+ predError100-10000, fig.width=2, fig.height=2, cache=TRUE
-R <- sapply(files[1:50], function(f){
+#+ predError100-10000, cache=TRUE
+R <- sapply(files[1:100], function(f){
 			load(f, envir=.GlobalEnv)
 			r <- c(sapply(tmp$nData, function(n){
 								f <- get(paste0("fit",n))
@@ -2273,21 +2273,23 @@ R <- sapply(files[1:50], function(f){
 								#return(mean(e))
 								S <- try(survfit(f, newdata = as.data.frame(t(colMeans(x)))))
 								if(class(S)[1]=="try-error") return(NA)
-								w <- which.min(abs(S$time-365))
 								hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
-								p <- S$surv[w]^exp(h - mean(h))
-								q <- S$surv[w]^exp(simRisk[s])
-								abs(p-q)
+								sapply(seq(0,365*5, by=365/4), function(w){
+											w <- which.min(abs(S$time-w))
+											p <- S$surv[w]^exp(h - mean(h))
+											q <- S$surv[w]^exp(simRisk[s])
+											abs(p-q)})
 							}))
 			names(r) <- c(nData)
 			return(r)
 		})
-#m <- matrix(aperm(apply(R,1:2,function(x) sample(unlist(x),100)), c(3,1,2)), ncol=7)
-#boxplot(m, staplewex=0, pch=16, lty=1, ylab="", ylab="Prediction error", xaxt="n", log='y', ylim=c(1e-3,1))
-q <- apply(R,1,function(x) quantile(unlist(x),c(0.025,0.25,0.5,0.75,0.975)))
-plot(nData,q[3,], log='xy', ylim=c(1e-2,1), type='l', ylab="Prediction error", lwd=2, xlab="Cohort size")
-polygon(c(nData,rev(nData)), c(q[1,], rev(q[5,])), border=NA, col="#88888844")
-polygon(c(nData,rev(nData)), c(q[2,], rev(q[4,])), border=NA, col="#88888844")
+
+#+ predError100-10000Plot, fig.width=2, fig.height=2
+q <- sapply(1:nrow(R),function(i) apply(Reduce("rbind", R[i,]),2,quantile, c(0.025,0.25,0.5,0.75,0.975), na.rm=TRUE), simplify="array")
+contour(q[3,,],x=seq(0,365*5, by=365/4)/365, y=nData , log='y', xlab="Time (years)", ylab="Cohort size", las=1, xlim=c(0,3))
+plot(nData,q[3,5,], log='xy', ylim=c(1e-2,1), type='l', ylab="Prediction error", lwd=2, xlab="Cohort size")
+polygon(c(nData,rev(nData)), c(q[1,5,], rev(q[5,5,])), border=NA, col="#88888844")
+polygon(c(nData,rev(nData)), c(q[2,5,], rev(q[4,5,])), border=NA, col="#88888844")
 #rotatedLabel(labels=(sub(".concordant","", rownames(q))))
 
 
