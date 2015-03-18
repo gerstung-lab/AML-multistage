@@ -2974,7 +2974,7 @@ symbols(g[,1], g[,2], circles=rep(1,12), inches=FALSE, add=TRUE)
 text(1, 0:3*3, names(riskCol[c(2,4,3,1)]), pos=2)
 text(1:3*3, 11, c("Best","Intermediate","Worst"), pos=3)
 
-#' Predictions with different TPLs
+#' ### Predictions with different TPLs
 #+survivalTpl, results='asis', cache=TRUE
 w <- sort(unique(osData$index[which(quantileRiskOsCR==3 & clinicalData$M_Risk[osData$index]=="Favorable")]))
 d <- osData[rep(1:nrow(dataFrame), each=3),]
@@ -3006,7 +3006,29 @@ plot(m$CR1 - m$None ~ dataFrame$AOD_10)
 plot(m$CR1 - m$None ~ predict(coxRFXOsCR, newdata=osData[1:1540,]), xlab="Risk", ylab="Survival gain TPL CR1 at 1000d")
 lines(lowess(predict(coxRFXOsCR, newdata=osData[1:1540,]), m$CR1 - m$None), col='green')
 
-#' Find prototypes
+#' #### Best treatment options
+#' Ranking
+apply(apply(-m,1,rank),1,function(x) table(factor(x, levels=1:3)))
+
+#' Split by ELN risk
+table(clinicalData$M_Risk, factor(apply(m, 1, which.max), levels=1:3, labels=colnames(m)))
+
+#' Split by ELN risk, requiring TPL in CR1 to offer 5% advantage over salvage
+table(clinicalData$M_Risk, apply(m, 1, function(x) x[2] > x[3]+.05))
+
+#' Observed outcome
+summary(survfit(Surv(time1, time2, status) ~ 1, data=osData), time=1000)
+#' Under different scenarios
+colMeans(m)
+
+#' Using observed (assuming salvage as fallback)
+mean(sapply(1:nrow(data), function(i) m[i,3 - data[i,"transplantCR1"] ]))
+
+#'Best 
+mean(apply(m,1,max))
+
+
+#' #### Find prototypes
 prototypes <- sapply(levels(clinicalData$M_Risk)[c(2,4,3,1)], function(l) sapply(1:3, function(i){
 						#d <- dist(as.data.frame(coxRFXCirTD$Z[which(clinicalData$M_Risk[cirData$index]==l & quantileRiskCirTD==i &! is.na(clinicalData$CR_date[cirData$index])), ])) 
 						w <- which(clinicalData$M_Risk[cirData$index]==l & quantileRiskOsCR==i &! is.na(clinicalData$CR_date[cirData$index]))
@@ -3028,12 +3050,10 @@ w <- w[,!grepl("NA", colnames(w))][,c(4:6,10:12,7:9,1:3)]
 l <- stars(s[w,c("Clinical","Demographics","Genetics","GeneGene","CNA","Fusions","Treatment")] + .5, scale=FALSE, col.stars = mapply(function(i,j) {t <- try(c[i,j]); if(class(t)=="try-error") NA else t}, as.character(clinicalData$M_Risk[w]),quantileRiskCirTD[w]), labels="")
 symbols(l[,1],l[,2], circles=rep(0.5, nrow(l)), inches=FALSE,add=TRUE)
 
-#' Who achieves CR?
-c <- as.numeric(clinicalData$CR_date - clinicalData$ERDate)
-e <- is.na(c)
-#e[is.na(e)] <- 0
-c[is.na(c) &! is.na(os[,1])] <- os[is.na(c) &! is.na(os[,1]),1]
-cr <- Surv(time=pmin(c, os[,1]), event = e)
+#' ### Who achieves CR?
+table(CR=!is.na(clinicalData$CR_date), os[,2])
+cr <- os
+cr[,2] <- os[,2] & is.na(clinicalData$CR_date)
 coxRFXCr <- CoxRFX(dataFrame[whichRFXOsGG], cr, groups=groups[whichRFXOsGG], which.mu=mainGroups)
 
 #' Four plots comparing different intervals
@@ -3049,19 +3069,20 @@ PlotVarianceComponents(coxRFXPrsTD, col=colGroups, order=c(1,2,6,5,3,4,7,8))
 title(main="PRS")
 
 #' As barplot
-#+ allVarCompBar, fig.width=2.5, fig.height=2
+#+ allVarCompBar, fig.width=22, fig.height=2
 allVarComp <- sapply(c("Cr","CirTD","NrmTD","PrsTD"), function(x){
 			m <- get(paste0("coxRFX",x))
 			Z <- get(sub("\\[.+","",as.character(m$call["data"])))
 			i <- if(x=="Cr") 1:1540 else Z$index
 			VarianceComponents(m, newZ=Z[!rev(duplicated(rev(i))),colnames(m$Z)])})
-z <- allVarComp[c(1,2,6,5,3,4,7,8),]#/rep(colSums(allVarComp[-9,]), each=8)
-b <- barplot(z, col=colGroups[rownames(allVarComp)[c(1,2,6,5,3,4,7,8)]], ylab="Variance [log hazard]")
+w <- c("CNA","Fusions","Genetics","GeneGene","Clinical","Demographics","Treatment","Nuisance")
+z <- allVarComp[w,]#/rep(colSums(allVarComp[-9,]), each=8)
+b <- barplot(z, col=colGroups[w], ylab="Variance [log hazard]")
 Z <- rbind(0,apply(z,2,cumsum))
 segments(b[-4]+.5,t(Z[,-4]),b[-1]-.5 ,t(Z[,-1]))
 
-z <- allVarComp[c(1,2,6,5,3,4,7,8),]/rep(colSums(allVarComp[-9,]), each=8)
-b <- barplot(z, col=colGroups[rownames(allVarComp)[c(1,2,6,5,3,4,7,8)]], ylab="Relative importance")
+z <- allVarComp[w,]/rep(colSums(allVarComp[-9,]), each=8)
+b <- barplot(z, col=colGroups[w], ylab="Relative importance")
 Z <- rbind(0,apply(z,2,cumsum))
 segments(b[-4]+.5,t(Z[,-4]),b[-1]-.5 ,t(Z[,-1]))
 
@@ -3070,6 +3091,16 @@ segments(b[-4]+.5,t(Z[,-4]),b[-1]-.5 ,t(Z[,-1]))
 #s <- spline(y,x,xout=pretty(y))
 #axis(side=4, at=s$y[s$y < par("usr")[4]], labels=s$x[s$y<par("usr")[4]])
 #mtext(side=4, "Concordance")
+
+#' #### Significant terms (BH < 0.1)
+#' CR
+w <- WaldTest(coxRFXCr); w[p.adjust(w$p.value, "BH")<.1,]
+#' CIR
+w <- WaldTest(coxRFXCirTD); w[p.adjust(w$p.value, "BH")<.1,]
+#' PRS
+w <- WaldTest(coxRFXPrsTD); w[p.adjust(w$p.value, "BH")<.1,]
+#' NRM
+w <- WaldTest(coxRFXNrmTD); w[p.adjust(w$p.value, "BH")<.1,]
 
 #' 11. Clinical and splines
 #' -----------------------
