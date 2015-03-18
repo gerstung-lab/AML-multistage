@@ -2489,6 +2489,8 @@ osData$transplantCR1[osData$index %in% w] <- 0
 osData$transplantRel[!osData$index %in% w] <- 0
 data <- osData[rev(!duplicated(rev(osData$index))),colnames(coxRFXCirTD$Z)]
 osData$transplantRel <- 0 # Note: confounded by relapse
+rownames(data) <- sub("\\.1$","", rownames(data))
+data <- data[rownames(dataFrame),]
 
 coxRFXOsCR <- CoxRFX(osData[names(crGroups)], Surv(osData$time1, osData$time2, osData$status), groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 
@@ -2981,11 +2983,11 @@ d <- osData[rep(1:nrow(dataFrame), each=3),]
 d$transplantCR1 <- rep(c(0,1,0), nrow(dataFrame))
 d$transplantRel <- rep(c(0,0,1), nrow(dataFrame))
 allPredictTpl <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, d, x=1000)
-m <- as.data.frame(matrix(allPredictTpl$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse"))), row.names=rownames(dataFrame))
-survivalTpl <- data.frame(m[w,], os=osYr[w], age=clinicalData$AOD[w])
+allPredictTpl <- as.data.frame(matrix(allPredictTpl$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse"))), row.names=rownames(dataFrame))
+survivalTpl <- data.frame(allPredictTpl[w,], os=osYr[w], age=clinicalData$AOD[w])
 kable(format(survivalTpl[order(survivalTpl$CR1 -survivalTpl$Relapse),], digits=3))
 
-kable(m[patients,])
+kable(allPredictTpl[patients,])
 
 #+survivalTplPlot
 plot(survivalTpl[,c(1,2)], xlab="Survival at 1,000 days without transplant", ylab="Survival at 1,000 days with transplant", pch=19)
@@ -2996,36 +2998,36 @@ legend("bottomright", bty="n", pch=c(1,19),c("Relapse","CR1"), title="Allograft 
 
 par(mar=c(7,5,1,1))
 f <- factor(clinicalData$M_Risk, levels=levels(clinicalData$M_Risk)[c(2,4,3,1)])
-boxplot(m$CR1 - m$None ~ quantileRiskOsCR[1:1540]  + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL CR1 at 1000d")
-boxplot(m$Relapse - m$None ~ quantileRiskOsCR[1:1540]  + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL Relapse at 1000d")
-boxplot(m$CR1 - m$Relapse ~ quantileRiskOsCR[1:1540] + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL in CR1 over salvage at 1000d")
+boxplot(allPredictTpl$CR1 - allPredictTpl$None ~ quantileRiskOsCR[1:1540]  + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL CR1 at 1000d")
+boxplot(allPredictTpl$Relapse - allPredictTpl$None ~ quantileRiskOsCR[1:1540]  + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL Relapse at 1000d")
+boxplot(allPredictTpl$CR1 - allPredictTpl$Relapse ~ quantileRiskOsCR[1:1540] + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL in CR1 over salvage at 1000d")
 abline(h=0)
 
 par(c(3,3,1,1))
-plot(m$CR1 - m$None ~ dataFrame$AOD_10)
-plot(m$CR1 - m$None ~ predict(coxRFXOsCR, newdata=osData[1:1540,]), xlab="Risk", ylab="Survival gain TPL CR1 at 1000d")
-lines(lowess(predict(coxRFXOsCR, newdata=osData[1:1540,]), m$CR1 - m$None), col='green')
+plot(allPredictTpl$CR1 - allPredictTpl$None ~ dataFrame$AOD_10)
+plot(allPredictTpl$CR1 - allPredictTpl$None ~ predict(coxRFXOsCR, newdata=osData[1:1540,]), xlab="Risk", ylab="Survival gain TPL CR1 at 1000d")
+lines(lowess(predict(coxRFXOsCR, newdata=osData[1:1540,]), allPredictTpl$CR1 - allPredictTpl$None), col='green')
 
 #' #### Best treatment options
 #' Ranking
-apply(apply(-m,1,rank),1,function(x) table(factor(x, levels=1:3)))
+apply(apply(-allPredictTpl,1,rank),1,function(x) table(factor(x, levels=1:3)))
 
 #' Split by ELN risk
-table(clinicalData$M_Risk, factor(apply(m, 1, which.max), levels=1:3, labels=colnames(m)))
+table(clinicalData$M_Risk, factor(apply(allPredictTpl, 1, which.max), levels=1:3, labels=colnames(allPredictTpl)))
 
 #' Split by ELN risk, requiring TPL in CR1 to offer 5% advantage over salvage
-table(clinicalData$M_Risk, apply(m, 1, function(x) x[2] > x[3]+.05))
+table(clinicalData$M_Risk, apply(allPredictTpl, 1, function(x) x[2] > x[3]+.05))
 
 #' Observed outcome
 summary(survfit(Surv(time1, time2, status) ~ 1, data=osData), time=1000)
 #' Under different scenarios
-colMeans(m)
+colMeans(allPredictTpl)
 
 #' Using observed (assuming salvage as fallback)
-mean(sapply(1:nrow(data), function(i) m[i,3 - data[i,"transplantCR1"] ]))
+mean(sapply(1:nrow(data), function(i) allPredictTpl[i,3 - data[i,"transplantCR1"] ]))
 
 #'Best 
-mean(apply(m,1,max))
+mean(apply(allPredictTpl,1,max))
 
 
 #' #### Find prototypes
@@ -3059,17 +3061,18 @@ coxRFXCr <- CoxRFX(dataFrame[whichRFXOsGG], cr, groups=groups[whichRFXOsGG], whi
 #' Four plots comparing different intervals
 #+ allVarComp, fig.width=4, fig.height=4
 par(mfrow=c(2,2), xpd=FALSE)
-PlotVarianceComponents(coxRFXCr, col=colGroups, order=c(1,2,6,5,3,4,7,8))
+o <- c(1,4,6,5,2,3,7,8)
+PlotVarianceComponents(coxRFXCr, col=colGroups, order=o)
 title(main="CR")
-PlotVarianceComponents(coxRFXCirTD, col=colGroups, order=c(1,2,6,5,3,4,7,8))
+PlotVarianceComponents(coxRFXCirTD, col=colGroups, order=o)
 title(main="CIR")
-PlotVarianceComponents(coxRFXNrmTD, col=colGroups, order=c(1,2,6,5,3,4,7,8))
+PlotVarianceComponents(coxRFXNrmTD, col=colGroups, order=o)
 title(main="NRM")
-PlotVarianceComponents(coxRFXPrsTD, col=colGroups, order=c(1,2,6,5,3,4,7,8))
+PlotVarianceComponents(coxRFXPrsTD, col=colGroups, order=o)
 title(main="PRS")
 
 #' As barplot
-#+ allVarCompBar, fig.width=22, fig.height=2
+#+ allVarCompBar, fig.width=2, fig.height=2
 allVarComp <- sapply(c("Cr","CirTD","NrmTD","PrsTD"), function(x){
 			m <- get(paste0("coxRFX",x))
 			Z <- get(sub("\\[.+","",as.character(m$call["data"])))
@@ -3092,6 +3095,17 @@ segments(b[-4]+.5,t(Z[,-4]),b[-1]-.5 ,t(Z[,-1]))
 #axis(side=4, at=s$y[s$y < par("usr")[4]], labels=s$x[s$y<par("usr")[4]])
 #mtext(side=4, "Concordance")
 
+#' Risk
+#+ allStagesRisk, 4,4
+allStagesRisk <- as.data.frame(sapply(c("Cr","CirTD","NrmTD","PrsTD"), function(x){
+			m <- get(paste0("coxRFX",x))
+			#Z <- get(sub("\\[.+","",as.character(m$call["data"])))
+			#i <- if(x=="Cr") 1:1540 else Z$index
+			Z <- if(x=="Cr") dataFrame else data[rownames(dataFrame),]
+			predict(m, newdata=as.data.frame(Z))}))
+f <- function(x,y,...) {points(x,y, col=densCols(x,y),...); lines(lowess(x,y), col='red')}
+pairs(allStagesRisk, panel=f, pch=19)
+
 #' #### Significant terms (BH < 0.1)
 #' CR
 w <- WaldTest(coxRFXCr); w[p.adjust(w$p.value, "BH")<.1,]
@@ -3101,6 +3115,18 @@ w <- WaldTest(coxRFXCirTD); w[p.adjust(w$p.value, "BH")<.1,]
 w <- WaldTest(coxRFXPrsTD); w[p.adjust(w$p.value, "BH")<.1,]
 #' NRM
 w <- WaldTest(coxRFXNrmTD); w[p.adjust(w$p.value, "BH")<.1,]
+
+
+#' #### Predicting OS from enrollment
+#' Note that the inclusion of transplants is somewhat problematic
+pPostCr <- sapply(1:nrow(allPredictTpl), function(i) allPredictTpl[i,3 - data[i,"transplantCR1"] ])
+pPreCr <- summary(survfit(coxRFXCr), time=100)$surv ^ exp(predict(coxRFXCr, newdata=dataFrame[whichRFXOsTDGG]))
+pOS <- summary(survfit(coxRFXFitOsTDGGc), time=1000)$surv ^exp(predict(coxRFXFitOsTDGGc,newdata=dataFrame[whichRFXOsTDGG]))
+
+plot(pOS, pPostCr*pPreCr)
+
+survConcordance(os ~ I(-pOS))
+survConcordance(os ~ I(-pPostCr*pPreCr))
 
 #' 11. Clinical and splines
 #' -----------------------
