@@ -3008,7 +3008,7 @@ text(1, 0:3*3, names(riskCol[c(2,4,3,1)]), pos=2)
 text(1:3*3, 11, c("Best","Intermediate","Worst"), pos=3)
 
 #' ### Predictions with different TPLs
-#+survivalTpl, results='asis', cache=TRUE
+#+survivalTpl, cache=TRUE
 w <- sort(unique(osData$index[which(quantileRiskOsCR==3 & clinicalData$M_Risk[osData$index]=="Favorable")]))
 d <- osData[rep(1:nrow(dataFrame), each=3),]
 d$transplantCR1 <- rep(c(0,1,0), nrow(dataFrame))
@@ -3016,8 +3016,9 @@ d$transplantRel <- rep(c(0,0,1), nrow(dataFrame))
 allPredictTpl <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, d, x=1000)
 allPredictTpl <- as.data.frame(matrix(allPredictTpl$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse"))), row.names=rownames(dataFrame))
 survivalTpl <- data.frame(allPredictTpl, os=osYr, age=clinicalData$AOD, ELN=clinicalData$M_Risk, tercile=quantileRiskOsCR[1:nrow(allPredictTpl)])
-datatable(format(survivalTpl[order(survivalTpl$CR1 -survivalTpl$Relapse),], digits=4))
 
+#+ survivalTplOut, results='asis'
+datatable(format(survivalTpl[order(survivalTpl$CR1 -survivalTpl$Relapse),], digits=4))
 datatable(allPredictTpl[patients,])
 
 #+survivalTplPlot
@@ -3080,7 +3081,7 @@ text(1:3*3, 11, c("Low","Intermediate","High"), pos=3)
 s <- partialRiskOsCR - rep(colMeans(partialRiskOsCR), each=nrow(partialRiskOsCR))
 w <- sapply(split(1:1540, paste(clinicalData$M_Risk, quantileRiskCirTD[1:1540])), `[`, 1:12)
 w <- w[,!grepl("NA", colnames(w))][,c(4:6,10:12,7:9,1:3)]
-l <- stars(s[w,c("Clinical","Demographics","Genetics","GeneGene","CNA","Fusions","Treatment")] + .5, scale=FALSE, col.stars = mapply(function(i,j) {t <- try(c[i,j]); if(class(t)=="try-error") NA else t}, as.character(clinicalData$M_Risk[w]),quantileRiskCirTD[w]), labels="")
+l <- stars(s[w,c("Fusions","CNA","Genetics","GeneGene","Clinical","Demographics","Treatment")] + .5, scale=FALSE, col.stars = mapply(function(i,j) {t <- try(c[i,j]); if(class(t)=="try-error") NA else t}, as.character(clinicalData$M_Risk[w]),quantileRiskCirTD[w]), labels="")
 symbols(l[,1],l[,2], circles=rep(0.5, nrow(l)), inches=FALSE,add=TRUE)
 
 #' ### Who achieves CR?
