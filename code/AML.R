@@ -149,8 +149,8 @@ dataList$CytoTreat <- MakeInteractions(dataList$Cytogenetics, dataList$Treatment
 dataList$CytoTreat <- dataList$CytoTreat[,colSums(dataList$CytoTreat, na.rm=TRUE) > 0]
 
 #' #### Condensing to a data.frame
-dataFrame <- do.call(cbind,dataList)
-names(dataFrame) <- unlist(sapply(dataList, names))
+dataRaw <- do.call(cbind,dataList)
+names(dataRaw) <- unlist(sapply(dataList, names))
 dataFrame <- StandardizeMagnitude(dataFrame)
 dim(dataFrame)
 
@@ -566,14 +566,39 @@ abline(h=qchisq(c(0.95,0.99,0.999), 1, lower.tail=TRUE), lty=c(1,2,3))
 
 #' Table with significance
 #+ parBootTable, results='asis'
-library(xtable)
-print(xtable(data.frame(group = groups[whichRFXOsTDGG],coef=round(c,4), sd = round(sqrt(w2),4), boot=sig2star(pchisq(c^2/v,1, lower.tail=FALSE)), var2=sig2star(pchisq(c^2/w2,1, lower.tail=FALSE)),var=sig2star(pchisq(c^2/w,1, lower.tail=FALSE)))),  type="html")
+library(DT)
+pBoot <- pchisq(c^2/v,1, lower.tail=FALSE)
+pVar2 <- pchisq(c^2/w2,1, lower.tail=FALSE)
+pVar <- pchisq(c^2/w,1, lower.tail=FALSE)
+waldOut <- data.frame(group = groups[whichRFXOsTDGG], 
+		`beta (log-hazard)`= c, 
+		`hazard exp(beta)` = exp(c),
+		n = ifelse(groups[whichRFXOsTDGG] %in% c("CNA","Fusions","Genetics","GeneGene"), colSums(dataRaw[sub("_10*$","",names(whichRFXOsTDGG))], na.rm=TRUE), NA),
+		sd = sqrt(w2), 
+		`sd (bootstrap)` = sqrt(v), 
+		`sd (var)`= sqrt(w),
+		`P-value`=pVar2,
+		`Q (Benjamini-Yekutieli)` = p.adjust(pVar2, "BY"),
+		`Q (Benjamini-Hochberg)` = p.adjust(pVar2, "BH"),
+	check.names=FALSE
+)
+datatable(waldOut)
+library(xlsx)
+wb <- createWorkbook("xlsx")
+sheet  <- createSheet(wb, sheetName="Wald Tests")
+	addDataFrame(waldOut, 
+			sheet,
+			colnamesStyle = CellStyle(wb) + Font(wb, isBold=TRUE) + Border(),
+			rownamesStyle = CellStyle(wb) + Font(wb, isBold=TRUE)
+	)
+saveWorkbook(wb, file="../doc/current/SupplementaryTable1.xlsx")
+
 
 #' Volcano plot
 #+ volcanoGGc, fig.width=3, fig.height=3
 par(mar=c(3,3,1,1)+.1,  bty="n", mgp=c(2,.5,0))
 i <- coxRFXFitOsTDGGc$groups %in% c("Genetics", "CNA","Fusions","GeneGene","Treatment")#apply(coxRFXFitOsTDGGc$Z,2,min) == 0 & apply(coxRFXFitOsTDGGc$Z,2,max) == 1
-p <- pchisq(c^2/w2,1,lower.tail=FALSE) ## pvalues coxRFX
+p <- pVar2 ## pvalues coxRFX
 plot(c, 1/p, log='y', col=paste(colGroups[as.character(coxRFXFitOsTDGGc$groups)],"BB", sep=""), pch=ifelse(i,16,16), ylab="P-value",xlab="log hazard", cex=ifelse(i, sqrt(colMeans(coxRFXFitOsTDGGc$Z[!rev(duplicated(rev(tplSplitOs))),])*50),1), xlim=range(c*1.2))
 #abline(h=qchisq(c(0.95,0.99,0.999), 1, lower.tail=TRUE), lty=c(1,2,3))
 w <- which(p.adjust(p,"BY") < 0.1)
@@ -596,7 +621,7 @@ Z <- apply(coxRFXFitOsTDGGc$Z, 2,sample)[1:nrow(dataFrame),] ## random covariate
 coxRFXFitOsRain <- CoxRFX(Z, os, groups=coxRFXFitOsTDGGc$groups, nu=1) ## model
 w2 <- diag(coxRFXFitOsRain$var2) 
 c <- coef(coxRFXFitOsRain)
-p2 <- pchisq(c^2/w2,1,lower.tail=FALSE)
+p2 <- pVar2
 plot(seq(0,1,l=length(p2)+1)[-1],sort(p2), xlab="P-value (expected)", ylab="P-value (observed)", pch=16, col="grey")
 abline(0,1)
 points(seq(0,1,l=length(p)+1)[-1],sort(p), pch=16)
@@ -618,7 +643,7 @@ c <- coef(coxRFXFitOsTD)
 v <- diag(coxRFXFitOsTD$var2)
 plot(c, -pchisq(c^2/v, 1,lower.tail = FALSE, log=TRUE), log='', col=colGroups[as.character(coxRFXFitOsTD$groups)], pch=19, ylab="Chi2",xlab="log hazard")
 abline(h=qchisq(c(0.95,0.99,0.999), 1, lower.tail=TRUE), lty=c(1,2,3))
-p <- pchisq(c^2/v,1,lower.tail=FALSE) ## pvalues coxRFX
+p <- pBoot ## pvalues coxRFX
 w <- which(p.adjust(p,"BH") < 0.05)
 par(xpd=NA)
 text(c[w], (c^2/v)[w], names(c[w]), pos=3)
