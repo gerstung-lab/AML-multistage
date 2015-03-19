@@ -1,13 +1,18 @@
 #' AML data analysis
 #' =================
-#' Code run on 
+
+#' ## Run
+#+ run, eval=FALSE, echo=TRUE
+library(knitr)
+system("git checkout master -- ../../code/AML.R")
+spin("../../code/AML.R");
+system("/nfs/users/nfs_m/mg14/bin/pandoc AML.md --to html --from markdown+autolink_bare_uris+ascii_identifiers+tex_math_single_backslash-implicit_figures --output AML.html --smart --email-obfuscation none --self-contained --standalone --section-divs --template /nfs/users/nfs_m/mg14/R/3.1/rmarkdown/rmd/h/default.html --variable 'theme:bootstrap' --include-in-header ../../code/header.html --mathjax --variable 'mathjax-url:https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML' --no-highlight --variable highlightjs=/nfs/users/nfs_m/mg14/R/3.1/rmarkdown/rmd/h/highlight") 
+m <- paste("\"Autocommit", Sys.time(), system("hostname -f", intern=TRUE),"\""); system(paste("git commit -a -m", m))
+
+#' was executed on
 system("hostname -f", intern=TRUE)
 #' at
 Sys.time()
-#' using
-#+ run, eval=FALSE, echo=TRUE
-library(knitr)
-spin("../../code/AML.R")
 
 
 #+ Preliminaries, echo=FALSE
@@ -567,6 +572,7 @@ abline(h=qchisq(c(0.95,0.99,0.999), 1, lower.tail=TRUE), lty=c(1,2,3))
 #' Table with significance
 #+ parBootTable, results='asis'
 library(DT)
+library(htmlwidgets)
 pBoot <- pchisq(c^2/v,1, lower.tail=FALSE)
 pVar2 <- pchisq(c^2/w2,1, lower.tail=FALSE)
 pVar <- pchisq(c^2/w,1, lower.tail=FALSE)
@@ -582,7 +588,7 @@ waldOut <- data.frame(group = groups[whichRFXOsTDGG],
 		`Q (Benjamini-Hochberg)` = p.adjust(pVar2, "BH"),
 	check.names=FALSE
 )
-datatable(waldOut)
+datatable(as.data.frame(lapply(waldOut, function(x) if(class(x)=="numeric") round(x,4) else x), check.names=FALSE, row.names=row.names(waldOut)))
 library(xlsx)
 wb <- createWorkbook("xlsx")
 sheet  <- createSheet(wb, sheetName="Wald Tests")
@@ -3009,10 +3015,10 @@ d$transplantCR1 <- rep(c(0,1,0), nrow(dataFrame))
 d$transplantRel <- rep(c(0,0,1), nrow(dataFrame))
 allPredictTpl <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, d, x=1000)
 allPredictTpl <- as.data.frame(matrix(allPredictTpl$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse"))), row.names=rownames(dataFrame))
-survivalTpl <- data.frame(allPredictTpl[w,], os=osYr[w], age=clinicalData$AOD[w])
-kable(format(survivalTpl[order(survivalTpl$CR1 -survivalTpl$Relapse),], digits=3))
+survivalTpl <- data.frame(allPredictTpl, os=osYr, age=clinicalData$AOD, ELN=clinicalData$M_Risk, tercile=quantileRiskOsCR[1:nrow(allPredictTpl)])
+datatable(format(survivalTpl[order(survivalTpl$CR1 -survivalTpl$Relapse),], digits=4))
 
-kable(allPredictTpl[patients,])
+datatable(allPredictTpl[patients,])
 
 #+survivalTplPlot
 plot(survivalTpl[,c(1,2)], xlab="Survival at 1,000 days without transplant", ylab="Survival at 1,000 days with transplant", pch=19)
@@ -3245,8 +3251,3 @@ devtools::session_info()
 
 #' TODO's
 #' ------
-
-#' Aftermath
-#' --------
-#' system("git checkout master -- ../../code/AML.R")
-#' rmarkdown::render("../../code/AML.R"); m <- paste("\"Autocommit", Sys.time(), system("hostname -f", intern=TRUE),"\""); system(paste("git commit -a -m", m))
