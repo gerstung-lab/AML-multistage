@@ -151,7 +151,7 @@ dataList$CytoTreat <- dataList$CytoTreat[,colSums(dataList$CytoTreat, na.rm=TRUE
 #' #### Condensing to a data.frame
 dataRaw <- do.call(cbind,dataList)
 names(dataRaw) <- unlist(sapply(dataList, names))
-dataFrame <- StandardizeMagnitude(dataFrame)
+dataFrame <- StandardizeMagnitude(dataRaw)
 dim(dataFrame)
 
 #+ groups, cache=TRUE
@@ -3249,4 +3249,4 @@ devtools::session_info()
 #' Aftermath
 #' --------
 #' system("git checkout master -- ../../code/AML.R")
-#' spin("../../code/AML.R"); m <- paste("\"Autocommit", Sys.time(), system("hostname -f", intern=TRUE),"\""); system(paste("git commit -a -m", m))
+#' rmarkdown::render("../../code/AML.R"); m <- paste("\"Autocommit", Sys.time(), system("hostname -f", intern=TRUE),"\""); system(paste("git commit -a -m", m))
