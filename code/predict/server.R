@@ -95,43 +95,58 @@ shinyServer(function(input, output) {
 						)
 					})
 			x <- 0:2000
-			plotRisk <- function(coxRFX, data, r=PredictRiskMissing(coxRFX, data, var="var2"), xlab="Days after diagnosis", ylab="Incidence", col="#FF0000",mark=NA) {
-				plot(survfit(coxRFX), xlab=xlab, ylab=ylab, mark=mark, conf.int=FALSE, fun=function(x) 1-x, ylim=c(0,1), xlim=c(0,2000), lty=2)
-				#lines(survfit(coxRFX$surv ~ 1), lty=3, mark=NA, fun=function(x) 1-x)
-				abline(h=seq(0,1,.2), lty=3)
-				abline(v=seq(0,2000,365), lty=3)
+			
+			computeIncidence <- function(coxRFX, r, x) {
+				#r=PredictRiskMissing(coxRFX, data, var="var2")
 				if(!is.null(coxRFX$na.action))
 					coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
 				#r <- PredictRiskMissing(coxRFX, data, var="var2")
 				H0 <- basehaz(coxRFX, centered = FALSE)
 				hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
 				lambda0 <- hazardDist(x)
+				r0 <- coxRFX$means %*% coef(coxRFX)
+				inc <- exp(-lambda0* exp(r[,1]))
 				ciup2 <- exp(-lambda0*exp( rep(r[,1] + 2*sqrt(r[,2]) * c(1), each=length(x))))
 				cilo2 <- exp(-lambda0*exp( rep(r[,1] + 2*sqrt(r[,2]) * c(-1), each=length(x))))
 				ciup <- exp(-lambda0*exp( rep(r[,1] + sqrt(r[,2]) * c(1), each=length(x))))
 				cilo <- exp(-lambda0*exp( rep(r[,1] + sqrt(r[,2]) * c(-1), each=length(x))))
-				polygon( c(x, rev(x)), 1-c(ciup2, rev(cilo2)), col=paste0(col,"44"), border=NA)
-				#polygon( c(x, rev(x)), 1-c(ciup, rev(cilo)), col=paste0(col,"44"), border=NA)
-				inc <- exp(-lambda0* exp(r[,1]))
-				lines( x, 1-inc, col=col, lwd=2)
-				legend(ifelse((1-inc[length(inc)])>.5, "bottomright","topright"), c("Population avg","Predicted","95% CI"),bty="n", lty=c(2,1,NA), fill=c(NA,NA,paste0(col,"44")), border=c(NA,NA,NA), col=c(1,col,NA))
+				#p <- PartialRisk(coxRFX, dataImputed)
+				return(list(inc=inc, r=r, x=x, hazardDist=hazardDist, r0 = r0, ciup=ciup, cilo=cilo, ciup2=ciup2, cilo2=cilo2))
+			}
+			
+			plotRisk <- function(coxRFX, incidence, p, xlab="Days after diagnosis", ylab="Incidence", col="#FF0000",mark=NA) {
+				plot(survfit(coxRFX), xlab=xlab, ylab=ylab, mark=mark, conf.int=FALSE, fun=function(x) 1-x, ylim=c(0,1), xlim=c(0,2000), lty=2)
+				#lines(survfit(coxRFX$surv ~ 1), lty=3, mark=NA, fun=function(x) 1-x)
+				polygon( c(incidence$x, rev(incidence$x)), 1-c(incidence$ciup2, rev(incidence$cilo2)), col=paste0(col,"44"), border=NA)
+				abline(h=seq(0,1,.2), lty=3)
+				abline(v=seq(0,2000,365), lty=3)
+				#polygon( c(risk$x, rev(risk$x)), 1-c(ciup, rev(cilo)), col=paste0(col,"44"), border=NA)
+				lines( incidence$x, 1-incidence$inc, col=col, lwd=2)
+				legend(ifelse((1-incidence$inc[length(incidence$inc)])>.5, "bottomright","topright"), c("Population avg","Predicted","95% CI"),bty="n", lty=c(2,1,NA), fill=c(NA,NA,paste0(col,"44")), border=c(NA,NA,NA), col=c(1,col,NA))
 				par(new=T)
 				m <- colMeans(PartialRisk(coxRFX))
 				rds <- .05
-				p <- (matrix(PartialRisk(coxRFX, dataImputed()), nrow=1) - m)/10 + rds
+				p <- (matrix(p, nrow=1) - m)/10 + rds
 				colnames(p) <- names(m)
-				l <- cbind(x=0.25,y=ifelse((1-inc[length(inc)])>.8,0.3,.85))
-				r0 <- coxRFX$means %*% coef(coxRFX)
-				c <- cut(r[,1]-r0, quantile(coxRFX$linear.predictor,seq(0,1,l=12)))
+				l <- cbind(x=0.25,y=ifelse((1-incidence$inc[length(incidence$inc)])>.8,0.3,.85))
+				c <- cut(incidence$r[,1]-incidence$r0, quantile(coxRFX$linear.predictor,seq(0,1,l=12)))
 				stars((p[,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical"), drop=FALSE]), scale=FALSE, locations = l, xlim=c(0,1), ylim=c(0,1), lwd=1, col.stars=rev(brewer.pal(11,"RdBu"))[c])
 				symbols(l, circles=rds, inches=FALSE, add=TRUE)
 				text(l[1]+cos(2*pi*0:6/7)*2*rds,l[2]+sin(2*pi*0:6/7)*2*rds,substr(c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical"),1,5), cex=.66)
-				return(list(inc=inc, r=r, x=x, hazardDist=hazardDist, r0 = r0, ciup=ciup, cilo=cilo, ciup2=ciup2, cilo2=cilo2))
 			}
+			
 			dataImputed <- reactive({ImputeMissing(data[1:1540,], getData()[,colnames(data)])})
 			riskMissing <- reactive({sapply(c("Cir","Nrm","Prs"), function(m){
-											fit <- get(paste("coxRFX",m,"TD", sep=""))
-											PredictRiskMissing(fit, getData(),  var="var2")}, simplify = FALSE)})
+									fit <- get(paste("coxRFX",m,"TD", sep=""))
+									if(!is.null(fit$na.action))
+										fit$Z <- fit$Z[-fit$na.action,]
+									PredictRiskMissing(fit, getData(),  var="var2")}, simplify = FALSE)})
+			partialRiskMissing <- reactive({sapply(c("Cir","Nrm","Prs"), function(m){
+									fit <- get(paste("coxRFX",m,"TD", sep=""))
+									if(!is.null(fit$na.action))
+										fit$Z <- fit$Z[-fit$na.action,]
+									PartialRisk(fit, dataImputed())}, simplify = FALSE)})
+			
 			output$Tab <- renderDataTable({
 						x <- dataImputed()
 						data.frame(Covariate=colnames(x),signif(data.frame(Input=as.numeric(getData()[,colnames(data)]), Imputed=as.numeric(x), `Coef CIR`=coef(coxRFXCirTD), `Value CIR`= as.numeric(x)*coef(coxRFXCirTD),
@@ -161,13 +176,16 @@ shinyServer(function(input, output) {
 			
 			output$KM <- renderPlot({
 						par(mfrow=c(2,2), cex=1, bty="n")
-						kmCir <- plotRisk(coxRFX = coxRFXCirTD, data = getData(), r = riskMissing()[["Cir"]], ylab="Incidence", xlab="Days after remission", col=set1[3])
+						kmCir <- computeIncidence(coxRFX = coxRFXCirTD, r = riskMissing()[["Cir"]], x=x)
+						plotRisk(coxRFX = coxRFXCirTD, kmCir,  p=partialRiskMissing()[["Cir"]], ylab="Incidence", xlab="Days after remission", col=set1[3])
 						#lines(compRisk$`1 recurrence`$time, compRisk$`1 recurrence`$est, lty=2)
 						title("Relapse")
-						kmNrm <- plotRisk(coxRFX = coxRFXNrmTD, data = getData(), r = riskMissing()[["Nrm"]], ylab="Mortality", xlab="Days after remission", col=set1[2])
+						kmNrm <-  computeIncidence(coxRFX = coxRFXNrmTD, r = riskMissing()[["Nrm"]], x=x)
+						plotRisk(coxRFX = coxRFXNrmTD, kmNrm, p=partialRiskMissing()[["Nrm"]], ylab="Incidence", xlab="Days after remission", col=set1[2])
 						#lines(compRisk$`1 dead`$time, compRisk$`1 dead`$est, lty=2)
 						title("Non-relapse mortality")
-						kmPrs <- plotRisk(coxRFX = coxRFXPrsTD, data = getData(), r = riskMissing()[["Prs"]], ylab="Mortality", xlab="Days after relapse", col=set1[1])
+						kmPrs <-  computeIncidence(coxRFX = coxRFXPrsTD, r = riskMissing()[["Prs"]], x=x)
+						plotRisk(coxRFX = coxRFXPrsTD, kmPrs, p=partialRiskMissing()[["Prs"]], ylab="Incidence", xlab="Days after remission", col=set1[1])
 						title("Post-relapse mortality")
 						l <- length(kmCir$inc)
 						
