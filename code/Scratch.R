@@ -2058,3 +2058,20 @@ absoluteErrorsCIRcv <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups)
 						return(err)
 					}, simplify='array')
 		})
+
+
+ed <- survfit(Surv(c,is.na(clinicalData$CR_date))~1)
+rem <- survfit(Surv(c,!is.na(clinicalData$CR_date))~1)
+
+crAdjust <- function(fit1, fit2){
+	int2 <- splinefun(fit2$time, fit2$surv,  method="monoH.FC")
+	fit1$surv <- cumsum(c(1,diff(fit1$surv)) * int2(fit1$time))
+	fit1
+}
+
+coxRFXCrTD <- CoxRFX(osData[1:1540, names(crGroups)], Surv(cr[,1], cr[,2]==2), groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+coxRFXEsTD <- CoxRFX(osData[1:1540, names(crGroups)], Surv(cr[,1], cr[,2]==1), groups=crGroups, which.mu = NULL)
+save(coxRFXCirTD, coxRFXNrmTD, coxRFXPrsTD, coxRFXOsCR, coxRFXEsTD, coxRFXCrTD, cr, nrmData, cirData, prsData, osData, crGroups, data, file="../../code/predict/predictTest.RData")
+
+
+plot(survfit(c ~ 1))
