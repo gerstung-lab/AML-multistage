@@ -2512,6 +2512,7 @@ coxRFXPrsTD <-  CoxRFX(prsData[names(crGroups)], Surv(prsData$time2 - prsData$ti
 coxRFXCirTD <-  CoxRFX(cirData[names(crGroups)], Surv(cirData$time1, cirData$time2, cirData$status), groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 coxRFXCirTD$coefficients["transplantRel"] <- 0
 
+#' #### OS
 osData <- MakeTimeDependent(dataFrame[whichRFXCirTD], timeEvent=alloTimeCR1, timeStop=as.numeric(clinicalData$Date_LF- clinicalData$CR_date), status=clinicalData$Status)
 osData$transplantCR1 <- osData$event
 osData$transplantRel <- osData$event
@@ -2525,7 +2526,20 @@ data <- data[rownames(dataFrame),]
 
 coxRFXOsCR <- CoxRFX(osData[names(crGroups)], Surv(osData$time1, osData$time2, osData$status), groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 
-#save(coxRFXCirTD, coxRFXNrmTD, coxRFXPrsTD, coxRFXOsCR, nrmData, cirData, prsData, osData, crGroups, data, file="../../code/predict/predictGG.RData")
+#' #### Early deaths
+table(CR=!is.na(clinicalData$CR_date), os[,2])
+es <- os
+es[,2] <- os[,2] & is.na(clinicalData$CR_date)
+coxRFXEsTD <- CoxRFX(osData[1:1540, names(crGroups)], es, groups=crGroups,  which.mu = intersect(mainGroups, unique(crGroups)))
+
+c <- as.numeric(clinicalData$CR_date - clinicalData$ERDate)
+c[is.na(c)] <- clinicalData$OS[is.na(c)]
+cr <- Surv(c, factor(pmin(2 * (!is.na(clinicalData$CR_date))+os[,2],2), levels=0:2, labels=c("cens","ED","CR")), type="mstate")
+
+coxRFXOsCR <- CoxRFX(osData[names(crGroups)], Surv(osData$time1, osData$time2, osData$status), groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+
+
+#save(coxRFXCirTD, coxRFXNrmTD, coxRFXPrsTD, coxRFXOsCR, coxRFXEsTD, nrmData, cirData, prsData, osData, crGroups, data, file="../../code/predict/predictGG.RData")
 
 #' ### Prediction of OS and Cross-validation
 #' Function to convolute CIR and PRM
@@ -2546,8 +2560,8 @@ cppFunction('NumericVector computeTotalPrsC(NumericVector x, NumericVector diffC
 				}', rebuild=TRUE)
 
 #' Function to predict OS from  CIR, PRS and NRM
-PredictOS <- function(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, x =365){
-	### Step 1: Compute KM survival curves and log hazard
+PredictOS <- function(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, x =365, ciType="analytical"){
+	## Step 1: Compute KM survival curves and log hazard
 	getS <- function(coxRFX, data, max.x=5000) {		
 		if(!is.null(coxRFX$na.action)) coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
 		data <- as.matrix(data[,match(colnames(coxRFX$Z),colnames(data))])
@@ -2562,11 +2576,10 @@ PredictOS <- function(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, x =365){
 	kmNrm <- getS(coxRFX = coxRFXNrmTD, data = data, max.x=max(x))
 	kmPrs <- getS(coxRFX = coxRFXPrsTD, data = data, max.x=max(x))
 	
-	### Step 2: Adjust CIR and NRM curve for competing risks, accounting for hazard
+	## Step 2: Adjust CIR and NRM curve for competing risks, accounting for hazard
 	kmCir$Sadj <- sapply(1:nrow(data), function(i) cumsum(c(1,diff(kmCir$S^exp(kmCir$r[i,1]))) * kmNrm$S ^ exp(kmNrm$r[i,1])))
 	kmNrm$Sadj <- sapply(1:nrow(data), function(i) cumsum(c(1,diff(kmNrm$S^exp(kmNrm$r[i,1]))) * kmCir$S ^ exp(kmCir$r[i,1]))) ## array times x nrow(data)
 	
-	#cat(dim(kmNrm$Sadj))
 	stopifnot(length(x)==1 | length(x) == nrow(data))
 	if(length(x)==nrow(data))
 		w <- match(x,kmCir$x)
@@ -2579,10 +2592,10 @@ PredictOS <- function(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, x =365){
 
 	y <- mapply(function(i,j) kmCir$Sadj[i,j], w,1:length(w) ) # select time for each sample
 	cir <- y
-	cirUp <- y^exp( 2*sqrt(kmCir$r[,2]))
-	cirLo <- y^exp( - 2*sqrt(kmCir$r[,2]))
+	cirLo <- y^exp( 2*sqrt(kmCir$r[,2]))
+	cirUp <- y^exp( - 2*sqrt(kmCir$r[,2]))
 	
-	### Step 3: Compute post-relapse survival
+	## Step 3: Compute post-relapse survival
 	survPredict <- function(surv){
 		s <- survfit(surv~1)
 		splinefun(s$time, s$surv, method="monoH.FC")
@@ -2600,12 +2613,35 @@ PredictOS <- function(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, x =365){
 				rs <- computeTotalPrsC(x = xx, diffCir = diff(cir), prsP = kmPrs0, tdPrmBaseline = tdPrmBaseline, risk = kmPrs$r[i,1]-kmPrs$r0)
 				rs[xLen]
 			})
-	#rs <- 1 - (1-cir) * (1-hazPrs$S[w]^exp(hazPrs$r[,1]))
-	rsUp <- 1 - (1-cirUp) * (1-kmPrs$S[w]^exp(kmPrs$r[,1] + 2* sqrt(kmPrs$r[,2])))
-	rsLo <- 1 - (1-cirLo) * (1-kmPrs$S[w]^exp(kmPrs$r[,1] - 2* sqrt(kmPrs$r[,2])))
 	
-	if(any(1-(1-rs)-(1-nrs)<0)) warning("OS < 0 occured.")
-	return(data.frame(os=pmax(pmin(1-(1-rs)-(1-nrs),1),0), osUp = rsUp*nrsUp, osLo = rsLo*nrsLo, rs=rs, cir=cir, nrs=nrs))
+	## Step 4: Combine into overall survival
+	if(any(1-(1-rs)-(1-nrs)<0)) warning("OS < 0 occured.")	
+	os <- pmax(pmin(1-(1-rs)-(1-nrs),1),0)
+	
+	## Step 5: Confidence intervals for OS
+	osCi <- sapply(1:nrow(data), function(i){
+				if("analytical" == ciType){
+					## Confidence intervals
+					PlogP2 <- function(x) {(x * log(x))^2}
+					errOs <- kmNrm$r[i,2] * PlogP2(kmNrm$S[w[i]]) * (1-kmCir$S[w[i]] * kmPrs$S[w[i]])^2 + kmCir$r[i,2]  * (1-kmNrm$S[w[i]])^2* kmPrs$S[w[i]]^2 * PlogP2(kmCir$S[w[i]]) +  kmPrs$r[i,2]  * (1-kmNrm$S[w[i]])^2* kmCir$S[w[i]]^2 * PlogP2(kmPrs$S[w[i]])
+					errOs <- errOs / PlogP2(1-(1-kmNrm$S[w[i]])*(1-kmCir$S[w[i]]*kmPrs$S[w[i]]))
+					return(c(osUp=os[i] ^ exp(-2* errOs), osLo= os[i] ^ exp(+2*errOs)))
+				} else if("simulated" == ciType){
+					## Simulate CI
+					nSim <- 200
+					osCiMc <- sapply(1:nSim, function(foo){
+								H <- exp(rnorm(3,c(kmCir$r[i,1],kmNrm$r[i,1],kmPrs$r[i,1]),sqrt(c(kmCir$r[i,2],kmNrm$r[i,2],kmPrs$r[i,2]))))
+								nrs <- cumsum(c(1,diff(kmNrm$S^H[2]) * kmCir$S[-1]^H[1])) ## Correct KM estimate for competing risk
+								diffCir <- diff(kmCir$inc^H[1]) * kmNrm$inc[-1]^H[2] ## Correct KM estimate for competing risk							
+								rs <- computeTotalPrsC(x = x, diffCir = diffCir, prsP = kmPrs0, tdPrmBaseline = tdPrmBaseline, risk = -kmPrs$r0+log(H[3]))
+								return((1-(1-nrs)-(1-rs))[w[i]])
+							})
+					osCiMcQ <- quantile(osCiMc, c(0.025,0.975))
+					return(c(osUp = osCiMcQ[2], osLo = osCiMcQ[1]))
+				}
+			})
+	
+	return(data.frame(os=os, osLo = osCi[2,], osUp = osCi[1,],  cir=cir, cirLo=cirLo, cirUp=cirUp, nrs=nrs, nrsLo=nrsLo, nrsUp=nrsUp, rs=rs ))
 }
 
 #' Create a data.frame with all data in cr
@@ -2616,7 +2652,7 @@ w <- which(clinicalData$TPL_date > clinicalData$Recurrence_date)
 allData$transplantCR1[allData$index %in% w] <- 0
 allData$transplantRel[!allData$index %in% w] <- 0
 
-allPredict <-  PredictOS(coxRFXNrmTD = coxRFXNrmTD, coxRFXPrsTD = coxRFXPrsTD, coxRFXCirTD = coxRFXCirTD, allData, 365)
+allPredict <-  PredictOS(coxRFXNrmTD = coxRFXNrmTD, coxRFXPrsTD = coxRFXPrsTD, coxRFXCirTD = coxRFXCirTD, allData[1:10,], 1000)
 
 #' ### Further evaluations 
 #' #### Random cross-validation
@@ -2832,7 +2868,7 @@ EvalAbsolutePred <- function(prediction, surv, time, bins=seq(0,1,0.05)){
 	return(list(mean.error=mean.error, std.err=std.err, survfit=e, x=x))
 }
 
-absPredError <- EvalAbsolutePred(allPredict$os, Surv(allData$time1, allData$time2, allData$status), time=365)
+absPredError <- EvalAbsolutePred(allPredict$os, Surv(allData$time1, allData$time2, allData$status), time=1000)
 
 plot(absPredError$x, absPredError$survfit$surv, xlim=c(0,1), ylim=c(0,1), xlab="Predicted probability", ylab="Observed", main="Prediction tool")
 segments(absPredError$x, absPredError$survfit$lower,absPredError$x, absPredError$survfit$upper)
