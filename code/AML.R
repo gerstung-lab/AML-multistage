@@ -3168,7 +3168,7 @@ mtext(side=4, at=Z[-1,n] - diff(Z[,n])/2, text=rownames(Z)[-1], las=2)
 #mtext(side=4, "Concordance")
 
 #' Risk
-#+ allStagesRisk, 4,4
+#+ allStagesRisk, fig.width=4,fig.height=4
 allStagesRisk <- as.data.frame(sapply(c("EsTD","CrTD","NrmTD","CirTD","PrsTD"), function(x){
 			m <- get(paste0("coxRFX",x))
 			#Z <- get(sub("\\[.+","",as.character(m$call["data"])))
@@ -3179,8 +3179,10 @@ f <- function(x,y,...) {points(x,y, col=densCols(x,y),...); lines(lowess(x,y), c
 pairs(allStagesRisk, panel=f, pch=19)
 
 #' #### Significant terms (BH < 0.1)
+#' Early death
+w <- WaldTest(coxRFXEsTD); w[p.adjust(w$p.value, "BH")<.1,]
 #' CR
-w <- WaldTest(coxRFXCr); w[p.adjust(w$p.value, "BH")<.1,]
+w <- WaldTest(coxRFXCrTD); w[p.adjust(w$p.value, "BH")<.1,]
 #' CIR
 w <- WaldTest(coxRFXCirTD); w[p.adjust(w$p.value, "BH")<.1,]
 #' PRS
