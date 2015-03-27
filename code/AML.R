@@ -2528,18 +2528,19 @@ coxRFXOsCR <- CoxRFX(osData[names(crGroups)], Surv(osData$time1, osData$time2, o
 
 #' #### Early deaths
 table(CR=!is.na(clinicalData$CR_date), os[,2])
-es <- os
-es[,2] <- os[,2] & is.na(clinicalData$CR_date)
-coxRFXEsTD <- CoxRFX(osData[1:1540, names(crGroups)], es, groups=crGroups,  which.mu = intersect(mainGroups, unique(crGroups)))
 
 c <- as.numeric(clinicalData$CR_date - clinicalData$ERDate)
 c[is.na(c)] <- clinicalData$OS[is.na(c)]
 cr <- Surv(c, factor(pmin(2 * (!is.na(clinicalData$CR_date))+os[,2],2), levels=0:2, labels=c("cens","ED","CR")), type="mstate")
 
+coxRFXCrTD <- CoxRFX(osData[1:1540, names(crGroups)], Surv(cr[,1], cr[,2]==2), groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+coxRFXEsTD <- CoxRFX(osData[1:1540, names(crGroups)], Surv(cr[,1], cr[,2]==1), groups=crGroups, which.mu = NULL)
+
 coxRFXOsCR <- CoxRFX(osData[names(crGroups)], Surv(osData$time1, osData$time2, osData$status), groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 
-
 #save(coxRFXCirTD, coxRFXNrmTD, coxRFXPrsTD, coxRFXOsCR, coxRFXEsTD, nrmData, cirData, prsData, osData, crGroups, data, file="../../code/predict/predictGG.RData")
+#save(coxRFXCirTD, coxRFXNrmTD, coxRFXPrsTD, coxRFXOsCR, coxRFXEsTD, coxRFXCrTD, cr, nrmData, cirData, prsData, osData, crGroups, data, file="../../code/predict/predictTest.RData")
+
 
 #' ### Prediction of OS and Cross-validation
 #' Function to convolute CIR and PRM
@@ -3120,42 +3121,45 @@ w <- w[,!grepl("NA", colnames(w))][,c(4:6,10:12,7:9,1:3)]
 l <- stars(s[w,c("Fusions","CNA","Genetics","GeneGene","Clinical","Demographics","Treatment")] + .5, scale=FALSE, col.stars = mapply(function(i,j) {t <- try(c[i,j]); if(class(t)=="try-error") NA else t}, as.character(clinicalData$M_Risk[w]),quantileRiskCirTD[w]), labels="")
 symbols(l[,1],l[,2], circles=rep(0.5, nrow(l)), inches=FALSE,add=TRUE)
 
-#' ### Who achieves CR?
-table(CR=!is.na(clinicalData$CR_date), os[,2])
-cr <- os
-cr[,2] <- os[,2] & is.na(clinicalData$CR_date)
-coxRFXCr <- CoxRFX(dataFrame[whichRFXOsGG], cr, groups=groups[whichRFXOsGG], which.mu=mainGroups)
-
-#' Four plots comparing different intervals
-#+ allVarComp, fig.width=4, fig.height=4
-par(mfrow=c(2,2), xpd=FALSE)
+#' Five plots comparing different intervals
+#+ allVarComp, fig.width=6, fig.height=4
+par(mfrow=c(3,2), xpd=FALSE)
 o <- c(1,4,6,5,2,3,7,8)
-PlotVarianceComponents(coxRFXCr, col=colGroups, order=o)
-title(main="CR")
+PlotVarianceComponents(coxRFXEsTD, col=colGroups, order=o)
+title(main="Early deaths")
+PlotVarianceComponents(coxRFXCrTD, col=colGroups, order=o)
+title(main="Remission")
 PlotVarianceComponents(coxRFXCirTD, col=colGroups, order=o)
-title(main="CIR")
+title(main="Relapse")
 PlotVarianceComponents(coxRFXNrmTD, col=colGroups, order=o)
-title(main="NRM")
+title(main="Non-relapse deaths")
 PlotVarianceComponents(coxRFXPrsTD, col=colGroups, order=o)
-title(main="PRS")
+title(main="Post-relapse deaths")
 
 #' As barplot
 #+ allVarCompBar, fig.width=2, fig.height=2
-allVarComp <- sapply(c("Cr","CirTD","NrmTD","PrsTD"), function(x){
+par(mar=c(5,3,1,5))
+allVarComp <- sapply(c("EsTD","CrTD","NrmTD","CirTD","PrsTD"), function(x){
 			m <- get(paste0("coxRFX",x))
 			Z <- get(sub("\\[.+","",as.character(m$call["data"])))
-			i <- if(x=="Cr") 1:1540 else Z$index
+			i <- if(x%in%c("CrTD","EsTD")) 1:1540 else Z$index
 			VarianceComponents(m, newZ=Z[!rev(duplicated(rev(i))),colnames(m$Z)])})
+colnames(allVarComp) <- c("Early death","Remission","Non-relapse m.","Relapse","Post-relapse m.")
 w <- c("CNA","Fusions","Genetics","GeneGene","Clinical","Demographics","Treatment","Nuisance")
 z <- allVarComp[w,]#/rep(colSums(allVarComp[-9,]), each=8)
-b <- barplot(z, col=colGroups[w], ylab="Variance [log hazard]")
+b <- barplot(z, col=colGroups[w], ylab="Variance [log hazard]", names.arg=rep("",ncol(z)))
+rotatedLabel(x0=b, labels=colnames(z))
 Z <- rbind(0,apply(z,2,cumsum))
-segments(b[-4]+.5,t(Z[,-4]),b[-1]-.5 ,t(Z[,-1]))
+n <- ncol(z)
+segments(b[-n]+.5,t(Z[,-n]),b[-1]-.5 ,t(Z[,-1]))
 
 z <- allVarComp[w,]/rep(colSums(allVarComp[-9,]), each=8)
-b <- barplot(z, col=colGroups[w], ylab="Relative importance")
+b <- barplot(z, col=colGroups[w], ylab="Relative importance", names.arg=rep("",ncol(z)))
+rotatedLabel(x0=b, labels=colnames(z))
 Z <- rbind(0,apply(z,2,cumsum))
-segments(b[-4]+.5,t(Z[,-4]),b[-1]-.5 ,t(Z[,-1]))
+n <- ncol(z)
+segments(b[-n]+.5,t(Z[,-n]),b[-1]-.5 ,t(Z[,-1]))
+mtext(side=4, at=Z[-1,n] - diff(Z[,n])/2, text=rownames(Z)[-1], las=2)
 
 #x <- seq(0,par("usr")[4],l=100)
 #y <- CoxHD:::ConcordanceFromVariance(x)
@@ -3165,7 +3169,7 @@ segments(b[-4]+.5,t(Z[,-4]),b[-1]-.5 ,t(Z[,-1]))
 
 #' Risk
 #+ allStagesRisk, 4,4
-allStagesRisk <- as.data.frame(sapply(c("Cr","CirTD","NrmTD","PrsTD"), function(x){
+allStagesRisk <- as.data.frame(sapply(c("EsTD","CrTD","NrmTD","CirTD","PrsTD"), function(x){
 			m <- get(paste0("coxRFX",x))
 			#Z <- get(sub("\\[.+","",as.character(m$call["data"])))
 			#i <- if(x=="Cr") 1:1540 else Z$index
