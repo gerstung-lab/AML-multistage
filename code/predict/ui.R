@@ -6,7 +6,7 @@
 
 library(shiny)
 library(CoxHD)
-load("predictGG.RData", envir=globalenv())
+#load("predictGG.RData", envir=globalenv())
 #data <- coxRFXCirTD$Z
 
 # Define UI for application that plots random distributions 
@@ -19,20 +19,22 @@ shinyUI(fluidPage(
 						# Sidebar with a slider input for number of observations
 						column(3, 
 								wellPanel(
-										selectInput("pdid", "Select sample", c("reset",rownames(data)), selected = "reset", multiple=FALSE), ## select sample
-										submitButton("Submit")
+										selectInput("pdid", tags$b("Select sample"), c("reset",rownames(data)), selected = "reset", multiple=FALSE), ## select sample
+										submitButton("Load presets")
 								),
 								wellPanel(
-										checkboxGroupInput("ciType", "Confidence intervals:", c("analytical","simulated"), selected = "analytical") ## CI type
-								),
-								wellPanel(
+										tags$b("Prognostic variables"),
+										submitButton("Compute survival"),
 										uiOutput("ui")
+								),
+								wellPanel(
+										checkboxGroupInput("ciType", tags$b("Confidence intervals"), c("analytical","simulated"), selected = "analytical") ## CI type
 								)
 						),
 						
 						# Show a plot of the generated distribution
 						column(8,
-								plotOutput(outputId="KM",height="800px"),
+								plotOutput(outputId="KM",height="1200px"),
 								tabsetPanel(
 										tabPanel('Risk',
 												dataTableOutput("Risk")),
