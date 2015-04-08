@@ -2074,4 +2074,46 @@ coxRFXEsTD <- CoxRFX(osData[1:1540, names(crGroups)], Surv(cr[,1], cr[,2]==1), g
 save(coxRFXCirTD, coxRFXNrmTD, coxRFXPrsTD, coxRFXOsCR, coxRFXEsTD, coxRFXCrTD, cr, nrmData, cirData, prsData, osData, crGroups, data, file="../../code/predict/predictTest.RData")
 
 
-plot(survfit(c ~ 1))
+plot(survfit(coxRFXEsTD))
+
+
+# 3-state model
+f <- factor(os[,2] * ifelse(is.na(clinicalData$CR_date), 1, ifelse(is.na(clinicalData$Recurrence_date), 2,3)), labels=c("alive","induction","remission","relapse"))
+surv3 <- Surv(os[,1]/365.25,f, type="mstate")
+mfit <- survfit(surv3 ~ 1)
+plot(mfit$time, 1-rowSums(mfit$prev), ylim=c(0,1), type="s", xlab="Time", ylab="Survival", xlim=c(0,10))
+steps <- function(x, type="s") rep(x, each=2)[if(type=="s") -1 else -2*length(x)]
+y <- 1-t(apply(cbind(0,mfit$prev),1,cumsum))
+x <- steps(mfit$time, type="S")
+for(i in 1:3)
+	polygon(c(x, rev(x)), c(steps(y[,i]), rev(steps(y[,i+1])) ), col=brewer.pal(3,"Pastel1")[i], border=NA)
+lines(survfit(osYr ~ 1), lwd=2, conf.int=FALSE, mark="|", cex=.5)
+#abline(h=seq(0,1,.2), lty=3)
+#abline(v=seq(0,10,1), lty=3)
+legend("bottomleft", legend=c("early","non-rel.","relapse"), border=NA, fill=brewer.pal(3,"Pastel1"), bty="n")
+
+
+# 5-state model
+i <- ifelse(is.na(clinicalData$CR_date), 0, ifelse(is.na(clinicalData$Recurrence_date), 1,2))
+f <- factor(i + 3*os[,2], labels=c("lof","cure","salvage","induction","remission","relapse"))
+t <- os[,1]
+t[f=="cure"] <- as.numeric(clinicalData$CR_date - clinicalData$ERDate)[f=="cure"]
+t[f=="salvage"] <- as.numeric(clinicalData$Recurrence_date - clinicalData$ERDate)[f=="salvage"]
+
+foo <- f
+foo[f %in% c("salvage","remission","relapse")] <- "cure"
+foo <- Surv(t/365.25, droplevels(foo), type="mstate")
+mfit <- survfit(foo ~ 1)
+plot(mfit$time, 1-rowSums(mfit$prev), ylim=c(0,1), type="s",lty=0, xlab="Time", ylab="Survival", xlim=c(0,10))
+steps <- function(x, type="s") rep(x, each=2)[if(type=="s") -1 else -2*length(x)]
+y <- 1-t(apply(cbind(0,mfit$prev[,]),1,cumsum))
+x <- steps(mfit$time, type="S")
+for(i in 1:2)
+	polygon(c(x, rev(x)), c(steps(y[,i]), rev(steps(y[,i+1])) ), col=brewer.pal(5,"Pastel1")[i], border=NA)
+#lines(survfit(osYr ~ 1), lwd=2, conf.int=FALSE, mark="|", cex=.5)
+#abline(h=seq(0,1,.2), lty=3)
+#abline(v=seq(0,10,1), lty=3)
+legend("bottomleft", legend=c("early","non-rel.","relapse"), border=NA, fill=brewer.pal(3,"Pastel1"), bty="n")
+
+
+

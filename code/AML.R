@@ -2977,7 +2977,7 @@ for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 	q <- cut(riskCirTD[w], quantile(riskCirTD[w], seq(0,1,.33)), include.lowest=TRUE, labels=c("T1","T2","T3"))
 	quantileRiskCirTD[w] <- q
 	plot(NA,NA,  ylab="CIR", main=paste(l, "terciles"),  xlab="Years after CR", ylim=c(0,1), xlim=c(0,10), xaxs="i", yaxs="i")
-	abline(h=seq(0.2,0.8,0.2),lty=1, col='lightgrey')
+	#abline(h=seq(0.2,0.8,0.2),lty=1, col='lightgrey')
 	fit <- survfit(Surv(time1/365, time2/365, status) ~ q + transplantCR1, data=cirData[w,])
 	## adjust for competing risk (NRM)
 	i <- c(0,diff(fit$surv))
@@ -2986,8 +2986,8 @@ for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 	nrsKM <- survfit(Surv(time1/365, time2/365, status) ~ 1, data=nrmData, subset=  clinicalData$M_Risk[nrmData$index]==l)
 	
 	fit$surv <- unlist(sapply(seq_along(s), function(i) cumsum(c(1,diff(s[[i]])) * splinefun(nrsKM$time, nrsKM$surv, method="monoH.FC")(t[[i]])))) #adjust increments by nrs KM est
-	lines(fit, col=rep(sapply(2:0,function(x) colTrans(riskCol[l],x)), each=2), lty=c(1,3), mark=NA, xlab="Time after CR", fun=f)
-	legend("bottomright", lty=c(1,3), bty="n", c("no TPL","TPL"), col=riskCol[l])
+	lines(fit, col=rep(sapply(2:0,function(x) colTrans(riskCol[l],x)), each=2), lty=c(1,0), mark=NA, xlab="Time after CR", fun=f)
+	#legend("bottomright", lty=c(1,3), bty="n", c("no TPL","TPL"), col=riskCol[l])
 }
 
 #' OS Plots
@@ -3114,12 +3114,21 @@ symbols(g[,1], g[,2], circles=rep(1,12), inches=FALSE, add=TRUE)
 text(1, 0:3*3, names(riskCol[c(2,4,3,1)]), pos=2)
 text(1:3*3, 11, c("Low","Intermediate","High"), pos=3)
 
-#+ starsCR, fig.width=4, fig.height=4
+#+ starsOS, fig.width=4, fig.height=4
 s <- partialRiskOsCR - rep(colMeans(partialRiskOsCR), each=nrow(partialRiskOsCR))
+w <- sapply(split(1:1540, paste(clinicalData$M_Risk, quantileRiskOsCR[1:1540])), `[`, 1:12)
+w <- w[,!grepl("NA", colnames(w))][,c(4:6,10:12,7:9,1:3)]
+l <- stars(s[w,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical")] + .5, scale=FALSE, col.stars = mapply(function(i,j) {t <- try(c[i,j]); if(class(t)=="try-error") NA else t}, as.character(clinicalData$M_Risk[w]),quantileRiskCirTD[w]), labels="")
+symbols(l[,1],l[,2], circles=rep(0.5, nrow(l)), inches=FALSE,add=TRUE)
+
+#+ starsCIR, fig.width=4, fig.height=4
+partialRiskCirTD <- as.data.frame(PartialRisk(coxRFXCirTD))
+s <- partialRiskCirTD[1:nrow(clinicalData),] - rep(colMeans(partialRiskCirTD), each=nrow(clinicalData))
 w <- sapply(split(1:1540, paste(clinicalData$M_Risk, quantileRiskCirTD[1:1540])), `[`, 1:12)
 w <- w[,!grepl("NA", colnames(w))][,c(4:6,10:12,7:9,1:3)]
-l <- stars(s[w,c("Fusions","CNA","Genetics","GeneGene","Clinical","Demographics","Treatment")] + .5, scale=FALSE, col.stars = mapply(function(i,j) {t <- try(c[i,j]); if(class(t)=="try-error") NA else t}, as.character(clinicalData$M_Risk[w]),quantileRiskCirTD[w]), labels="")
+l <- stars(s[w,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical")] + .5, scale=FALSE, col.stars = mapply(function(i,j) {t <- try(c[i,j]); if(class(t)=="try-error") NA else t}, as.character(clinicalData$M_Risk[w]),quantileRiskCirTD[w]), labels="")
 symbols(l[,1],l[,2], circles=rep(0.5, nrow(l)), inches=FALSE,add=TRUE)
+
 
 #' Five plots comparing different intervals
 #+ allVarComp, fig.width=6, fig.height=4
@@ -3138,13 +3147,13 @@ title(main="Post-relapse deaths")
 
 #' As barplot
 #+ allVarCompBar, fig.width=2, fig.height=2
-par(mar=c(5,3,1,5))
+par(mar=c(4,3,1,5))
 allVarComp <- sapply(c("EsTD","CrTD","NrmTD","CirTD","PrsTD"), function(x){
 			m <- get(paste0("coxRFX",x))
 			Z <- get(sub("\\[.+","",as.character(m$call["data"])))
 			i <- if(x%in%c("CrTD","EsTD")) 1:1540 else Z$index
 			VarianceComponents(m, newZ=Z[!rev(duplicated(rev(i))),colnames(m$Z)])})
-colnames(allVarComp) <- c("Early death","Remission","Non-relapse m.","Relapse","Post-relapse m.")
+colnames(allVarComp) <- c("Early deaths","Remission","Non-relapse d.","Relapse","Post-relapse d.")
 w <- c("CNA","Fusions","Genetics","GeneGene","Clinical","Demographics","Treatment","Nuisance")
 z <- allVarComp[w,]#/rep(colSums(allVarComp[-9,]), each=8)
 b <- barplot(z, col=colGroups[w], ylab="Variance [log hazard]", names.arg=rep("",ncol(z)))
@@ -3160,6 +3169,16 @@ Z <- rbind(0,apply(z,2,cumsum))
 n <- ncol(z)
 segments(b[-n]+.5,t(Z[,-n]),b[-1]-.5 ,t(Z[,-1]))
 mtext(side=4, at=Z[-1,n] - diff(Z[,n])/2, text=rownames(Z)[-1], las=2)
+
+v <- c(1,3,5,4,2)
+z <- allVarComp[w,v]/rep(colSums(allVarComp[-9,v]), each=8)
+b <- barplot(z, col=colGroups[w], ylab="Relative importance", names.arg=rep("",ncol(z)))
+rotatedLabel(x0=b, labels=colnames(z))
+Z <- rbind(0,apply(z,2,cumsum))
+n <- ncol(z)
+segments(b[-n]+.5,t(Z[,-n]),b[-1]-.5 ,t(Z[,-1]))
+mtext(side=4, at=Z[-1,n] - diff(Z[,n])/2, text=rownames(Z)[-1], las=2)
+
 
 #x <- seq(0,par("usr")[4],l=100)
 #y <- CoxHD:::ConcordanceFromVariance(x)
@@ -3201,6 +3220,43 @@ plot(pOS, pPostCr*pPreCr)
 
 survConcordance(os ~ I(-pOS))
 survConcordance(os ~ I(-pPostCr*pPreCr))
+
+#' Multi-state using msSurv
+#+ mstate, fig.width=3,fig.height=2.5
+library(msSurv)
+d <- sapply(1:nrow(clinicalData), function(i){
+			i <<- i
+			t <- c(as.numeric(clinicalData[i,c("CR_date","Recurrence_date","Date_LF")]) - as.numeric(clinicalData$ERDate[i]))
+			o <- order(t, na.last=NA)
+			stages <- c(1:3,0)
+			r <- stages[c(1, o+1)]
+			if(clinicalData$Status[i])
+				r[length(r)] <- r[length(r)-1] +3
+			tt <- c(0,t[o])
+			if(length(o)==0)
+				return(c(rep(NA,7),i))
+			s <- cbind(id=i, stop=tt[-1], start.stage=r[-length(r)], end.stage=r[-1])[diff(tt)!=0,]
+			#s <- cbind(time1 = tt[-length(tt)], time2=tt[-1], death=c(rep(0, length(o)-1), clinicalData$Status[i]), outer(0:(length(o)-1), r[-3], `>=`)+0, i=i)[diff(tt)!=0,]
+			return(s)
+		})
+d <- as.data.frame(do.call("rbind",d))
+nodes <- as.character(1:6)
+edges <- list(`1`=list(edges=c("2","4")), `2`=list(edges=c("3","5")), `3`=list(edges="6"), `4`=list(edges=NULL), `5`=list(edges=NULL),`6`=list(edges=NULL))
+struct <-  new("graphNEL", nodes = nodes, edgeL = edges, edgemode = "directed")
+msurv <- msSurv(d, struct, bs = FALSE)
+y <- t(apply(cbind(1,-msurv@ps[,c(4:6, 3:1)]),1,cumsum))
+par(mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0), las=1) 
+plot(msurv@et/365.25, y[,1], ylim=c(0,1), type="s",lty=0, xlab="Time after diagnosis", ylab="Fraction of patients", xlim=c(0,10), xaxs="i", yaxs="i")
+steps <- function(x, type="s") rep(x, each=2)[if(type=="s") -1 else -2*length(x)]
+x <- steps(msurv@et/365.25, type="S")
+for(i in 1:6)
+	polygon(c(x, rev(x)), c(steps(y[,i]), rev(steps(y[,i+1])) ), col=c(brewer.pal(5,"Pastel1")[c(1:3,5,4)],"#DDDDDD")[i], border=NA)
+abline(h=seq(0,1,.2), col='white', lty=3)
+abline(v=seq(0,10,1), col='white', lty=3)
+lines(x, steps(y[,4]), lwd=2)
+w <- which.min(abs(msurv@et/365.25-10))
+text(x=par("usr")[2], y= y[w,-7]+diff(y[w,])/2, labels=c("early death","death in CR","death after relapse","alive with relapse","alive in remission","induction/LOF"), pos=2)
+
 
 #' 11. Clinical and splines
 #' -----------------------
