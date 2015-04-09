@@ -3342,9 +3342,12 @@ sedimentPlot <- function(Y, x=1:nrow(Y), y0=0, y1=NULL, col=1:ncol(Y), ...){
 #+ fiveStagePredicted100, fig.width=8, fig.height=8
 par(mfrow=c(10,10), mar=c(0,0,0,0)+.4, cex=0)
 for(i in 1:100){
-	sedimentPlot(-fiveStagePredicted[,,i], y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD", xlab="time",ylab="fraction"))
+	sedimentPlot(-fiveStagePredicted[,,i], y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"), xlab="time",ylab="fraction")
 	lines(1-rowSums(fiveStagePredicted[,1:3,i]), lwd=2)
 }
+
+#+ fiveStagePredictedAvg, fig.width=3, fig.height=2.5
+par(mfrow=c(1,1), mar=c(3,3,1,1), cex=1)
 sedimentPlot(-rowMeans(fiveStagePredicted[,,], dims=2), y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"))
 
 #' #### 10-fold cross-validation of 5-state RFX model
@@ -3372,7 +3375,7 @@ fiveStageCV <- Reduce("rbind", mclapply(1:cvFold, function(i){
 					rowSums(aperm(foo[,1:3,], c(3,1,2)), dim=2)
 				}, mc.cores=cvFold))
 
-m <- sapply(1:fvFold, function(i) which(cvIdx==i))
+m <- sapply(1:cvFold, function(i) which(cvIdx==i))
 o <- order(m)
 
 any(is.na(fiveStageCV))
