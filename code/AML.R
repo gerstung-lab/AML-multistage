@@ -2982,10 +2982,15 @@ for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 	## adjust for competing risk (NRM)
 	i <- c(0,diff(fit$surv))
 	s <- split(fit$surv, cumsum(i>0)) # split into strata
+	u <- split(fit$upper, cumsum(i>0)) # split into strata
+	v <- split(fit$lower, cumsum(i>0)) # split into strata
+	
 	t <- split(fit$time, cumsum(i>0))
 	nrsKM <- survfit(Surv(time1/365, time2/365, status) ~ 1, data=nrmData, subset=  clinicalData$M_Risk[nrmData$index]==l)
 	
 	fit$surv <- unlist(sapply(seq_along(s), function(i) cumsum(c(1,diff(s[[i]])) * splinefun(nrsKM$time, nrsKM$surv, method="monoH.FC")(t[[i]])))) #adjust increments by nrs KM est
+	fit$lower <- unlist(sapply(seq_along(s), function(i) cumsum(c(1,diff(v[[i]])) * splinefun(nrsKM$time, nrsKM$surv, method="monoH.FC")(t[[i]])))) #adjust increments by nrs KM est
+	fit$upper <- unlist(sapply(seq_along(s), function(i) cumsum(c(1,diff(u[[i]])) * splinefun(nrsKM$time, nrsKM$surv, method="monoH.FC")(t[[i]])))) #adjust increments by nrs KM est
 	lines(fit, col=rep(sapply(2:0,function(x) colTrans(riskCol[l],x)), each=2), lty=c(1,0), mark=NA, xlab="Time after CR", fun=f)
 	#legend("bottomright", lty=c(1,3), bty="n", c("no TPL","TPL"), col=riskCol[l])
 }
@@ -3210,10 +3215,10 @@ w <- WaldTest(coxRFXPrsTD); w[p.adjust(w$p.value, "BH")<.1,]
 w <- WaldTest(coxRFXNrmTD); w[p.adjust(w$p.value, "BH")<.1,]
 
 
-#' #### Predicting OS from enrollment
+#' #### Predicting OS from enrollment (static)
 #' Note that the inclusion of transplants is somewhat problematic
 pPostCr <- sapply(1:nrow(allPredictTpl), function(i) allPredictTpl[i,3 - data[i,"transplantCR1"] ])
-pPreCr <- summary(survfit(coxRFXCr), time=100)$surv ^ exp(predict(coxRFXCr, newdata=dataFrame[whichRFXOsTDGG]))
+pPreCr <- summary(survfit(coxRFXCrTD), time=100)$surv ^ exp(predict(coxRFXCrTD, newdata=dataFrame[whichRFXOsTDGG]))
 pOS <- summary(survfit(coxRFXFitOsTDGGc), time=1000)$surv ^exp(predict(coxRFXFitOsTDGGc,newdata=dataFrame[whichRFXOsTDGG]))
 
 plot(pOS, pPostCr*pPreCr)
