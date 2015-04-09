@@ -11,6 +11,7 @@ library(Rcpp)
 load("predictTest.RData", envir=globalenv())
 cr <<- cr
 set1 <- brewer.pal(8, "Set1")
+pastel1 <- brewer.pal(8, "Pastel1")
 VARIABLES <- names(crGroups)[!crGroups %in% c("Nuisance","GeneGene")] 
 VARIABLES <- VARIABLES[order(apply(data[VARIABLES],2,var)*c(coef(coxRFXCirTD)[VARIABLES]^2+coef(coxRFXPrsTD)[VARIABLES]^2+coef(coxRFXNrmTD)[VARIABLES]^2), decreasing=TRUE)]
 INTERACTIONS <- names(crGroups)[crGroups %in% "GeneGene"] 
@@ -197,7 +198,7 @@ shinyServer(function(input, output) {
 			tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time1=x[-1])))	
 
 			coxphOs <- coxph(Surv(time2-time1, status)~ pspline(cr[osData$index,1], df=10), data=osData) # PRS baseline with spline-based dep on CR length)
-			tdOsBaseline <- exp(predict(coxphPrs, newdata=data.frame(time1=x[-1])))	
+			tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time1=x[-1])))	
 			
 			# CR adjustments to obtain absolute probabilities
 			crAdjust <- function(x, y, time=x$x) {
@@ -217,8 +218,8 @@ shinyServer(function(input, output) {
 						es <- crAdjust(x= kmEs, time=x, y=kmCr) ## Correct KM estimate for competing risk
 						cr <- crAdjust(x= kmCr, time=x, y=kmEs) ## Correct KM estimate for competing risk
 						
-						plotRisk(coxRFX = coxRFXEsTD, kmEs,  p=partialRiskMissing()[["Es"]], ylab="Incidence", xlab="Days after diagnosis", col=set1[5])
-						lines(x, 1-es, col=set1[5], lty=1, lwd=2)
+						plotRisk(coxRFX = coxRFXEsTD, kmEs,  p=partialRiskMissing()[["Es"]], ylab="Incidence", xlab="Days after diagnosis", col=set1[1])
+						lines(x, 1-es, col=set1[1], lty=1, lwd=2)
 						title("Early deaths")
 						
 						plotRisk(coxRFX = coxRFXCrTD, kmCr,  p=partialRiskMissing()[["Cr"]], ylab="Incidence", xlab="Days after diagnosis", col=set1[4])
@@ -228,9 +229,9 @@ shinyServer(function(input, output) {
 						kmCir <- computeIncidence(coxRFX = coxRFXCirTD, r = riskMissing()[["Cir"]], x=x)
 						kmNrm <-  computeIncidence(coxRFX = coxRFXNrmTD, r = riskMissing()[["Nrm"]], x=x)
 
-						plotRisk(coxRFX = coxRFXCirTD, kmCir,  p=partialRiskMissing()[["Cir"]], ylab="Incidence", xlab="Days after remission", col=set1[3])
+						plotRisk(coxRFX = coxRFXCirTD, kmCir,  p=partialRiskMissing()[["Cir"]], ylab="Incidence", xlab="Days after remission", col=set1[5])
 						cir <- crAdjust(x= kmCir, time=x, y=kmNrm) ## Correct KM estimate for competing risk
-						lines(x, 1-cir, col=set1[3], lty=1, lwd=2)
+						lines(x, 1-cir, col=set1[5], lty=1, lwd=2)
 						title("Relapse")
 
 						plotRisk(coxRFX = coxRFXNrmTD, kmNrm, p=partialRiskMissing()[["Nrm"]], ylab="Incidence", xlab="Days after remission", col=set1[2])
@@ -239,7 +240,7 @@ shinyServer(function(input, output) {
 						title("Non-relapse mortality")
 						
 						kmPrs <-  computeIncidence(coxRFX = coxRFXPrsTD, r = riskMissing()[["Prs"]], x=x)
-						plotRisk(coxRFX = coxRFXPrsTD, kmPrs, p=partialRiskMissing()[["Prs"]], ylab="Incidence", xlab="Days after remission", col=set1[1])
+						plotRisk(coxRFX = coxRFXPrsTD, kmPrs, p=partialRiskMissing()[["Prs"]], ylab="Incidence", xlab="Days after remission", col=set1[3])
 						title("Post-relapse mortality")
 						l <- length(kmCir$inc)
 						
@@ -253,8 +254,10 @@ shinyServer(function(input, output) {
 						
 						xLen <- length(x)						
 						plot(survfit(coxRFXOsCR), xlab="Days from remission", ylab="Survival", mark=NA, conf.int=FALSE,  xlim=c(0,2000), ylim=c(0,1), lty=2, xaxs='r')
-						polygon(c(x, x[xLen]), c(nrs,1)  , border=NA, col=paste0(set1[2],"44"))
-						polygon(c(x, rev(x)), c(nrs, rev(1-(1-nrs)-(1-rs))),  border=NA, col=paste0(set1[1],"44"))
+						polygon(c(x, x[xLen]), c(nrs,1)  , border=NA, col=pastel1[2])
+						polygon(c(x, rev(x)), c(nrs, rev(os)),  border=NA, col=pastel1[3])
+						polygon(c(x, rev(x)), c(os, rev(1-(1-nrs)-(1-cir))),  border=NA, col=pastel1[5])
+						polygon(c(x, rev(x)), c(1-(1-nrs)-(1-cir), rep(0,length(x))),  border=NA, col=pastel1[4])
 						abline(h=seq(0,1,.2), lty=3)
 						abline(v=seq(0,2000,365), lty=3)
 			
@@ -262,7 +265,7 @@ shinyServer(function(input, output) {
 
 						z <- c(365,3*365)
 						y <- (os)[z+1]
-						points(z,y, pch=16, col=set1[1])
+						points(z,y, pch=16, col=1)
 						if("analytical" %in% input$ciType){
 							## Confidence intervals
 							PlogP2 <- function(x) {(x * log(x))^2}
@@ -292,24 +295,38 @@ shinyServer(function(input, output) {
 						#polygon(c(x, rev(x)), c(nrslo2, rev(nrsup2))*c(rslo2, rev(rsup2)), col=paste("#FF000044",sep=""), border=NA)
 						#polygon(c(x, rev(x)), c(nrslo, rev(nrsup))*c(rslo, rev(rsup)), col=paste("#FF000044",sep=""), border=NA)
 						text(z, y, labels=round(y,2), pos=1)
-						legend(ifelse(os[2000] > .5,"bottomright","topright"), col=c(set1[c(1,3)],"black"), lty=c(NA,NA,1), fill=c(set1[c(2,1)],NA), border=NA, lwd=2 , c("Non-relapse","Relapse","Total"), box.lwd = 0, title="Death by", bg="#FFFFFF88")
+						legend(ifelse(os[2000] > .5,"bottomright","topright"), col=c(set1[c(1,3)],"black"), lty=c(NA,NA,1), fill=c(set1[c(2,3)],NA), border=NA, lwd=2 , c("Non-relapse","Relapse","Total"), box.lwd = 0, title="Death by", bg="#FFFFFF88")
 						title("Overall survival after remission")
 						
 						### Overall survival from enrollment
 						osCr <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = os, haz1TimeDep = tdOsBaseline)
 						nrsCr <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = nrs, haz1TimeDep = tdOsBaseline)
 						rsCr <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = rs, haz1TimeDep = tdOsBaseline)
+						cirCr <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = cir, haz1TimeDep = tdOsBaseline)
+						
 						
 						# Sum up to OS
-						plot(x, 1-(1-es)-(1-osCr), type="l", xlab="Days from diagnosis", ylab="Survival", main="Overall survival after enrollment", ylim=c(0,1), lwd=3) 
-						polygon(c(x, x[xLen]), c(es,1), border=NA, col=paste0(set1[5],"88"))
-						polygon(c(x, rev(x)), c(es, rev(1-(1-nrsCr)-(1-es)))  , border=NA, col=paste0(set1[2],"44"))
-						polygon(c(x, rev(x)), c(1-(1-nrsCr)-(1-es), rev(1-(1-es)-(1-osCr))),  border=NA, col=paste0(set1[1],"44"))
-						
+						plot(x, 1-(1-es)-(1-osCr), type="l", xlab="Days from diagnosis", ylab="Survival", main="Overall survival after enrollment", ylim=c(0,1), lwd=3, lty=0) 
+						y0 <- 1
+						y <- es
+						polygon(c(x, x[xLen]), c(y,y0), border=NA, col=pastel1[1])
+						y0 <- y0 - (1-es)
+						y <- y - (1-nrsCr)
+						polygon(c(x, rev(x)), c(y, rev(y0))  , border=NA, col=pastel1[2])
+						y0 <- y0 - (1-nrsCr)
+						y <- y - (1-rsCr)
+						osER <- y
+						polygon(c(x, rev(x)), c(y, rev(y0)),  border=NA, col=pastel1[3])
+						y0 <- y0 - (1-rsCr)
+						y <- y - (1-cirCr) + (1-rsCr) 
+						polygon(c(x, rev(x)), c(y, rev(y0)),  border=NA, col=pastel1[5])
+						polygon(c(x, rev(x)), c(cr - (1-es), rev(y)),  border=NA, col=pastel1[4])
+						polygon(c(x, rev(x)), c(cr - (1-es), rev(rep(0, length(x)))),  border=NA, col="#DDDDDD")
+						lines(x, osER, lwd=2)
 
 						addGrid()
 						
-						legend("bottomleft", bty="n", col=c(set1[c(1,2,3)],"black"), lty=c(NA,NA,NA,1), fill=c(set1[c(5,2,1)],NA), border=NA, lwd=2 , c("Non-remission","Non-relapse","Relapse","Total"), box.lwd = 0, bg="#FFFFFF88")
+						legend("bottomleft", bty="n", col=c(set1[c(1,2,3)],"black"), lty=c(NA,NA,NA,1), fill=c(set1[c(1,2,3)],NA), border=NA, lwd=2 , c("Non-remission","Non-relapse","Relapse","Total"), box.lwd = 0, bg="#FFFFFF88")
 						#lines(x, osEr, type="l", lty=2) 
 						#abline(h=seq(0,1,.2), lty=3)
 						#abline(v=seq(0,2000,365), lty=3)
