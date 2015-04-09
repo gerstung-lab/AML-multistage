@@ -3226,7 +3226,7 @@ plot(pOS, pPostCr*pPreCr)
 survConcordance(os ~ I(-pOS))
 survConcordance(os ~ I(-pPostCr*pPreCr))
 
-#' Multi-state using msSurv
+#' #### Multi-state using msSurv
 #+ mstate, fig.width=3,fig.height=2.5
 library(msSurv)
 d <- sapply(1:nrow(clinicalData), function(i){
@@ -3262,6 +3262,121 @@ lines(x, steps(y[,4]), lwd=2)
 w <- which.min(abs(msurv@et/365.25-10))
 text(x=par("usr")[2], y= y[w,-7]+diff(y[w,])/2, labels=c("early death","death in CR","death after relapse","alive with relapse","alive in remission","induction/LOF"), pos=2)
 
+#' #### 5 state hierarchical RFX model 
+PredictOS5 <- function(coxRFXEsTD, coxRFXCrTD, coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, x =365, tdPrmBaseline = rep(1, ceiling(max(x))+1), tdOsBaseline = rep(1, ceiling(max(x))+1), ciType="analytical"){
+	cppFunction('NumericVector computeHierarchicalSurvival(NumericVector x, NumericVector diffS0, NumericVector S1Static, NumericVector haz1TimeDep) {
+					int xLen = x.size();
+					double h;
+					NumericVector overallSurvival(xLen);
+					for(int i = 0; i < xLen; ++i) overallSurvival[i] = 1;
+					for(int j = 1; j < xLen; ++j){
+					h = haz1TimeDep[j-1];
+					for(int i = j; i < xLen; ++i){
+					overallSurvival[i] += diffS0[j-1] * (1-pow(S1Static[i-j], h));
+					}
+					}
+					return overallSurvival;
+					}')
+	
+	
+	
+	## Step 1: Compute KM survival curves and log hazard
+	getS <- function(coxRFX, data, max.x=5000) {		
+		if(!is.null(coxRFX$na.action)) coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
+		data <- as.matrix(data[,match(colnames(coxRFX$Z),colnames(data))])
+		r <- PredictRiskMissing(coxRFX, data, var="var2")
+		H0 <- basehaz(coxRFX, centered = FALSE)
+		hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
+		x <- c(0:ceiling(max.x))
+		S <- exp(-hazardDist(x))
+		return(list(S=S, r=r, x=x, hazardDist=hazardDist, r0 = coxRFX$means %*% coef(coxRFX)))
+	}
+	kmCr <- getS(coxRFX = coxRFXCrTD, data = data, max.x=max(x))
+	kmEs <- getS(coxRFX = coxRFXEsTD, data = data, max.x=max(x))
+	kmCir <- getS(coxRFX = coxRFXCirTD, data = data, max.x=max(x))
+	kmNrm <- getS(coxRFX = coxRFXNrmTD, data = data, max.x=max(x))
+	kmPrs <- getS(coxRFX = coxRFXPrsTD, data = data, max.x=max(x))
+	
+	xx <- 0:ceiling(max(x))
+	
+	sapply(1:nrow(data), function(i){
+				## Step 2: Adjust curves for competing risks, accounting for hazard
+				crAbs <-  cumsum(c(1,diff(kmCr$S^exp(kmCr$r[i,1]))) * kmEs$S ^ exp(kmEs$r[i,1]))
+				esAbs  <- cumsum(c(1,diff(kmEs$S^exp(kmEs$r[i,1]))) * kmCr$S ^ exp(kmCr$r[i,1])) ## array times x nrow(data)
+				cirCrAbs <- cumsum(c(1,diff(kmCir$S^exp(kmCir$r[i,1]))) * kmNrm$S ^ exp(kmNrm$r[i,1]))
+				nrsCrAbs <- cumsum(c(1,diff(kmNrm$S^exp(kmNrm$r[i,1]))) * kmCir$S ^ exp(kmCir$r[i,1])) ## array times x nrow(data)
+				
+				## Step 3: Compute hierarchical survival
+				### Prs			
+				rsCrAbs <- computeHierarchicalSurvival(x = xx, diffS0 = diff(cirCrAbs), S1Static = kmPrs$S, haz1TimeDep = tdPrmBaseline * exp(kmPrs$r[i,1]))
+				
+				### Overall survival from enrollment
+				nrsEr <- computeHierarchicalSurvival(x = xx, diffS0 = diff(crAbs), S1Static = nrsCrAbs, haz1TimeDep = tdOsBaseline)
+				rsEr <- computeHierarchicalSurvival(x = xx, diffS0 = diff(crAbs), S1Static = rsCrAbs, haz1TimeDep = tdOsBaseline)
+				cirEr <- computeHierarchicalSurvival(x = xx, diffS0 = diff(crAbs), S1Static = cirCrAbs, haz1TimeDep = tdOsBaseline)
+				cbind(nRemD=1-esAbs, nRelD=1-nrsEr, relD=1-rsEr, relA=1-cirEr-(1-rsEr), crA=1-crAbs - (1-cirEr) - (1-nrsEr))
+			}, simplify='array')
+}
+
+#' PRS baseline with spline-based dep on CR length)
+#+ fiveStagePredicted, cache=TRUE
+coxphPrs <- coxph(Surv(time2-time1, status)~ pspline(time1, df=10), data=prsData) 
+tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time1=xx[-1]))) ## Hazard (function of CR length)	
+
+coxphOs <- coxph(Surv(time2-time1, status)~ pspline(cr[osData$index,1], df=10), data=osData) 
+tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time1=xx[-1])))	 ## Hazard (function of induction length), only for OS (could do CIR,NRM,PRS seperately)
+
+fiveStagePredicted <- PredictOS5(coxRFXEsTD, coxRFXCrTD, coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)
+
+#' Function to plot stages
+sedimentPlot <- function(Y, x=1:nrow(Y), y0=0, y1=NULL, col=1:ncol(Y), ...){
+	Z <- cbind(t(apply(cbind(y0,Y),1,cumsum)),y1)
+	plot(x,Z[,1], xlim=range(x), ylim=range(Z), lty=0, pch=NA,...)
+	for(i in 2:ncol(Z))
+		polygon(c(x,rev(x)), c(Z[,i-1],rev(Z[,i])), border=NA, col=col[i-1])
+}
+
+#' Plot overview of first 100
+#+ fiveStagePredicted100, fig.width=8, fig.height=8
+par(mfrow=c(10,10), mar=c(0,0,0,0)+.4, cex=0)
+for(i in 1:100){
+	sedimentPlot(-fiveStagePredicted[,,i], y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD", xlab="time",ylab="fraction"))
+	lines(1-rowSums(fiveStagePredicted[,1:3,i]), lwd=2)
+}
+sedimentPlot(-rowMeans(fiveStagePredicted[,,], dims=2), y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"))
+
+#' #### 10-fold cross-validation of 5-state RFX model
+#+ fiveStageCV, cache=TRUE
+set.seed(42)
+cvFold <- 10
+cvIdx <- sample(1:nrow(dataFrame)%% 10 +1 ) ## sample 1/10
+fiveStageCV <- Reduce("rbind", mclapply(1:cvFold, function(i){
+					whichTrain <- which(cvIdx != i)
+					rfxNrm <- CoxRFX(nrmData[nrmData$index %in% whichTrain, names(crGroups)], Surv(nrmData$time1, nrmData$time2, nrmData$status)[nrmData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+					rfxNrm$coefficients["transplantRel"] <- 0
+#prsData$time1[!is.na(prsData$time1)] <- 0
+					rfxPrs <-  CoxRFX(prsData[prsData$index %in% whichTrain, names(crGroups)], Surv(prsData$time2 - prsData$time1, prsData$status)[prsData$index %in% whichTrain], groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
+					rfxCir <-  CoxRFX(cirData[cirData$index %in% whichTrain, names(crGroups)], Surv(cirData$time1, cirData$time2, cirData$status)[cirData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+					rfxCir$coefficients["transplantRel"] <- 0
+					rfxCr <- CoxRFX(osData[whichTrain, names(crGroups)], Surv(cr[,1], cr[,2]==2)[whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+					rfxEs <- CoxRFX(osData[whichTrain, names(crGroups)], Surv(cr[,1], cr[,2]==1)[whichTrain], groups=crGroups, which.mu = NULL)
+					
+					coxphPrs <- coxph(Surv(time2-time1, status)~ pspline(time1, df=10), data=prsData[prsData$index %in% whichTrain,]) 
+					tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time1=xx[-1])))						
+					
+					coxphOs <- coxph(Surv(time2-time1, status)~ pspline(cr[osData$index[osData$index %in% whichTrain],1], df=10), data=osData[osData$index %in% whichTrain,]) # PRS baseline with spline-based dep on CR length)
+					tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time1=xx[-1])))	
+					foo <- PredictOS5(rfxEs, rfxCr, rfxNrm, rfxCir, rfxPrs, data[cvIdx == i,], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)
+					rowSums(aperm(foo[,1:3,], c(3,1,2)), dim=2)
+				}, mc.cores=cvFold))
+
+m <- sapply(1:fvFold, function(i) which(cvIdx==i))
+o <- order(m)
+
+any(is.na(fiveStageCV))
+
+plot(sapply(seq(1,2000,10), function(i) survConcordance(os ~ fiveStageCV[o,i])$concordance))
+table(is.na(fiveStageCV[o,2000]),cvIdx)
 
 #' 11. Clinical and splines
 #' -----------------------
