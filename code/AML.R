@@ -3320,13 +3320,15 @@ PredictOS5 <- function(coxRFXEsTD, coxRFXCrTD, coxRFXNrmTD, coxRFXCirTD, coxRFXP
 
 #' PRS baseline with spline-based dep on CR length)
 #+ fiveStagePredicted, cache=TRUE
+xmax <- 2000
+xx <- 0:ceiling(xmax)
 coxphPrs <- coxph(Surv(time2-time1, status)~ pspline(time1, df=10), data=prsData) 
 tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time1=xx[-1]))) ## Hazard (function of CR length)	
 
 coxphOs <- coxph(Surv(time2-time1, status)~ pspline(cr[osData$index,1], df=10), data=osData) 
 tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time1=xx[-1])))	 ## Hazard (function of induction length), only for OS (could do CIR,NRM,PRS seperately)
 
-fiveStagePredicted <- PredictOS5(coxRFXEsTD, coxRFXCrTD, coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)
+fiveStagePredicted <- PredictOS5(coxRFXEsTD, coxRFXCrTD, coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=xmax)
 
 #' Function to plot stages
 sedimentPlot <- function(Y, x=1:nrow(Y), y0=0, y1=NULL, col=1:ncol(Y), ...){
