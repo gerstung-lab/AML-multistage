@@ -748,6 +748,7 @@ for(model in c("coxRFXFitOs", "coxRFXFitOsMain","coxRFXFitOsTDGGc")){
 #' #### Stars
 #+ stars, fig.width=12, fig.height=12
 set.seed(42)
+s <- sample(nrow(dataFrame),nStars^2) #1:(nStars^2)
 library(HilbertVis)
 nStars <- 32
 for(l in c("coxRFXFitOs","coxRFXFitOsMain","coxRFXFitOsTDGGc")){
@@ -755,14 +756,13 @@ for(l in c("coxRFXFitOs","coxRFXFitOsMain","coxRFXFitOsTDGGc")){
 	p <- PartialRisk(get(l),  newZ=dataFrame[, colnames(get(l)$Z)])
 	p <- p[,colnames(p)!="Nuisance"]
 	locations <- 1.5*hilbertCurve(log2(nStars)) #2*expand.grid(1:nStars,1:nStars)
-	s <- sample(nrow(p),nStars^2) #1:(nStars^2)
 	h <- hclust(dist(p[s,]))
 	x <- p - rep(colMeans(p), each=nrow(p))
 	x <- x/(2*sd(x)) + 1
 		c <- cut(t[s,1][h$order], quantile(t[,1], seq(0,1,0.1), na.rm=TRUE))
 	if(l=="coxRFXFitOsTDGGc")
 		x <- x[,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical")]
-	mg14:::stars(x[s,][h$order,]/2, scale=FALSE, locations=locations, key.loc=c(0,-3), col.lines=rep(1,(nStars^2)), col.stars = (brewer.pal(11,'RdBu'))[c], density=ifelse(t[s,2][h$order],NA,72))
+	mg14:::stars(x[s,][h$order,]/2, scale=FALSE, locations=locations, key.loc=c(0,-3), col.lines=rep(1,(nStars^2)), col.stars = (brewer.pal(11,'RdBu'))[c], density=ifelse(t[s,2][h$order],NA,48))
 	symbols(locations[,1], locations[,2], circles=rep(.5,(nStars^2)), inches=FALSE, fg="grey", add=TRUE, lty=1)
 	title(main=l)
 }
@@ -3349,6 +3349,28 @@ for(i in 1:100){
 #+ fiveStagePredictedAvg, fig.width=3, fig.height=2.5
 par(mfrow=c(1,1), mar=c(3,3,1,1), cex=1)
 sedimentPlot(-rowMeans(fiveStagePredicted[,,], dims=2), y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"))
+
+#' In order of risk constellation plots
+#+ fiveStagePredictedHilbert, fig.width=12, fig.height=12
+set.seed(42)
+s <- sample(nrow(dataFrame),nStars^2) #1:(nStars^2)
+library(HilbertVis)
+nStars <- 32
+for(l in c("coxRFXFitOs","coxRFXFitOsMain","coxRFXFitOsTDGGc")){
+	t <- os#get(l)$surv
+	p <- PartialRisk(get(l),  newZ=dataFrame[, colnames(get(l)$Z)])
+	p <- p[,colnames(p)!="Nuisance"]
+	locations <- hilbertCurve(log2(nStars))+1 
+	mat <- matrix(order(locations[,1], locations[,2]), ncol=nStars)
+	if(l!="coxRFXFitOsTDGGc") next
+	h <- hclust(dist(p[s,]))
+	layout(mat[nStars:1,])
+	par(mar=c(0,0,0,0),+.5, bty="n")
+	for(i in 1:nStars^2){
+		sedimentPlot(-fiveStagePredicted[seq(1,2001,200),,s[h$order[i]]], y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"), xlab="time",ylab="fraction", xaxt="n", yaxt="n")
+		lines(1-rowSums(fiveStagePredicted[seq(1,2001,200),1:3,s[h$order[i]]]), lwd=2)
+	}
+}
 
 #' #### 10-fold cross-validation of 5-state RFX model
 #+ fiveStageCV, cache=TRUE
