@@ -762,7 +762,7 @@ for(l in c("coxRFXFitOs","coxRFXFitOsMain","coxRFXFitOsTDGGc")){
 		c <- cut(t[s,1][h$order], quantile(t[,1], seq(0,1,0.1), na.rm=TRUE))
 	if(l=="coxRFXFitOsTDGGc")
 		x <- x[,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical")]
-	mg14:::stars(x[s,][h$order,]/2, scale=FALSE, locations=locations, key.loc=c(0,-3), col.lines=rep(1,(nStars^2)), col.stars = (brewer.pal(11,'RdBu'))[c], density=ifelse(t[s,2][h$order],NA,48))
+	mg14:::stars(x[s,][h$order,]/2, scale=FALSE, locations=locations, key.loc=c(0,-3), col.lines=rep(1,(nStars^2)), col.stars = (brewer.pal(11,'RdBu'))[c], density=ifelse(t[s,2][h$order],NA,24))
 	symbols(locations[,1], locations[,2], circles=rep(.5,(nStars^2)), inches=FALSE, fg="grey", add=TRUE, lty=1)
 	title(main=l)
 }
