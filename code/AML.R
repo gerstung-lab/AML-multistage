@@ -748,9 +748,9 @@ for(model in c("coxRFXFitOs", "coxRFXFitOsMain","coxRFXFitOsTDGGc")){
 #' #### Stars
 #+ stars, fig.width=12, fig.height=12
 set.seed(42)
-s <- sample(nrow(dataFrame),nStars^2) #1:(nStars^2)
 library(HilbertVis)
 nStars <- 32
+s <- sample(nrow(dataFrame),nStars^2) #1:(nStars^2)
 for(l in c("coxRFXFitOs","coxRFXFitOsMain","coxRFXFitOsTDGGc")){
 	t <- os#get(l)$surv
 	p <- PartialRisk(get(l),  newZ=dataFrame[, colnames(get(l)$Z)])
