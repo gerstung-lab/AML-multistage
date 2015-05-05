@@ -178,7 +178,7 @@ shinyServer(function(input, output) {
 												`Coef PRS`=coef(coxRFXPrsTD), `Value PRS`= as.numeric(x)*coef(coxRFXPrsTD)),2))
 					})
 			output$Risk <- renderDataTable({
-						data.frame(Value=c(levels(coxRFXCirTD$groups),"total","s.d"),sapply(c("Cir","Nrm","Prs"), function(m){
+						data.frame(Value=c(levels(coxRFXCirTD$groups),"total","s.d"),sapply(c("Es","Cr","Nrm","Cir","Prs"), function(m){
 											r <- riskMissing()[[m]]
 											x <- get(paste("coxRFX",m,"TD", sep=""))
 											p <- PartialRisk(x, newZ= rbind(dataImputed(),colMeans(data[1:1540,])))
@@ -212,36 +212,36 @@ shinyServer(function(input, output) {
 			}
 			
 			output$KM <- renderPlot({
-						par(mfrow=c(4,2), cex=1, bty="n")
+						par(mfrow=c(1,2), cex=1, bty="n")
 						kmEs <- computeIncidence(coxRFX = coxRFXEsTD, r = riskMissing()[["Es"]], x=x)
 						kmCr <- computeIncidence(coxRFX = coxRFXCrTD, r = riskMissing()[["Cr"]], x=x)
 						es <- crAdjust(x= kmEs, time=x, y=kmCr) ## Correct KM estimate for competing risk
 						cr <- crAdjust(x= kmCr, time=x, y=kmEs) ## Correct KM estimate for competing risk
 						
-						plotRisk(coxRFX = coxRFXEsTD, kmEs,  p=partialRiskMissing()[["Es"]], ylab="Incidence", xlab="Days after diagnosis", col=set1[1])
-						lines(x, 1-es, col=set1[1], lty=1, lwd=2)
-						title("Early deaths")
+						#plotRisk(coxRFX = coxRFXEsTD, kmEs,  p=partialRiskMissing()[["Es"]], ylab="Incidence", xlab="Days after diagnosis", col=set1[1])
+						#lines(x, 1-es, col=set1[1], lty=1, lwd=2)
+						#title("Early deaths")
 						
-						plotRisk(coxRFX = coxRFXCrTD, kmCr,  p=partialRiskMissing()[["Cr"]], ylab="Incidence", xlab="Days after diagnosis", col=set1[4])
-						lines(x, 1-cr, col=set1[4], lty=1, lwd=2)
-						title("Remission")
+						#plotRisk(coxRFX = coxRFXCrTD, kmCr,  p=partialRiskMissing()[["Cr"]], ylab="Incidence", xlab="Days after diagnosis", col=set1[4])
+						#lines(x, 1-cr, col=set1[4], lty=1, lwd=2)
+						#title("Remission")
 						
 						kmCir <- computeIncidence(coxRFX = coxRFXCirTD, r = riskMissing()[["Cir"]], x=x)
 						kmNrm <-  computeIncidence(coxRFX = coxRFXNrmTD, r = riskMissing()[["Nrm"]], x=x)
 
-						plotRisk(coxRFX = coxRFXCirTD, kmCir,  p=partialRiskMissing()[["Cir"]], ylab="Incidence", xlab="Days after remission", col=set1[5])
+						#plotRisk(coxRFX = coxRFXCirTD, kmCir,  p=partialRiskMissing()[["Cir"]], ylab="Incidence", xlab="Days after remission", col=set1[5])
 						cir <- crAdjust(x= kmCir, time=x, y=kmNrm) ## Correct KM estimate for competing risk
-						lines(x, 1-cir, col=set1[5], lty=1, lwd=2)
-						title("Relapse")
+						#lines(x, 1-cir, col=set1[5], lty=1, lwd=2)
+						#title("Relapse")
 
-						plotRisk(coxRFX = coxRFXNrmTD, kmNrm, p=partialRiskMissing()[["Nrm"]], ylab="Incidence", xlab="Days after remission", col=set1[2])
+						#plotRisk(coxRFX = coxRFXNrmTD, kmNrm, p=partialRiskMissing()[["Nrm"]], ylab="Incidence", xlab="Days after remission", col=set1[2])
 						nrs <- crAdjust(x = kmNrm, time = x, y = kmCir)
-						lines(x, 1-nrs, col=set1[2], lty=1, lwd=2)
-						title("Non-relapse mortality")
+						#lines(x, 1-nrs, col=set1[2], lty=1, lwd=2)
+						#title("Non-relapse mortality")
 						
 						kmPrs <-  computeIncidence(coxRFX = coxRFXPrsTD, r = riskMissing()[["Prs"]], x=x)
-						plotRisk(coxRFX = coxRFXPrsTD, kmPrs, p=partialRiskMissing()[["Prs"]], ylab="Incidence", xlab="Days after remission", col=set1[3])
-						title("Post-relapse mortality")
+						#plotRisk(coxRFX = coxRFXPrsTD, kmPrs, p=partialRiskMissing()[["Prs"]], ylab="Incidence", xlab="Days after remission", col=set1[3])
+						#title("Post-relapse mortality")
 						l <- length(kmCir$inc)
 						
 
@@ -273,8 +273,8 @@ shinyServer(function(input, output) {
 							errOs <- sqrt(errOs / PlogP2(os))
 							osUp <- os ^ exp(2* errOs)
 							osLo <- os ^ exp(-2*errOs)
-							lines(x, osUp, col=1, lty=3)
-							lines(x, osLo, col=1, lty=3)
+							lines(x, osUp, col=1, lty=1)
+							lines(x, osLo, col=1, lty=1)
 							segments(z, osLo[z+1] ,z,osUp[z+1], col=1, lwd=2)
 						}
 						if("simulated" %in% input$ciType){
@@ -322,7 +322,7 @@ shinyServer(function(input, output) {
 						polygon(c(x, rev(x)), c(y, rev(y0)),  border=NA, col=pastel1[5])
 						polygon(c(x, rev(x)), c(cr - (1-es), rev(y)),  border=NA, col=pastel1[4])
 						polygon(c(x, rev(x)), c(cr - (1-es), rev(rep(0, length(x)))),  border=NA, col="#DDDDDD")
-						lines(x, osER, lwd=2)
+						lines(x, osER, lwd=3)
 
 						addGrid()
 						

@@ -34,7 +34,7 @@ shinyUI(fluidPage(
 						
 						# Show a plot of the generated distribution
 						column(8,
-								plotOutput(outputId="KM",height="1200px"),
+								plotOutput(outputId="KM",height="300px"),
 								tabsetPanel(
 										tabPanel('Risk',
 												dataTableOutput("Risk")),
