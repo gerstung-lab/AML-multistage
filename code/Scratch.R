@@ -2115,10 +2115,5 @@ for(i in 1:2)
 #abline(v=seq(0,10,1), lty=3)
 legend("bottomleft", legend=c("early","non-rel.","relapse"), border=NA, fill=brewer.pal(3,"Pastel1"), bty="n")
 
-t <- clinicalData$Recurrence_date
-t[is.na(t)] <-  clinicalData$Date_LF[is.na(t)]
-time <- as.numeric(pmin(t, clinicalData$Date_LF) - clinicalData$CR_date)
-status <- factor(ifelse(!is.na(clinicalData$Recurrence_date), "relapse", ifelse(clinicalData$Status==1,"dead","alive"  ))) 
-status[is.na(clinicalData$CR_date)] <- NA
-summary(survfit(Surv(time, status, type="mstate")~alloIdx, subset= clinicalData$M_Risk=='Favorable'), time=0:5*365.25)
+
 
