@@ -2995,6 +2995,33 @@ for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 	#legend("bottomright", lty=c(1,3), bty="n", c("no TPL","TPL"), col=riskCol[l])
 }
 
+#' mstate CR fits
+t <- clinicalData$Recurrence_date
+t[is.na(t)] <-  clinicalData$Date_LF[is.na(t)]
+time <- as.numeric(pmin(t, clinicalData$Date_LF) - clinicalData$CR_date)
+status <- factor(ifelse(!is.na(clinicalData$Recurrence_date), "relapse", ifelse(clinicalData$Status==1,"dead","alive"  ))) 
+status[is.na(clinicalData$CR_date)] <- NA
+alloCR1 <- 1:1540 %in% osData$index[osData$transplantCR1==1]
+mSurv <- Surv(time/365.25, status, type="mstate")
+
+f <- function(x) 1-x
+#+ cirSplitsCR, fig.width=3, fig.height=3
+par(mfrow=c(2,2), mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0))
+riskCir <- (coxRFXCirTD$Z %*% coef(coxRFXCirTD) - cirData$transplantCR1 * coef(coxRFXCirTD)["transplantCR1"])[1:1540] # Risk w/o allograft
+qtl <- numeric(nrow(dataFrame))
+for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
+	w <- which(clinicalData$M_Risk==l)
+	q <- cut(riskCir[w], quantile(riskCir[w], seq(0,1,.33)), include.lowest=TRUE, labels=c("T1","T2","T3"))
+	qtl[w] <- q
+	plot(NA,NA,  ylab="Fraction relapsed", main=paste0(l,", n=",sum(clinicalData$M_Risk[!is.na(mSurv)]==l, na.rm=TRUE)),  xlab="Years after CR", ylim=c(0,1), xlim=c(0,5), xaxs="i", yaxs="i", font.main=1)
+	#abline(h=seq(0.2,0.8,0.2),lty=1, col='lightgrey')
+	fit <- survfit(mSurv~ qtl, subset= clinicalData$M_Risk==l)
+	
+	lines(fit, col=sapply(2:0, function(x) c(colTrans(set1[2],x), colTrans(set1[5],x))), lty=c(1,1), mark=NA, xlab="Time after CR", fun=f)
+	#legend("bottomright", lty=c(1,3), bty="n", c("no TPL","TPL"), col=riskCol[l])
+}
+
+
 #' OS Plots
 #+ osSplits, fig.width=3, fig.height=3
 par(mfrow=c(2,2), mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0))
@@ -3052,10 +3079,10 @@ text(1:3*3, 11, c("Best","Intermediate","Worst"), pos=3)
 #' ### Predictions with different TPLs
 #+survivalTpl, cache=TRUE
 w <- sort(unique(osData$index[which(quantileRiskOsCR==3 & clinicalData$M_Risk[osData$index]=="Favorable")]))
-d <- osData[rep(1:nrow(dataFrame), each=3),]
-d$transplantCR1 <- rep(c(0,1,0), nrow(dataFrame))
-d$transplantRel <- rep(c(0,0,1), nrow(dataFrame))
-allPredictTpl <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, d, x=1000)
+allDataTpl <- osData[rep(1:nrow(dataFrame), each=3),]
+allDataTpl$transplantCR1 <- rep(c(0,1,0), nrow(dataFrame))
+allDataTpl$transplantRel <- rep(c(0,0,1), nrow(dataFrame))
+allPredictTpl <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, allDataTpl, x=1000)
 allPredictTpl <- as.data.frame(matrix(allPredictTpl$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse"))), row.names=rownames(dataFrame))
 survivalTpl <- data.frame(allPredictTpl, os=osYr, age=clinicalData$AOD, ELN=clinicalData$M_Risk, tercile=quantileRiskOsCR[1:nrow(allPredictTpl)])
 
@@ -3127,13 +3154,19 @@ l <- stars(s[w,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene
 symbols(l[,1],l[,2], circles=rep(0.5, nrow(l)), inches=FALSE,add=TRUE)
 
 #+ starsCIR, fig.width=4, fig.height=4
+layout(matrix(c(1:4), ncol=2),heights = c(10,1), widths = c(10,1))
 partialRiskCirTD <- as.data.frame(PartialRisk(coxRFXCirTD))
 s <- partialRiskCirTD[1:nrow(clinicalData),] - rep(colMeans(partialRiskCirTD), each=nrow(clinicalData))
-w <- sapply(split(1:1540, paste(clinicalData$M_Risk, quantileRiskCirTD[1:1540])), `[`, 1:12)
+u <- unique(cirData$index[!is.na(cirData$time2)])
+w <- sapply(split(u, paste(clinicalData$M_Risk, quantileRiskCirTD[1:1540])[u]), `[`, 1:12)
 w <- w[,!grepl("NA", colnames(w))][,c(4:6,10:12,7:9,1:3)]
-l <- stars(s[w,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical")] + .5, scale=FALSE, col.stars = mapply(function(i,j) {t <- try(c[i,j]); if(class(t)=="try-error") NA else t}, as.character(clinicalData$M_Risk[w]),quantileRiskCirTD[w]), labels="")
-symbols(l[,1],l[,2], circles=rep(0.5, nrow(l)), inches=FALSE,add=TRUE)
-
+i <- which(rev(!duplicated(rev(cirData$index))))
+m <- i[order(cirData$index[i])]
+c <- cut(cirData$time2, quantile(cirData$time2[m], seq(0,1,0.1), na.rm=TRUE))
+l <- mg14:::stars(s[w,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical")] + .5, scale=FALSE, col.stars = brewer.pal(11,"RdBu")[-6][c[w]], labels="", density=ifelse(cirData$status[m][w]==1,NA,48),  col.lines=rep(1,(12^2)))
+symbols(l[,1],l[,2], circles=rep(0.5, nrow(l)), inches=FALSE,add=TRUE, fg='lightgrey')
+par(mar=c(2,2,0,2))
+barplot(matrix(diff(quantile(cirData$time2[m], na.rm=T, seq(0,1,0.1))), ncol=1)/365.25, col=brewer.pal(11,"RdBu")[-6], horiz=TRUE, border=NA, xlim=c(0,20))
 
 #' Five plots comparing different intervals
 #+ allVarComp, fig.width=6, fig.height=4
@@ -3310,11 +3343,19 @@ PredictOS5 <- function(coxRFXEsTD, coxRFXCrTD, coxRFXNrmTD, coxRFXCirTD, coxRFXP
 				### Prs			
 				rsCrAbs <- computeHierarchicalSurvival(x = xx, diffS0 = diff(cirCrAbs), S1Static = kmPrs$S, haz1TimeDep = tdPrmBaseline * exp(kmPrs$r[i,1]))
 				
+				## Confidence intervals (loglog)
+				PlogP2 <- function(x) {(x * log(x))^2}
+				errOs <- kmNrm$r[i,2] * PlogP2(kmNrm$S^exp(kmNrm$r[i,1])) * (1-(1-kmCir$S ^ exp(kmCir$r[i,1]))) * (1-kmPrs$S ^ exp(kmPrs$r[i,1]))^2 + kmCir$r[i,2] * PlogP2(kmCir$S ^ exp(kmCir$r[i,1])) * (1-kmPrs$S ^ exp(kmPrs$r[i,1]))^2 * (kmNrm$S ^ exp(kmNrm$r[i,1]))^2 +  kmPrs$r[i,2] * PlogP2(kmPrs$S ^ exp(kmPrs$r[i,1])) * (1-kmCir$S ^ exp(kmCir$r[i,1]))^2 * (kmNrm$S ^ exp(kmNrm$r[i,1]))^2 
+				sdOsCr <- sqrt(errOs / PlogP2(1-(1-nrsCrAbs)-(1-rsCrAbs)))
+				
+				
 				### Overall survival from enrollment
 				nrsEr <- computeHierarchicalSurvival(x = xx, diffS0 = diff(crAbs), S1Static = nrsCrAbs, haz1TimeDep = tdOsBaseline)
 				rsEr <- computeHierarchicalSurvival(x = xx, diffS0 = diff(crAbs), S1Static = rsCrAbs, haz1TimeDep = tdOsBaseline)
 				cirEr <- computeHierarchicalSurvival(x = xx, diffS0 = diff(crAbs), S1Static = cirCrAbs, haz1TimeDep = tdOsBaseline)
-				cbind(nRemD=1-esAbs, nRelD=1-nrsEr, relD=1-rsEr, relA=1-cirEr-(1-rsEr), crA=1-crAbs - (1-cirEr) - (1-nrsEr))
+				cbind(deathInErFromEr=1-esAbs, deathInCrFromEr=1-nrsEr, deathInRelFromEr=1-rsEr, aliveInRelFromEr=1-cirEr-(1-rsEr), aliveInCrFromEr=1-crAbs - (1-cirEr) - (1-nrsEr),
+						deathInCrFromCr = 1-nrsCrAbs, deathInRelapseFromCr=(1-rsCrAbs), aliveInRelapseFromCr = (1-cirCrAbs) - (1-rsCrAbs), osInCrFromCrSd=sdOsCr
+						)
 			}, simplify='array')
 }
 
@@ -3342,13 +3383,13 @@ sedimentPlot <- function(Y, x=1:nrow(Y), y0=0, y1=NULL, col=1:ncol(Y), ...){
 #+ fiveStagePredicted100, fig.width=8, fig.height=8
 par(mfrow=c(10,10), mar=c(0,0,0,0)+.4, cex=0)
 for(i in 1:100){
-	sedimentPlot(-fiveStagePredicted[,,i], y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"), xlab="time",ylab="fraction")
+	sedimentPlot(-fiveStagePredicted[,1:5,i], y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"), xlab="time",ylab="fraction")
 	lines(1-rowSums(fiveStagePredicted[,1:3,i]), lwd=2)
 }
 
 #+ fiveStagePredictedAvg, fig.width=3, fig.height=2.5
 par(mfrow=c(1,1), mar=c(3,3,1,1), cex=1)
-sedimentPlot(-rowMeans(fiveStagePredicted[,,], dims=2), y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"))
+sedimentPlot(-rowMeans(fiveStagePredicted[,1:5,], dims=2), y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"))
 
 #' In order of risk constellation plots
 #+ fiveStagePredictedHilbert, fig.width=12, fig.height=12
@@ -3367,17 +3408,84 @@ for(l in c("coxRFXFitOs","coxRFXFitOsMain","coxRFXFitOsTDGGc")){
 	layout(mat[nStars:1,])
 	par(mar=c(0,0,0,0),+.5, bty="n")
 	for(i in 1:nStars^2){
-		sedimentPlot(-fiveStagePredicted[seq(1,2001,200),,s[h$order[i]]], y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"), xlab="time",ylab="fraction", xaxt="n", yaxt="n")
+		sedimentPlot(-fiveStagePredicted[seq(1,2001,200),1:5,s[h$order[i]]], y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"), xlab="time",ylab="fraction", xaxt="n", yaxt="n")
 		lines(1-rowSums(fiveStagePredicted[seq(1,2001,200),1:3,s[h$order[i]]]), lwd=2)
 	}
 }
 
 #' #### 10-fold cross-validation of 5-state RFX model
 #+ fiveStageCV, cache=TRUE
+cvFold <- 10
+fiveStageCV <- sapply(1:10, function(foo){ ## repeat 10 times, ie. 100 fits
+			set.seed(foo)
+			cvIdx <- sample(1:nrow(dataFrame)%% 10 +1 ) ## sample 1/10
+			fvStgCV <- Reduce("rbind", mclapply(1:cvFold, function(i){
+								whichTrain <- which(cvIdx != i)
+								rfxNrm <- CoxRFX(nrmData[nrmData$index %in% whichTrain, names(crGroups)], Surv(nrmData$time1, nrmData$time2, nrmData$status)[nrmData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+								rfxNrm$coefficients["transplantRel"] <- 0
+#prsData$time1[!is.na(prsData$time1)] <- 0
+								rfxPrs <-  CoxRFX(prsData[prsData$index %in% whichTrain, names(crGroups)], Surv(prsData$time2 - prsData$time1, prsData$status)[prsData$index %in% whichTrain], groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
+								rfxCir <-  CoxRFX(cirData[cirData$index %in% whichTrain, names(crGroups)], Surv(cirData$time1, cirData$time2, cirData$status)[cirData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+								rfxCir$coefficients["transplantRel"] <- 0
+								rfxCr <- CoxRFX(osData[whichTrain, names(crGroups)], Surv(cr[,1], cr[,2]==2)[whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+								rfxEs <- CoxRFX(osData[whichTrain, names(crGroups)], Surv(cr[,1], cr[,2]==1)[whichTrain], groups=crGroups, which.mu = NULL)
+								
+								coxphPrs <- coxph(Surv(time2-time1, status) ~ pspline(time1, df=10), data=prsData[prsData$index %in% whichTrain,]) 
+								tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time1=xx[-1])))						
+								
+								coxphOs <- coxph(Surv(time2-time1, status) ~ pspline(cr[osData$index[osData$index %in% whichTrain],1], df=10), data=osData[osData$index %in% whichTrain,]) # PRS baseline with spline-based dep on CR length)
+								tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time1=xx[-1])))	
+								foo <- PredictOS5(rfxEs, rfxCr, rfxNrm, rfxCir, rfxPrs, data[cvIdx == i,], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)
+								rowSums(aperm(foo[,1:3,], c(3,1,2)), dim=2)
+							}, mc.cores=cvFold))
+			
+			m <- sapply(1:cvFold, function(i) which(cvIdx==i))
+			o <- order(m)
+			return(fvStgCV[o,])
+		}, simplify="array")
+
+any(is.na(fiveStageCV))
+
+cvFold <- 10
+cOs <- sapply(1:10, function(foo){
+			set.seed(foo)
+			cvIdx <- sample(1:nrow(dataFrame)%% 10 +1 ) ## sample 1/10
+			
+			osCV <- Reduce("c", mclapply(1:cvFold, function(i){
+								whichTrain <- which(cvIdx != i)
+								ix <- tplSplitOs %in% whichTrain
+								fit <- CoxRFX(dataFrameOsTD[ix,whichRFXOsTDGG], osTD[ix], groups[whichRFXOsTDGG], which.mu=mainGroups) ## allow only the main groups to have mean different from zero.. 
+								predict(fit, newdata=dataFrameOsTD[!ix,])
+							}, mc.cores=cvFold))
+			
+			m <- unlist(sapply(1:cvFold, function(i) which(tplSplitOs %in% which(cvIdx==i))))
+			o <- order(m)
+			c <- survConcordance(osTD ~ osCV[o])
+		})
+
+#+ fiveStageCVplot, fig.width=2.5, fig.height=2.5
+x <- seq(1,2000,10)
+c <- sapply(1:10, function(j) sapply(x, function(i) {c <- survConcordance(os ~ fiveStageCV[,i,j]); c(c$concordance, c$std.err)}), simplify='array')
+plot(x, rowMeans(c[1,,]), type='l', xlab="Time", ylab="Concordance", ylim=c(0.65, 0.73))
+for(j in 1:10) lines(x, c[1,,j], col='grey')
+lines(x, rowMeans(c[1,,]), lwd=2)
+#lines(x, c[1,]-c[2,], lty=3)
+#lines(x, c[1,]+c[2,], lty=3)
+#table(is.na(fiveStageCV[o,2000]),cvIdx)
+
+c <- mean(unlist(cOs[1,]))
+abline(h=unlist(cOs[1,]), col='#FBB4AE')
+abline(h=c, col=brewer.pal(3,"Set1")[1], lwd=2)
+#abline(h=c-cOs[,1]$std.err, col='red', lty=3)
+#abline(h=c+cOs[,1]$std.err, col='red', lty=3)
+legend("bottomright",c("RFX OS","RFX Multistage"), col=c(2,1), lty=1, bty="n")
+
+#' Each event type
+#+ fiveStageCVeach, cache=TRUE
 set.seed(42)
 cvFold <- 10
 cvIdx <- sample(1:nrow(dataFrame)%% 10 +1 ) ## sample 1/10
-fiveStageCV <- Reduce("rbind", mclapply(1:cvFold, function(i){
+fiveStageCVeach <- mclapply(1:cvFold, function(i){
 					whichTrain <- which(cvIdx != i)
 					rfxNrm <- CoxRFX(nrmData[nrmData$index %in% whichTrain, names(crGroups)], Surv(nrmData$time1, nrmData$time2, nrmData$status)[nrmData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 					rfxNrm$coefficients["transplantRel"] <- 0
@@ -3388,22 +3496,48 @@ fiveStageCV <- Reduce("rbind", mclapply(1:cvFold, function(i){
 					rfxCr <- CoxRFX(osData[whichTrain, names(crGroups)], Surv(cr[,1], cr[,2]==2)[whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 					rfxEs <- CoxRFX(osData[whichTrain, names(crGroups)], Surv(cr[,1], cr[,2]==1)[whichTrain], groups=crGroups, which.mu = NULL)
 					
-					coxphPrs <- coxph(Surv(time2-time1, status)~ pspline(time1, df=10), data=prsData[prsData$index %in% whichTrain,]) 
-					tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time1=xx[-1])))						
-					
-					coxphOs <- coxph(Surv(time2-time1, status)~ pspline(cr[osData$index[osData$index %in% whichTrain],1], df=10), data=osData[osData$index %in% whichTrain,]) # PRS baseline with spline-based dep on CR length)
-					tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time1=xx[-1])))	
-					foo <- PredictOS5(rfxEs, rfxCr, rfxNrm, rfxCir, rfxPrs, data[cvIdx == i,], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)
-					rowSums(aperm(foo[,1:3,], c(3,1,2)), dim=2)
-				}, mc.cores=cvFold))
+					list( nrm=predict(rfxNrm, newdata=nrmData[!nrmData$index %in% whichTrain, names(crGroups)]),
+							prs=predict(rfxPrs, newdata=prsData[!prsData$index %in% whichTrain, names(crGroups)]),
+							cir=predict(rfxCir, newdata=cirData[!cirData$index %in% whichTrain, names(crGroups)]),
+							cr=predict(rfxCr, newdata=osData[which(cvIdx==i), names(crGroups)]),
+							es=predict(rfxEs, newdata=osData[which(cvIdx==i), names(crGroups)])
+							)
+				}, mc.cores=cvFold)
+		
+f <- function(l,m){
+	lapply(1:length(l), function(i) c(l[[i]],m[[i]]))
+}
+fiveStageCVeach <- Reduce("f", fiveStageCVeach)
+survConcordance(Surv(nrmData$time1, nrmData$time2, nrmData$status)[order(rownames(nrmData))] ~ fiveStageCVeach[[1]][order(names(fiveStageCVeach[[1]]))])
+survConcordance(Surv(prsData$time1, prsData$time2, prsData$status)[order(rownames(prsData))] ~ fiveStageCVeach[[2]][order(names(fiveStageCVeach[[2]]))])
+survConcordance(Surv(cirData$time1, cirData$time2, cirData$status)[order(rownames(cirData))] ~ fiveStageCVeach[[3]][order(names(fiveStageCVeach[[3]]))])
+survConcordance(Surv(cr[,1], cr[,2]==2) ~ fiveStageCVeach[[4]][order(names(fiveStageCVeach[[4]]))])
+survConcordance(Surv(cr[,1], cr[,2]==1) ~ fiveStageCVeach[[5]][order(names(fiveStageCVeach[[5]]))])
 
-m <- sapply(1:cvFold, function(i) which(cvIdx==i))
-o <- order(m)
 
-any(is.na(fiveStageCV))
-
-plot(sapply(seq(1,2000,10), function(i) survConcordance(os ~ fiveStageCV[o,i])$concordance))
-table(is.na(fiveStageCV[o,2000]),cvIdx)
+#' With and wihout TPL
+#+ twoPatientsAllo, fig.width=3, fig.height=2.5
+xmax=2000
+fiveStagePredictedTpl <- PredictOS5(coxRFXEsTD, coxRFXCrTD, coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, allDataTpl[grep("PD11104a|PD8314a", rownames(allDataTpl)),], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=xmax)
+#par(mfrow=c(2,2))
+par(mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0)) 
+w <- seq(1,2001,10)
+at <- ceiling(1:5 * 365.5)
+x <- (w-1)/365.25
+for(i in c(2,3,5,6)){
+	sedimentPlot(-fiveStagePredictedTpl[w,6:8,i],x=x, y0=1, y1=0,  col=pastel1[c(2:3,5,4)], xlab="Years from CR",ylab="Probability", xaxs='i', yaxs='i')
+	os <- 1-rowSums(fiveStagePredictedTpl[w,6:7,i])
+	abline(v=c(1:5), col="white", lty=3)
+	abline(h=seq(0.2,0.8,0.2), col="white", lty=3)
+	lines(x,os, lwd=2)
+	lines(x,os ^ exp(qnorm(0.975) * fiveStagePredictedTpl[w,9,i]))
+	lines(x,os ^ exp(-qnorm(0.975) * fiveStagePredictedTpl[w,9,i]))
+	text(x=rep(0,3), c(0.1,0.2,0.3), c("rel./al.", "rel./death", "n.r./death") )
+	text(x=1:5, y=rep(0.3, 5), round(fiveStagePredictedTpl[at,6,i],2))
+	text(x=1:5, y=rep(0.2, 5), round(fiveStagePredictedTpl[at,7,i],2))
+	text(x=1:5, y=rep(0.1, 5), round(fiveStagePredictedTpl[at,8,i],2))
+	#text(x=at, y=rep(0.1, 5), round(fiveStagePredictedTpl[w,6,i],2))
+}
 
 #' 11. Clinical and splines
 #' -----------------------
