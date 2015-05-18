@@ -2117,3 +2117,106 @@ legend("bottomleft", legend=c("early","non-rel.","relapse"), border=NA, fill=bre
 
 
 
+
+
+#' Function to predict OS from  CIR, PRS and NRM
+PredictOSTpl <- function(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, x =365, ciType="simulated", mc.cores=10){
+	## Step 1: Compute KM survival curves and log hazard
+	getS <- function(coxRFX, data, max.x=5000) {		
+		if(!is.null(coxRFX$na.action)) coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
+		data <- as.matrix(data[,match(colnames(coxRFX$Z),colnames(data))])
+		r <- PredictRiskMissing(coxRFX, data, var="var2")
+		H0 <- basehaz(coxRFX, centered = FALSE)
+		hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
+		x <- c(0:max.x,max.x)
+		S <- exp(-hazardDist(x))
+		return(list(S=S, r=r, x=x, hazardDist=hazardDist, r0 = coxRFX$means %*% coef(coxRFX)))
+	}
+	kmCir <- getS(coxRFX = coxRFXCirTD, data = data, max.x=max(x))
+	kmNrm <- getS(coxRFX = coxRFXNrmTD, data = data, max.x=max(x))
+	kmPrs <- getS(coxRFX = coxRFXPrsTD, data = data, max.x=max(x))
+	
+	## Step 2: Adjust CIR and NRM curve for competing risks, accounting for hazard
+	kmCir$Sadj <- sapply(1:nrow(data), function(i) cumsum(c(1,diff(kmCir$S^exp(kmCir$r[i,1]))) * kmNrm$S ^ exp(kmNrm$r[i,1])))
+	kmNrm$Sadj <- sapply(1:nrow(data), function(i) cumsum(c(1,diff(kmNrm$S^exp(kmNrm$r[i,1]))) * kmCir$S ^ exp(kmCir$r[i,1]))) ## array times x nrow(data)
+	
+	stopifnot(length(x)==1 | length(x) == nrow(data))
+	if(length(x)==nrow(data))
+		w <- match(x,kmCir$x)
+	else if(length(x)==1)
+		w <- rep(match(x, kmCir$x), nrow(data))
+	y <- mapply(function(i,j) kmNrm$Sadj[i,j], w,1:length(w) ) # select time for each sample
+	nrs <- y
+	nrsUp <- y^exp(2*sqrt(kmNrm$r[,2]))
+	nrsLo <- y^exp(- 2*sqrt(kmNrm$r[,2]))
+	
+	y <- mapply(function(i,j) kmCir$Sadj[i,j], w,1:length(w) ) # select time for each sample
+	cir <- y
+	cirLo <- y^exp( 2*sqrt(kmCir$r[,2]))
+	cirUp <- y^exp( - 2*sqrt(kmCir$r[,2]))
+	
+	## Step 3: Compute post-relapse survival
+	survPredict <- function(surv){
+		s <- survfit(surv~1)
+		splinefun(s$time, s$surv, method="monoH.FC")
+	}
+	xx <- 0:max(x)
+	# Baseline Prs (measured from relapse)
+	kmPrs0 <- survPredict(Surv(prsData$time2-prsData$time1, prsData$status))(xx) 
+	# PRS baseline with spline-based dep on CR length)
+	coxphPrs <- coxph(Surv(time2-time1, status)~ pspline(time1, df=10), data=prsData) 
+	tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time1=xx[-1])))						
+	rs <- sapply(1:nrow(data), function(i){
+				### Different approach				
+				xLen <- 1+floor(x)
+				cir <- kmCir$Sadj[1:xLen,i]
+				rs <- computeTotalPrsC(x = xx, diffCir = diff(cir), prsP = kmPrs0, tdPrmBaseline = tdPrmBaseline, risk = kmPrs$r[i,1]-kmPrs$r0)
+				rs[xLen]
+			})
+	
+	## Step 4: Combine into overall survival
+	if(any(1-(1-rs)-(1-nrs)<0)) warning("OS < 0 occured.")	
+	os <- pmax(pmin(1-(1-rs)-(1-nrs),1),0)
+	
+	## Step 5: Confidence intervals for OS
+	osCi <- sapply(mclapply(1:nrow(data), function(i){
+				if("analytical" == ciType){
+					## Confidence intervals
+					PlogP2 <- function(x) {(x * log(x))^2}
+					errOs <- kmNrm$r[i,2] * PlogP2(kmNrm$S[w[i]]) * (1-kmCir$S[w[i]] * kmPrs$S[w[i]])^2 + kmCir$r[i,2]  * (1-kmNrm$S[w[i]])^2* kmPrs$S[w[i]]^2 * PlogP2(kmCir$S[w[i]]) +  kmPrs$r[i,2]  * (1-kmNrm$S[w[i]])^2* kmCir$S[w[i]]^2 * PlogP2(kmPrs$S[w[i]])
+					errOs <- errOs / PlogP2(1-(1-kmNrm$S[w[i]])*(1-kmCir$S[w[i]]*kmPrs$S[w[i]]))
+					return(c(osUp=os[i] ^ exp(-2* errOs), osLo= os[i] ^ exp(+2*errOs)))
+				} else if("simulated" == ciType){
+					## Simulate CI
+					nSim <- 200
+					osCiMc <- sapply(1:nSim, function(foo){
+								r0 <- rnorm(3,c(kmCir$r[i,1],kmNrm$r[i,1],kmPrs$r[i,1]),sqrt(c(kmCir$r[i,2],kmNrm$r[i,2],kmPrs$r[i,2])))
+								H0 <- exp(r0)
+								nrs0 <- cumsum(c(1,diff(kmNrm$S^H0[2])) * kmCir$S^H0[1]) ## Correct KM estimate for competing risk
+								diffCir <- diff(c(1,kmCir$S^H0[1])) * kmNrm$S^H0[2] ## Correct KM estimate for competing risk							
+								rs0 <- computeTotalPrsC(x = xx, diffCir = diffCir, prsP = kmPrs0, tdPrmBaseline = tdPrmBaseline, risk = -kmPrs$r0+log(H0[3]))
+								
+								Hcr1 <- exp(r0 + rnorm(3,c(coxRFXCirTD$coefficients["transplantCR1"],coxRFXNrmTD$coefficients["transplantCR1"],coxRFXPrsTD$coefficients["transplantCR1"]), 
+												sqrt(c(coxRFXCirTD$var2["transplantCR1","transplantCR1"],coxRFXNrmTD$var2["transplantCR1","transplantCR1"],coxRFXPrsTD$var2["transplantCR1","transplantCR1"])))) 
+								nrsCr1 <- cumsum(c(1,diff(kmNrm$S^Hcr1[2])) * kmCir$S^Hcr1[1]) ## Correct KM estimate for competing risk
+								diffCir <- diff(c(1,kmCir$S^Hcr1[1])) * kmNrm$S^Hcr1[2] ## Correct KM estimate for competing risk							
+								rsCr1 <- computeTotalPrsC(x = xx, diffCir = diffCir, prsP = kmPrs0, tdPrmBaseline = tdPrmBaseline, risk = -kmPrs$r0+log(Hcr1[3]))
+								
+								Hrel <- exp(r0 + rnorm(3,c(coxRFXCirTD$coefficients["transplantRel"],coxRFXNrmTD$coefficients["transplantRel"],coxRFXPrsTD$coefficients["transplantRel"]), 
+												sqrt(c(coxRFXCirTD$var2["transplantRel","transplantRel"],coxRFXNrmTD$var2["transplantRel","transplantRel"],coxRFXPrsTD$var2["transplantRel","transplantRel"])))) 
+								nrsRel <- cumsum(c(1,diff(kmNrm$S^Hrel[2])) * kmCir$S^Hrel[1]) ## Correct KM estimate for competing risk
+								diffCir <- diff(c(1,kmCir$S^Hrel[1])) * kmNrm$S^Hrel[2] ## Correct KM estimate for competing risk							
+								rsRel <- computeTotalPrsC(x = xx, diffCir = diffCir, prsP = kmPrs0, tdPrmBaseline = tdPrmBaseline, risk = -kmPrs$r0+log(Hrel[3]))
+								
+								os0 <- (1-(1-nrs0[1:w[i]])-(1-rs0))[w[i]]
+								osCr1 <- (1-(1-nrsCr1[1:w[i]])-(1-rsCr1))[w[i]]
+								osRel <- (1-(1-nrsRel[1:w[i]])-(1-rsRel))[w[i]]
+								return(c(none=os0, cr1=osCr1, rel=osRel, dCr1=osCr1-os0, dRel=osRel-os0, dCr1Rel=osCr1-osRel))
+							})
+					osCiMcQ <- apply(osCiMc,1,quantile, c(0.025,0.5,0.975))
+					return(cbind(hat = c(os[i], ), median = osCiMcQ[2,], lower = osCiMcQ[1,], upper = osCiMcQ[3,]))
+				}
+			}, mc.cores=mc.cores), I, simplify="array")
+	cat(os, "\n")
+	return(osCi)
+}

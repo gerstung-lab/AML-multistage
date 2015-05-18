@@ -412,6 +412,14 @@ legend('topright', bty='n', col=r,legend= 0:8, lty=1, title="# onc. mut.", ncol=
 plot(0:8,summary(s)$table[,"median"], xlab="Number of oncogenic mutations", ylab="Median survival time", pch=19, col=r)
 segments(0:8, summary(s)$table[,"0.95LCL"],0:8, sapply(summary(s)$table[,"0.95UCL"], function(x) ifelse(is.na(x), max(os[,1]), x)), col=r)
 
+#+ NONCs, fig.width=2.5, fig.height=2
+NONCs <- factor(ceiling(pmin(NONC,7)/2), labels=c("0","1-2","3-4","5-6","7+"))
+c <- set1[c(3,2,4,1,5)]
+f <- survfit(osYr ~ NONCs)
+s <- summary(f)
+plot(f, col=c, xlim=c(0,10),xlab="Years", ylab="Survival",mark="|", cex=.5)
+legend('topright', bty='n', col=c, legend=paste0(levels(NONCs)," (n=",table(NONCs),")"), lty=1)
+
 #' ### 1. Random effects: static model
 #+ coxRFXFitEfs, warning=FALSE, cache=TRUE
 ## Fit Cox model
@@ -762,7 +770,7 @@ for(l in c("coxRFXFitOs","coxRFXFitOsMain","coxRFXFitOsTDGGc")){
 		c <- cut(t[s,1][h$order], quantile(t[,1], seq(0,1,0.1), na.rm=TRUE))
 	if(l=="coxRFXFitOsTDGGc")
 		x <- x[,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical")]
-	mg14:::stars(x[s,][h$order,]/2, scale=FALSE, locations=locations, key.loc=c(0,-3), col.lines=rep(1,(nStars^2)), col.stars = (brewer.pal(11,'RdBu'))[c], density=ifelse(t[s,2][h$order],NA,24))
+	mg14:::stars(x[s,][h$order,]/2, scale=FALSE, locations=locations, key.loc=c(0,-3), col.lines=ifelse(t[s,2][h$order],1,NA), col.stars = (brewer.pal(11,'RdBu'))[c], density=ifelse(t[s,2][h$order],NA,NA))
 	symbols(locations[,1], locations[,2], circles=rep(.5,(nStars^2)), inches=FALSE, fg="grey", add=TRUE, lty=1)
 	title(main=l)
 }
@@ -3082,7 +3090,7 @@ w <- sort(unique(osData$index[which(quantileRiskOsCR==3 & clinicalData$M_Risk[os
 allDataTpl <- osData[rep(1:nrow(dataFrame), each=3),]
 allDataTpl$transplantCR1 <- rep(c(0,1,0), nrow(dataFrame))
 allDataTpl$transplantRel <- rep(c(0,0,1), nrow(dataFrame))
-allPredictTpl <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, allDataTpl, x=1000)
+allPredictTpl <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, allDataTpl, x=3*365)
 allPredictTpl <- as.data.frame(matrix(allPredictTpl$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse"))), row.names=rownames(dataFrame))
 survivalTpl <- data.frame(allPredictTpl, os=osYr, age=clinicalData$AOD, ELN=clinicalData$M_Risk, tercile=quantileRiskOsCR[1:nrow(allPredictTpl)])
 
@@ -3097,6 +3105,36 @@ arrows(survivalTpl$None, survivalTpl$Relapse,survivalTpl$None, survivalTpl$CR1, 
 abline(0,1)
 legend("bottomright", bty="n", pch=c(1,19),c("Relapse","CR1"), title="Allograft in")
 
+#+mortalityReduction, fig.width=6, fig.height=2.5
+set.seed(42)
+par(mar=c(3,3,1,3), las=2, mgp=c(2,.5,0), mfrow=c(1,2), bty="n")
+for(t in c("Relapse","CR1")){
+s <- TRUE#sample(1:1540,100)
+plot(1-allPredictTpl$None, allPredictTpl[[t]]-allPredictTpl$None, pch=NA, ylab="Mortality reduction from allograft", xlab="3yr mortality with standard chemo", col=riskCol[clinicalData$M_Risk], cex=.8, las=1, ylim=range(allPredictTpl$CR1-allPredictTpl$None))
+abline(h=seq(-.1,.3,.1), col='grey', lty=3)
+abline(v=seq(.2,.9,0.2), col='grey', lty=3)
+#segments(1-allPredictTplCi[1,2,s], allPredictTpl$CR1[s]-allPredictTpl$None[s],1-allPredictTplCi[1,3,s], allPredictTpl$CR1[s]-allPredictTpl$None[s], col="#DDDDDD")
+#segments(1-allPredictTpl$None[s], allPredictTplCi[4,2,s],1-allPredictTpl$None[s], allPredictTplCi[4,3,s], col="#DDDDDD")
+points(1-allPredictTpl$None[s], allPredictTpl[[t]][s]-allPredictTpl$None[s], pch=16,  col=riskCol[clinicalData$M_Risk[s]], cex=.8)
+#segments(1-allPredictTpl$None, allPredictTpl$CR1-allPredictTpl$None, 1-allPredictTpl$None,allPredictTpl$Relapse-allPredictTpl$None, col=colTrans(riskCol)[clinicalData$M_Risk])
+p <- grep("PD11104a|PD8314a",rownames(dataFrame))
+segments(1-allPredictTplCi[1,2,p], allPredictTpl[[t]][p]-allPredictTpl$None[p],1-allPredictTplCi[1,3,p], allPredictTpl[[t]][p]-allPredictTpl$None[p])
+i <- if(t=="CR1") 4 else 5
+segments(1-allPredictTpl$None[p], allPredictTplCi[i,2,p],1-allPredictTpl$None[p], allPredictTplCi[i,3,p])
+x <- seq(0,1,0.01)
+p <- predict(loess(y~x, data=data.frame(x=1-allPredictTpl$None, y=allPredictTpl[[t]]-allPredictTpl$None)), newdata=data.frame(x=x), se=TRUE)
+	y <- c(p$fit + 2*p$se.fit,rev(p$fit - 2*p$se.fit))
+	polygon(c(x, rev(x))[!is.na(y)],y[!is.na(y)], border=NA, col="#00000044", lwd=1)
+	lines(x,p$fit, col='black', lwd=2)
+legend("topleft", pch=c(16,16,16,16,NA),lty=c(NA,NA,NA,NA,1), col=c(riskCol[c(2,4,3,1)],1),fill=c(NA,NA,NA,NA,"grey"), border=NA, c(names(riskCol)[c(2,4,3,1)],"loess average"), box.lty=0)
+n <- c(100,50,20,10,5,4,3)
+axis(side=4, at=1/n, labels=n, las=1)
+mtext("Number needed to treat", side=4, at=.2, line=2, las=0)
+axis(side=4, at=-1/n, labels=n, las=1)
+mtext("Number needed to harm", side=4, at=-.1, line=2, las=0)
+}
+
+#+survivalTplBoxPlot
 par(mar=c(7,5,1,1))
 f <- factor(clinicalData$M_Risk, levels=levels(clinicalData$M_Risk)[c(2,4,3,1)])
 boxplot(allPredictTpl$CR1 - allPredictTpl$None ~ quantileRiskOsCR[1:1540]  + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL CR1 at 1000d")
@@ -3379,12 +3417,32 @@ sedimentPlot <- function(Y, x=1:nrow(Y), y0=0, y1=NULL, col=1:ncol(Y), ...){
 		polygon(c(x,rev(x)), c(Z[,i-1],rev(Z[,i])), border=NA, col=col[i-1])
 }
 
+lineStage <- function(CR_date, Recurrence_date, Date_LF, ERDate, Status, y=0, col=1:5, pch.trans=19, pch.end=19, ...){
+	xpd <- par("xpd")
+	par(xpd=NA) 
+	t <- as.numeric(c(CR_date, Recurrence_date, Date_LF) - ERDate )
+	w <- !is.na(t)
+	o <- order(t)
+	to <- pmin(t[o], par("usr")[2])
+	l <- length(to)
+	segments(c(0,to[-l]), rep(y,l), to, rep(y,l), col=col, lend=1, ...)
+	status <- if(Status == 1) 3 else 0
+	if(is.na(Recurrence_date))
+		status <- status - 1
+	if(is.na(CR_date))
+		status <- status - 1
+	x <- ifelse(t <= par("usr")[2], t, NA)
+	points(x, rep(y, length(t)), pch=c(pch.trans,pch.trans, if(Status) pch.end else NA), col=col[c(2:3,status+3)])
+	par(xpd=xpd)
+}
+
 #' Plot overview of first 100
 #+ fiveStagePredicted100, fig.width=8, fig.height=8
 par(mfrow=c(10,10), mar=c(0,0,0,0)+.4, cex=0)
 for(i in 1:100){
 	sedimentPlot(-fiveStagePredicted[,1:5,i], y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"), xlab="time",ylab="fraction")
 	lines(1-rowSums(fiveStagePredicted[,1:3,i]), lwd=2)
+	lineStage(clinicalData$CR_date[i], clinicalData$Recurrence_date[i], clinicalData$Date_LF[i], clinicalData$ERDate[i], clinicalData$Status[i], col=c(brewer.pal(8,"Dark2")[8], set1[c(4:5,1:3)]), lwd=2)
 }
 
 #+ fiveStagePredictedAvg, fig.width=3, fig.height=2.5
@@ -3408,8 +3466,10 @@ for(l in c("coxRFXFitOs","coxRFXFitOsMain","coxRFXFitOsTDGGc")){
 	layout(mat[nStars:1,])
 	par(mar=c(0,0,0,0),+.5, bty="n")
 	for(i in 1:nStars^2){
-		sedimentPlot(-fiveStagePredicted[seq(1,2001,200),1:5,s[h$order[i]]], y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"), xlab="time",ylab="fraction", xaxt="n", yaxt="n")
-		lines(1-rowSums(fiveStagePredicted[seq(1,2001,200),1:3,s[h$order[i]]]), lwd=2)
+		sedimentPlot(-fiveStagePredicted[seq(1,2001,200),1:5,s[h$order[i]]], x=seq(1,2001,200),y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"), xlab="time",ylab="fraction", xaxt="n", yaxt="n")
+		lines(x=seq(1,2001,200), y=1-rowSums(fiveStagePredicted[seq(1,2001,200),1:3,s[h$order[i]]]), lwd=2)
+		i <- s[h$order[i]]
+		lineStage(clinicalData$CR_date[i], clinicalData$Recurrence_date[i], clinicalData$Date_LF[i], clinicalData$ERDate[i], clinicalData$Status[i], col=c(brewer.pal(8,"Dark2")[8], set1[c(4:5,1:3)]), lwd=2, pch.trans=NA, y=0.05)
 	}
 }
 
@@ -3479,6 +3539,35 @@ abline(h=c, col=brewer.pal(3,"Set1")[1], lwd=2)
 #abline(h=c-cOs[,1]$std.err, col='red', lty=3)
 #abline(h=c+cOs[,1]$std.err, col='red', lty=3)
 legend("bottomright",c("RFX OS","RFX Multistage"), col=c(2,1), lty=1, bty="n")
+
+
+#+ fiveStageCVauc, fig.width=2.5, fig.height=2.5
+x <- seq(1,2000,10)
+cvFold <- 10
+aOs <- sapply(1:10, function(foo){
+			set.seed(foo)
+			cvIdx <- sample(1:nrow(dataFrame)%% 10 +1 ) ## sample 1/10
+			
+			osCV <- Reduce("c", mclapply(1:cvFold, function(i){
+								whichTrain <- which(cvIdx != i)
+								ix <- tplSplitOs %in% whichTrain
+								fit <- CoxRFX(dataFrameOsTD[ix,whichRFXOsTDGG], osTD[ix], groups[whichRFXOsTDGG], which.mu=mainGroups) ## allow only the main groups to have mean different from zero.. 
+								predict(fit, newdata=dataFrame[-whichTrain,])
+							}, mc.cores=cvFold))
+			
+			m <- sapply(1:cvFold, function(i) which(cvIdx==i))
+			o <- order(m)
+			c <- AUC.uno(os, os, osCV[o], x)
+		})
+
+a <- sapply(1:10, function(j) sapply(x, function(i) {w <- !is.na(fiveStageCV[,i,j]); c <- AUC.uno(os[w], os[w], fiveStageCV[w,i+1,j], i)$auc}), simplify='array')
+plot(x, rowMeans(a), type='l', xlab="Time", ylab="AUC")
+for(j in 1:10) lines(x, a[,j], col='grey')
+lines(x, rowMeans(a[,]), lwd=2)
+
+a <- as.data.frame(aOs[1,])
+lines(x, rowMeans(a), col="red", lwd=2)
+for(j in 1:10) lines(x, a[,j], col='#FBB4AE')
 
 #' Each event type
 #+ fiveStageCVeach, cache=TRUE
