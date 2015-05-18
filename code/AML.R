@@ -3242,7 +3242,7 @@ PredictOSTpl <- function(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, x =365, ci
 
 #+predictOsTplCi, cache=TRUE
 set.seed(42)
-d <- osData[rep(1:nrow(dataFrame), each=3),]
+d <- osData[1:nrow(dataFrame),]
 d$transplantCR1 <- 0
 d$transplantRel <- 0
 p <- grep("PD11104a|PD8314a|PD11080a",rownames(dataFrame))
@@ -3250,7 +3250,7 @@ predict3 <- PredictOSTpl(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data=d[p,colname
 dimnames(predict3)[[4]] <- rownames(dataFrame)[p]
 predict3
 set.seed(42)
-allPredictTplCi <- PredictOSTpl(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data=d[p,colnames(coxRFXNrmTD$Z)], x=3*365, nSim=1000) ## selected with 1000
+allPredictTplCi <- PredictOSTpl(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data=d[,colnames(coxRFXNrmTD$Z)], x=3*365, nSim=200) ## others with 200
 dimnames(allPredictTplCi)[[4]] <- rownames(dataFrame)
 
 #+mortalityReduction, fig.width=6, fig.height=2.5
