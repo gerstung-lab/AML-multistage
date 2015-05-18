@@ -3752,15 +3752,15 @@ survConcordance(Surv(cr[,1], cr[,2]==1) ~ fiveStageCVeach[[5]][order(names(fiveS
 
 
 #' With and wihout TPL
-#+ twoPatientsAllo, fig.width=3, fig.height=2.5
+#+ threePatientsAllo, fig.width=3, fig.height=2.5
 xmax=2000
-fiveStagePredictedTpl <- PredictOS5(coxRFXEsTD, coxRFXCrTD, coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, allDataTpl[grep("PD11104a|PD8314a", rownames(allDataTpl)),], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=xmax)
+fiveStagePredictedTpl <- PredictOS5(coxRFXEsTD, coxRFXCrTD, coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, allDataTpl[grep("PD11104a|PD8314a|PD11080a", rownames(allDataTpl)),], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=xmax)
 #par(mfrow=c(2,2))
 par(mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0)) 
 w <- seq(1,2001,10)
 at <- ceiling(1:5 * 365.5)
 x <- (w-1)/365.25
-for(i in c(2,3,5,6)){
+for(i in c(2,3,5,6,8,9)){
 	sedimentPlot(-fiveStagePredictedTpl[w,6:8,i],x=x, y0=1, y1=0,  col=pastel1[c(2:3,5,4)], xlab="Years from CR",ylab="Probability", xaxs='i', yaxs='i')
 	os <- 1-rowSums(fiveStagePredictedTpl[w,6:7,i])
 	abline(v=c(1:5), col="white", lty=3)
