@@ -3105,6 +3105,154 @@ arrows(survivalTpl$None, survivalTpl$Relapse,survivalTpl$None, survivalTpl$CR1, 
 abline(0,1)
 legend("bottomright", bty="n", pch=c(1,19),c("Relapse","CR1"), title="Allograft in")
 
+#' Function to predict OS from  CIR, PRS and NRM
+PredictOSTpl <- function(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data, x =365, ciType="simulated", nSim = 200, mc.cores=10){
+	## Step 1: Compute KM survival curves and log hazard
+	getS <- function(coxRFX, data, max.x=5000) {		
+		if(!is.null(coxRFX$na.action)) coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
+		data <- as.matrix(data[,match(colnames(coxRFX$Z),colnames(data))])
+		r <- PredictRiskMissing(coxRFX, data, var="var2")
+		H0 <- basehaz(coxRFX, centered = FALSE)
+		hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
+		x <- c(0:max.x,max.x)
+		S <- exp(-hazardDist(x))
+		return(list(S=S, r=r, x=x, hazardDist=hazardDist, r0 = coxRFX$means %*% coef(coxRFX)))
+	}
+	
+	data$transplantCR1 <- 0
+	data$transplantRel <- 0
+	
+	kmCir <- getS(coxRFX = coxRFXCirTD, data = data, max.x=max(x))
+	kmNrm <- getS(coxRFX = coxRFXNrmTD, data = data, max.x=max(x))
+	kmPrs <- getS(coxRFX = coxRFXPrsTD, data = data, max.x=max(x))
+	
+	survPredict <- function(surv){
+		s <- survfit(surv~1)
+		splinefun(s$time, s$surv, method="monoH.FC")
+	}
+	xx <- 0:max(x)
+	
+	# Baseline Prs (measured from relapse)
+	kmPrs0 <- survPredict(Surv(prsData$time2-prsData$time1, prsData$status))(xx) 
+	
+	# PRS baseline with spline-based dep on CR length)
+	coxphPrs <- coxph(Surv(time2-time1, status)~ pspline(time1, df=10), data=prsData) 
+	tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time1=xx[-1])))						
+	
+	stopifnot(length(x)==1 | length(x) == nrow(data))
+	if(length(x)==nrow(data))
+		w <- match(x,kmCir$x)
+	else if(length(x)==1)
+		w <- rep(match(x, kmCir$x), nrow(data))
+	
+	survival <- sapply(c("None","Rel","CR1"), function(type){
+				if(type=="None"){
+					data$transplantCR1 <- 0
+					data$transplantRel <- 0
+				}else if(type=="Rel"){
+					data$transplantCR1 <- 0
+					data$transplantRel <- 1					
+				}else if(type=="CR1"){
+					data$transplantCR1 <- 1
+					data$transplantRel <- 0
+				}
+				
+				
+				kmCir <- getS(coxRFX = coxRFXCirTD, data = data, max.x=max(x))
+				kmNrm <- getS(coxRFX = coxRFXNrmTD, data = data, max.x=max(x))
+				kmPrs <- getS(coxRFX = coxRFXPrsTD, data = data, max.x=max(x))
+				
+				## Step 2: Adjust CIR and NRM curve for competing risks, accounting for hazard
+				kmCir$Sadj <- sapply(1:nrow(data), function(i) cumsum(c(1,diff(kmCir$S^exp(kmCir$r[i,1]))) * kmNrm$S ^ exp(kmNrm$r[i,1])))
+				kmNrm$Sadj <- sapply(1:nrow(data), function(i) cumsum(c(1,diff(kmNrm$S^exp(kmNrm$r[i,1]))) * kmCir$S ^ exp(kmCir$r[i,1]))) ## array times x nrow(data)
+				
+				y <- mapply(function(i,j) kmNrm$Sadj[i,j], w,1:length(w) ) # select time for each sample
+				nrs <- y
+				nrsUp <- y^exp(2*sqrt(kmNrm$r[,2]))
+				nrsLo <- y^exp(- 2*sqrt(kmNrm$r[,2]))
+				
+				y <- mapply(function(i,j) kmCir$Sadj[i,j], w,1:length(w) ) # select time for each sample
+				cir <- y
+				cirLo <- y^exp( 2*sqrt(kmCir$r[,2]))
+				cirUp <- y^exp( - 2*sqrt(kmCir$r[,2]))
+				
+				## Step 3: Compute post-relapse survival
+				rs <- sapply(1:nrow(data), function(i){
+							### Different approach				
+							xLen <- 1+floor(x)
+							cir <- kmCir$Sadj[1:xLen,i]
+							rs <- computeTotalPrsC(x = xx, diffCir = diff(cir), prsP = kmPrs0, tdPrmBaseline = tdPrmBaseline, risk = kmPrs$r[i,1]-kmPrs$r0)
+							rs[xLen]
+						})
+				
+				## Step 4: Combine into overall survival
+				if(any(1-(1-rs)-(1-nrs)<0)) warning("OS < 0 occured.")	
+				os <- pmax(pmin(1-(1-rs)-(1-nrs),1),0)
+				cbind(os, rs, nrs, aar=rs-cir)
+			}, simplify='array')
+			
+	## Step 5: Confidence intervals for OS
+	osCi <- sapply(mclapply(1:nrow(data), function(i){
+						{
+							## Simulate CI
+							osCiMc <- sapply(1:nSim, function(foo){
+										r0 <- rnorm(3,c(kmCir$r[i,1],kmNrm$r[i,1],kmPrs$r[i,1]),sqrt(c(kmCir$r[i,2],kmNrm$r[i,2],kmPrs$r[i,2])))
+										H0 <- exp(r0)
+										nrs0 <- cumsum(c(1,diff(kmNrm$S^H0[2])) * kmCir$S^H0[1]) ## Correct KM estimate for competing risk
+										diffCir <- diff(c(1,kmCir$S^H0[1])) * kmNrm$S^H0[2] ## Correct KM estimate for competing risk			
+										cir0 <- 1+cumsum(diffCir)
+										rs0 <- computeTotalPrsC(x = xx, diffCir = diffCir, prsP = kmPrs0, tdPrmBaseline = tdPrmBaseline, risk = -kmPrs$r0+log(H0[3]))
+										aar0 <- rs0-cir0
+										
+										Hcr1 <- exp(r0 + rnorm(3,c(coxRFXCirTD$coefficients["transplantCR1"],coxRFXNrmTD$coefficients["transplantCR1"],coxRFXPrsTD$coefficients["transplantCR1"]), 
+														sqrt(c(coxRFXCirTD$var2["transplantCR1","transplantCR1"],coxRFXNrmTD$var2["transplantCR1","transplantCR1"],coxRFXPrsTD$var2["transplantCR1","transplantCR1"])))) 
+										nrsCr1 <- cumsum(c(1,diff(kmNrm$S^Hcr1[2])) * kmCir$S^Hcr1[1]) ## Correct KM estimate for competing risk
+										diffCir <- diff(c(1,kmCir$S^Hcr1[1])) * kmNrm$S^Hcr1[2] ## Correct KM estimate for competing risk	
+										cirCr1 <- 1+cumsum(diffCir)
+										rsCr1 <- computeTotalPrsC(x = xx, diffCir = diffCir, prsP = kmPrs0, tdPrmBaseline = tdPrmBaseline, risk = -kmPrs$r0+log(Hcr1[3]))
+										aarCr1 <- rsCr1-cirCr1
+										
+										
+										Hrel <- exp(r0 + rnorm(3,c(coxRFXCirTD$coefficients["transplantRel"],coxRFXNrmTD$coefficients["transplantRel"],coxRFXPrsTD$coefficients["transplantRel"]), 
+														sqrt(c(coxRFXCirTD$var2["transplantRel","transplantRel"],coxRFXNrmTD$var2["transplantRel","transplantRel"],coxRFXPrsTD$var2["transplantRel","transplantRel"])))) 
+										nrsRel <- cumsum(c(1,diff(kmNrm$S^Hrel[2])) * kmCir$S^Hrel[1]) ## Correct KM estimate for competing risk
+										diffCir <- diff(c(1,kmCir$S^Hrel[1])) * kmNrm$S^Hrel[2] ## Correct KM estimate for competing risk							
+										cirRel <- 1+cumsum(diffCir)
+										rsRel <- computeTotalPrsC(x = xx, diffCir = diffCir, prsP = kmPrs0, tdPrmBaseline = tdPrmBaseline, risk = -kmPrs$r0+log(Hrel[3]))
+										aarRel <- rsRel-cirRel
+										
+										
+										os0 <- (1-(1-nrs0[1:w[i]])-(1-rs0))[w[i]]
+										osCr1 <- (1-(1-nrsCr1[1:w[i]])-(1-rsCr1))[w[i]]
+										osRel <- (1-(1-nrsRel[1:w[i]])-(1-rsRel))[w[i]]
+										return(cbind(os=c(none=os0, cr1=osCr1, rel=osRel, dCr1=osCr1-os0, dRel=osRel-os0, dCr1Rel=osCr1-osRel),
+														rs=c(none=rs0[w[i]], cr1=rsCr1[w[i]], rel=rsRel[w[i]], dCr1=rsCr1[w[i]]-rs0[w[i]], dRel=rsRel[w[i]]-rs0[w[i]], dCr1Rel=rsCr1[w[i]]-rsRel[w[i]]),
+														nrs=c(none=nrs0[w[i]], cr1=nrsCr1[w[i]], rel=nrsRel[w[i]], dCr1=nrsCr1[w[i]]-nrs0[w[i]], dRel=nrsRel[w[i]]-nrs0[w[i]], dCr1Rel=nrsCr1[w[i]]-nrsRel[w[i]]),
+														aar=c(none=aar0[w[i]], cr1=aarCr1[w[i]], rel=aarRel[w[i]], dCr1=aarCr1[w[i]]-aar0[w[i]], dRel=aarRel[w[i]]-aar0[w[i]], dCr1Rel=aarCr1[w[i]]-aarRel[w[i]])))
+									}, simplify='array')
+							osCiMcQ <- apply(osCiMc,1:2,quantile, c(0.025,0.5,0.975))
+							return(sapply(c("os","rs","nrs","aar"), function(t) 
+												cbind(hat = c(survival[i,t,1], survival[i,t,3], survival[i,t,2], survival[i,t,3]-survival[i,t,1], survival[i,t,2]-survival[i,t,1], survival[i,t,3]-survival[i,t,2]), 
+														median = osCiMcQ[2,,t], lower = osCiMcQ[1,,t], upper = osCiMcQ[3,,t]), simplify="array"))
+						}
+					}, mc.cores=mc.cores), I, simplify="array")
+	#cat(os, "\n")
+	return(osCi)
+}
+
+#+predictOsTplCi, cache=TRUE
+set.seed(42)
+d <- osData[rep(1:nrow(dataFrame), each=3),]
+d$transplantCR1 <- 0
+d$transplantRel <- 0
+p <- grep("PD11104a|PD8314a|PD11080a",rownames(dataFrame))
+predict3 <- PredictOSTpl(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data=d[p,colnames(coxRFXNrmTD$Z)], x=3*365, nSim=1000) ## selected with 1000
+dimnames(predict3)[[4]] <- rownames(dataFrame)[p]
+predict3
+set.seed(42)
+allPredictTplCi <- PredictOSTpl(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, data=d[p,colnames(coxRFXNrmTD$Z)], x=3*365, nSim=1000) ## selected with 1000
+dimnames(allPredictTplCi)[[4]] <- rownames(dataFrame)
+
 #+mortalityReduction, fig.width=6, fig.height=2.5
 set.seed(42)
 par(mar=c(3,3,1,3), las=2, mgp=c(2,.5,0), mfrow=c(1,2), bty="n")
@@ -3117,10 +3265,9 @@ abline(v=seq(.2,.9,0.2), col='grey', lty=3)
 #segments(1-allPredictTpl$None[s], allPredictTplCi[4,2,s],1-allPredictTpl$None[s], allPredictTplCi[4,3,s], col="#DDDDDD")
 points(1-allPredictTpl$None[s], allPredictTpl[[t]][s]-allPredictTpl$None[s], pch=16,  col=riskCol[clinicalData$M_Risk[s]], cex=.8)
 #segments(1-allPredictTpl$None, allPredictTpl$CR1-allPredictTpl$None, 1-allPredictTpl$None,allPredictTpl$Relapse-allPredictTpl$None, col=colTrans(riskCol)[clinicalData$M_Risk])
-p <- grep("PD11104a|PD8314a",rownames(dataFrame))
-segments(1-allPredictTplCi[1,2,p], allPredictTpl[[t]][p]-allPredictTpl$None[p],1-allPredictTplCi[1,3,p], allPredictTpl[[t]][p]-allPredictTpl$None[p])
-i <- if(t=="CR1") 4 else 5
-segments(1-allPredictTpl$None[p], allPredictTplCi[i,2,p],1-allPredictTpl$None[p], allPredictTplCi[i,3,p])
+segments(1-allPredictTplCi["none","lower","os",p], allPredictTpl[[t]][p]-allPredictTpl$None[p],1-allPredictTplCi["none","upper","os",p], allPredictTpl[[t]][p]-allPredictTpl$None[p])
+i <- if(t=="CR1") "dCr1" else "dRel"
+segments(1-allPredictTpl$None[p], allPredictTplCi[i,"lower","os",p],1-allPredictTpl$None[p], allPredictTplCi[i,"lower","os",p])
 x <- seq(0,1,0.01)
 p <- predict(loess(y~x, data=data.frame(x=1-allPredictTpl$None, y=allPredictTpl[[t]]-allPredictTpl$None)), newdata=data.frame(x=x), se=TRUE)
 	y <- c(p$fit + 2*p$se.fit,rev(p$fit - 2*p$se.fit))
@@ -3541,7 +3688,7 @@ abline(h=c, col=brewer.pal(3,"Set1")[1], lwd=2)
 legend("bottomright",c("RFX OS","RFX Multistage"), col=c(2,1), lty=1, bty="n")
 
 
-#+ fiveStageCVauc, fig.width=2.5, fig.height=2.5
+#+ fiveStageCVauc, cache=TRUE, fig.width=2.5, fig.height=2.5
 x <- seq(1,2000,10)
 cvFold <- 10
 aOs <- sapply(1:10, function(foo){
