@@ -99,11 +99,13 @@ my_png <-  function(file, width, height, pointsize=12, ...) {
 }
 #opts_knit$set(root.dir = file.path(getwd(),".."))
 
+#' ### Libraries
 #' Load a few libraries - see end of document for a full list of libraries and their versions.
 library(CoxHD)
 library(mg14)
 set1 <- brewer.pal(8, "Set1")
 
+#' ### Rawl data
 #' Load clinical data
 #+ clinicalData, cache=TRUE
 clinicalData <- read.table("../../data/Ulm1.17_MG_Clinical.txt", sep="\t", header=TRUE, na.strings = "na", comment.char = "", quote="\"")
@@ -136,7 +138,7 @@ dim(mutationTable)
 
 all(rownames(mutationTable)==clinicalData$PDID)
 
-#' Survival data
+#' ### Survival data
 #+ survival, cache=TRUE
 os <- Surv(clinicalData$OS, clinicalData$Status) #OS
 t <- clinicalData$Time_Diag_TPL
@@ -157,7 +159,7 @@ osYr[,1] <- osYr[,1]/365
 osYrTD <- osTD
 osYrTD[,1] <- osYrTD[,1]/365
 
-
+#' ### Covariates
 #' All data as list
 dataList <-list(Genetics = data.frame(mutationTable[,colSums(mutationTable)>0]),
 		Cytogenetics = clinicalData[,grep("^(t_)|(inv)|(abn)|(plus)|(minus)|(mono)|(complex)",colnames(clinicalData))],
@@ -494,10 +496,11 @@ for(n in names(clinicalSpline)) if(!all(dataFrame[1:5,n] %in% 0:10))
 
 summary(coxph(os ~ ., data=clinicalSpline, subset=!trainIdx))$concordance
 summary(coxph(os ~ ., data=dataFrame[groups %in% c("Clinical","Demographics")]), subset=!trainIdx)$concordance
+
 #' No measurable improvement over (scaled) linear terms thus. 
-
+#' 
 #' ### Random effects models
-
+ 
 #+ coxRFXFitOsTDMain, cache=TRUE
 coxRFXFitOsTDMain <- CoxRFX(dataFrameOsTD[,mainIdxOsTD], osTD, groups[mainIdxOsTD])
 
@@ -1125,7 +1128,6 @@ allModelsTrialTdC <- sapply(names(allModelsTrialTD), function(foo){
 allModelsTrialTdC
 
 #' ### TCGA validation
-#' ------------------
 #' 
 #' #### Fit models
 #' Tree
@@ -1671,7 +1673,46 @@ legend("bottomright",
 #' 
 
 #' ## Code
-#' ### Prelim
+#' 
+#' ### Static multistage model
+#' #### Figure 3b 
+#' Multi-state using msSurv
+#+ mstate, fig.width=3,fig.height=2.5
+library(msSurv)
+d <- sapply(1:nrow(clinicalData), function(i){
+			i <<- i
+			t <- c(as.numeric(clinicalData[i,c("CR_date","Recurrence_date","Date_LF")]) - as.numeric(clinicalData$ERDate[i]))
+			o <- order(t, na.last=NA)
+			stages <- c(1:3,0)
+			r <- stages[c(1, o+1)]
+			if(clinicalData$Status[i])
+				r[length(r)] <- r[length(r)-1] +3
+			tt <- c(0,t[o])
+			if(length(o)==0)
+				return(c(rep(NA,7),i))
+			s <- cbind(id=i, stop=tt[-1], start.stage=r[-length(r)], end.stage=r[-1])[diff(tt)!=0,]
+			#s <- cbind(time1 = tt[-length(tt)], time2=tt[-1], death=c(rep(0, length(o)-1), clinicalData$Status[i]), outer(0:(length(o)-1), r[-3], `>=`)+0, i=i)[diff(tt)!=0,]
+			return(s)
+		})
+d <- as.data.frame(do.call("rbind",d))
+nodes <- as.character(1:6)
+edges <- list(`1`=list(edges=c("2","4")), `2`=list(edges=c("3","5")), `3`=list(edges="6"), `4`=list(edges=NULL), `5`=list(edges=NULL),`6`=list(edges=NULL))
+struct <-  new("graphNEL", nodes = nodes, edgeL = edges, edgemode = "directed")
+msurv <- msSurv(d, struct, bs = FALSE)
+y <- t(apply(cbind(1,-msurv@ps[,c(4:6, 3:1)]),1,cumsum))
+par(mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0), las=1) 
+plot(msurv@et/365.25, y[,1], ylim=c(0,1), type="s",lty=0, xlab="Time after diagnosis", ylab="Fraction of patients", xlim=c(0,10), xaxs="i", yaxs="i")
+steps <- function(x, type="s") rep(x, each=2)[if(type=="s") -1 else -2*length(x)]
+x <- steps(msurv@et/365.25, type="S")
+for(i in 1:6)
+	polygon(c(x, rev(x)), c(steps(y[,i]), rev(steps(y[,i+1])) ), col=c(brewer.pal(5,"Pastel1")[c(1:3,5,4)],"#DDDDDD")[i], border=NA)
+abline(h=seq(0,1,.2), col='white', lty=3)
+abline(v=seq(0,10,1), col='white', lty=3)
+lines(x, steps(y[,4]), lwd=2)
+w <- which.min(abs(msurv@et/365.25-10))
+text(x=par("usr")[2], y= y[w,-7]+diff(y[w,])/2, labels=c("early death","death in CR","death after relapse","alive with relapse","alive in remission","induction/LOF"), pos=2)
+
+#' ### Prepare covariates
 #' Times for allografts pre and post relapse, after 1CR only
 #+ alloIdx
 alloIdx <- clinicalData$TPL_type %in% c("ALLO","FREMD") # only allografts
@@ -1702,7 +1743,7 @@ prdData$event <- NULL
 w <- which(prdData$time1 == prdData$time2) ## 5 cases with LF=Rec
 prdData$time2[w] <- prdData$time2[w] + .5
 
-#' ### Fit models
+#' ### RFX fit of transitions
 #+ postCR1Fits, cache=TRUE
 crGroups <- c(as.character(groups[whichRFXRel]), "Treatment","Treatment")
 names(crGroups) <- c(names(dataFrame)[whichRFXRel],"transplantCR1","transplantRel")
@@ -1743,7 +1784,7 @@ coxRFXNcdTD <- CoxRFX(osData[1:1540, names(crGroups)], Surv(cr[,1], cr[,2]==1), 
 #save(coxRFXRelTD, coxRFXNrdTD, coxRFXPrdTD, coxRFXOsCR, coxRFXEsTD, coxRFXCrTD, cr, nrmData, cirData, prsData, osData, crGroups, data, file="../../code/predict/predictTest.RData")
 
 
-#' ### Prediction of OS and Cross-validation
+#' ### Predicting outcome after CR
 #' Function to convolute CIR and PRM
 library(Rcpp)
 cppFunction('NumericVector computeTotalPrsC(NumericVector x, NumericVector diffCir, NumericVector prsP, NumericVector tdPrmBaseline, double risk) {
@@ -1857,7 +1898,94 @@ allData$transplantRel[!allData$index %in% w] <- 0
 
 allPredict <-  PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, allData, 3*365)
 
-#' ### Further evaluations 
+
+#' ### Variance components
+#+ allVarComp, fig.width=6, fig.height=4
+par(mfrow=c(3,2), xpd=FALSE)
+o <- c(1,4,6,5,2,3,7,8)
+PlotVarianceComponents(coxRFXNcdTD, col=colGroups, order=o)
+title(main="Early deaths")
+PlotVarianceComponents(coxRFXCrTD, col=colGroups, order=o)
+title(main="Remission")
+PlotVarianceComponents(coxRFXRelTD, col=colGroups, order=o)
+title(main="Relapse")
+PlotVarianceComponents(coxRFXNrdTD, col=colGroups, order=o)
+title(main="Non-relapse deaths")
+PlotVarianceComponents(coxRFXPrdTD, col=colGroups, order=o)
+title(main="Post-relapse deaths")
+
+#' #### Figure 3c
+#' As barplot
+#+ allVarCompBar, fig.width=2, fig.height=2
+par(mar=c(4,3,1,5))
+allVarComp <- sapply(c("NcdTD","CrTD","NrdTD","RelTD","PrdTD"), function(x){
+			m <- get(paste0("coxRFX",x))
+			Z <- get(sub("\\[.+","",as.character(m$call["data"])))
+			i <- if(x%in%c("CrTD","EsTD")) 1:1540 else Z$index
+			VarianceComponents(m, newZ=Z[!rev(duplicated(rev(i))),colnames(m$Z)])})
+colnames(allVarComp) <- c("Early deaths","Remission","Non-relapse d.","Relapse","Post-relapse d.")
+w <- c("CNA","Fusions","Genetics","GeneGene","Clinical","Demographics","Treatment","Nuisance")
+z <- allVarComp[w,]#/rep(colSums(allVarComp[-9,]), each=8)
+b <- barplot(z, col=colGroups[w], ylab="Variance [log hazard]", names.arg=rep("",ncol(z)))
+rotatedLabel(x0=b, labels=colnames(z))
+Z <- rbind(0,apply(z,2,cumsum))
+n <- ncol(z)
+segments(b[-n]+.5,t(Z[,-n]),b[-1]-.5 ,t(Z[,-1]))
+
+z <- allVarComp[w,]/rep(colSums(allVarComp[-9,]), each=8)
+b <- barplot(z, col=colGroups[w], ylab="Relative importance", names.arg=rep("",ncol(z)))
+rotatedLabel(x0=b, labels=colnames(z))
+Z <- rbind(0,apply(z,2,cumsum))
+n <- ncol(z)
+segments(b[-n]+.5,t(Z[,-n]),b[-1]-.5 ,t(Z[,-1]))
+mtext(side=4, at=Z[-1,n] - diff(Z[,n])/2, text=rownames(Z)[-1], las=2)
+
+v <- c(1,3,5,4,2)
+z <- allVarComp[w,v]/rep(colSums(allVarComp[-9,v]), each=8)
+b <- barplot(z, col=colGroups[w], ylab="Relative importance", names.arg=rep("",ncol(z)))
+rotatedLabel(x0=b, labels=colnames(z))
+Z <- rbind(0,apply(z,2,cumsum))
+n <- ncol(z)
+segments(b[-n]+.5,t(Z[,-n]),b[-1]-.5 ,t(Z[,-1]))
+mtext(side=4, at=Z[-1,n] - diff(Z[,n])/2, text=rownames(Z)[-1], las=2)
+
+
+#' Risk
+#+ allStagesRisk, fig.width=4,fig.height=4
+allStagesRisk <- as.data.frame(sapply(c("NcdTD","CrTD","NrdTD","RelTD","PrdTD"), function(x){
+					m <- get(paste0("coxRFX",x))
+					#Z <- get(sub("\\[.+","",as.character(m$call["data"])))
+					#i <- if(x=="Cr") 1:1540 else Z$index
+					Z <- if(x=="Cr") dataFrame else data[rownames(dataFrame),]
+					predict(m, newdata=as.data.frame(Z))}))
+f <- function(x,y,...) {points(x,y, col=densCols(x,y),...); lines(lowess(x,y), col='red')}
+pairs(allStagesRisk, panel=f, pch=19)
+
+#' #### Significant terms (BH < 0.1)
+#' Non-complete remission deaths
+w <- WaldTest(coxRFXNcdTD); w[p.adjust(w$p.value, "BH")<.1,]
+#' Complete remission
+w <- WaldTest(coxRFXCrTD); w[p.adjust(w$p.value, "BH")<.1,]
+#' Relapses
+w <- WaldTest(coxRFXRelTD); w[p.adjust(w$p.value, "BH")<.1,]
+#' Post-relapse survival
+w <- WaldTest(coxRFXPrdTD); w[p.adjust(w$p.value, "BH")<.1,]
+#' Non-relapse deaths
+w <- WaldTest(coxRFXNrdTD); w[p.adjust(w$p.value, "BH")<.1,]
+
+
+#' #### Predicting OS from enrollment (static)
+#' Note that the inclusion of transplants is somewhat problematic
+pPostCr <- sapply(1:nrow(allPredictTpl), function(i) allPredictTpl[i,3 - data[i,"transplantCR1"] ])
+pPreCr <- summary(survfit(coxRFXCrTD), time=100)$surv ^ exp(predict(coxRFXCrTD, newdata=data))
+pOS <- summary(survfit(coxRFXFitOsTDGGc), time=1000)$surv ^exp(predict(coxRFXFitOsTDGGc,newdata=dataFrame[whichRFXOsTDGG]))
+
+plot(pOS, pPostCr*pPreCr)
+
+survConcordance(os ~ I(-pOS))
+survConcordance(os ~ I(-pPostCr*pPreCr))
+
+#' ### Model assessment
 #' #### Random cross-validation
 #+concordanceCIRcv, cache=TRUE
 replicates <- 100 ## number of replicates
@@ -2038,7 +2166,7 @@ c <- coxph(Surv(time1,time2,status)~ transplantRel*AOD_10, data=prdData)
 print(c)
 anova(c)
 
-#' ### Absolute survival probabilities
+#' #### Absolute survival probabilities
 #' This function computes the average accuracy of multiple absolute survival predictions at a given point in time by subdividing them
 #' into equally sized bins and computing the weighted average absolute difference of the KM estimated survival probability and predicted.
 #+ absError
@@ -2119,7 +2247,7 @@ boxplot(t(absoluteErrorsCIRcv[[2]][,1,]), main="Training")
 summary(t(absoluteErrorsCIRcv[[2]][,2,]))
 boxplot(t(absoluteErrorsCIRcv[[2]][,2,]), main="Test")
 
-#' ### Sources of mortality
+#' #### Sources of mortality
 riskCol=set1[c(1,3,4,2)]
 names(riskCol) <- levels(clinicalData$M_Risk)
 
@@ -2261,7 +2389,7 @@ symbols(g[,1], g[,2], circles=rep(1,12), inches=FALSE, add=TRUE)
 text(1, 0:3*3, names(riskCol[c(2,4,3,1)]), pos=2)
 text(1:3*3, 11, c("Best","Intermediate","Worst"), pos=3)
 
-#' ### Predictions with different TPLs
+#' ### Allografts
 #+survivalTpl, cache=TRUE
 w <- sort(unique(osData$index[which(quantileRiskOsCR==3 & clinicalData$M_Risk[osData$index]=="Favorable")]))
 allDataTpl <- osData[rep(1:nrow(dataFrame), each=3),]
@@ -2430,27 +2558,25 @@ set.seed(42)
 allPredictTplCi <- PredictOSTpl(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=200) ## others with 200
 dimnames(allPredictTplCi)[[4]] <- rownames(dataFrame)
 
-#+mortalityReduction, fig.width=6, fig.height=2.5
+#+mortalityReduction, fig.width=6, fig.height=3
 set.seed(42)
 par(mar=c(3,3,1,3), las=2, mgp=c(2,.5,0), mfrow=c(1,2), bty="n")
 patients <- grep("PD11104a|PD8314a",rownames(dataFrame))
-for(t in c("Relapse","CR1")){
+for(t in c("dCr1","dRel","dCr1Rel")){
 	s <- TRUE#sample(1:1540,100)
-	plot(1-allPredictTpl$None, allPredictTpl[[t]]-allPredictTpl$None, pch=NA, ylab="Mortality reduction from allograft", xlab="3yr mortality with standard chemo", col=riskCol[clinicalData$M_Risk], cex=.8, las=1, ylim=range(allPredictTpl$CR1-allPredictTpl$None))
+	x <- 1-allPredictTplCi["none","hat","os",]
+	y <- allPredictTplCi[t,"hat","os",]
+	plot(x[s], y[s], pch=NA, ylab="Mortality reduction from allograft", xlab="3yr mortality with standard chemo", col=riskCol[clinicalData$M_Risk], cex=.8, las=1, ylim=range(allPredictTpl$CR1-allPredictTpl$None))
 	abline(h=seq(-.1,.3,.1), col='grey', lty=3)
 	abline(v=seq(.2,.9,0.2), col='grey', lty=3)
-#segments(1-allPredictTplCi[1,2,s], allPredictTpl$CR1[s]-allPredictTpl$None[s],1-allPredictTplCi[1,3,s], allPredictTpl$CR1[s]-allPredictTpl$None[s], col="#DDDDDD")
-#segments(1-allPredictTpl$None[s], allPredictTplCi[4,2,s],1-allPredictTpl$None[s], allPredictTplCi[4,3,s], col="#DDDDDD")
-	points(1-allPredictTpl$None[s], allPredictTpl[[t]][s]-allPredictTpl$None[s], pch=16,  col=riskCol[clinicalData$M_Risk[s]], cex=.8)
-#segments(1-allPredictTpl$None, allPredictTpl$CR1-allPredictTpl$None, 1-allPredictTpl$None,allPredictTpl$Relapse-allPredictTpl$None, col=colTrans(riskCol)[clinicalData$M_Risk])
-	segments(1-allPredictTplCi["none","lower","os",patients], allPredictTpl[[t]][patients]-allPredictTpl$None[patients],1-allPredictTplCi["none","upper","os",patients], allPredictTpl[[t]][patients]-allPredictTpl$None[patients])
-	i <- if(t=="CR1") "dCr1" else "dRel"
-	segments(1-allPredictTpl$None[patients], allPredictTplCi[i,"lower","os",patients],1-allPredictTpl$None[patients], allPredictTplCi[i,"lower","os",patients])
-	x <- seq(0,1,0.01)
-	p <- predict(loess(y~x, data=data.frame(x=1-allPredictTpl$None, y=allPredictTpl[[t]]-allPredictTpl$None)), newdata=data.frame(x=x), se=TRUE)
-	y <- c(p$fit + 2*p$se.fit,rev(p$fit - 2*p$se.fit))
-	polygon(c(x, rev(x))[!is.na(y)],y[!is.na(y)], border=NA, col="#00000044", lwd=1)
-	lines(x,p$fit, col='black', lwd=2)
+	points(x[s], y[s], pch=ifelse(clinicalData$AOD[s]>60, 1, 16),  col=riskCol[clinicalData$M_Risk[s]], cex=.8)
+	segments(1-allPredictTplCi["none","lower","os",patients], y[patients],1-allPredictTplCi["none","upper","os",patients],y[patients])
+	segments(x[patients], allPredictTplCi[t,"lower","os",patients],x[patients], allPredictTplCi[t,"upper","os",patients])
+	xn <- seq(0,1,0.01)
+	p <- predict(loess(y~x, data=data.frame(x=x, y=y)), newdata=data.frame(x=xn), se=TRUE)
+	yn <- c(p$fit + 2*p$se.fit,rev(p$fit - 2*p$se.fit))
+	polygon(c(xn, rev(xn))[!is.na(yn)],yn[!is.na(yn)], border=NA, col="#00000044", lwd=1)
+	lines(xn,p$fit, col='black', lwd=2)
 	legend("topleft", pch=c(16,16,16,16,NA),lty=c(NA,NA,NA,NA,1), col=c(riskCol[c(2,4,3,1)],1),fill=c(NA,NA,NA,NA,"grey"), border=NA, c(names(riskCol)[c(2,4,3,1)],"loess average"), box.lty=0)
 	n <- c(100,50,20,10,5,4,3)
 	axis(side=4, at=1/n, labels=n, las=1)
@@ -2531,136 +2657,9 @@ symbols(l[,1],l[,2], circles=rep(0.5, nrow(l)), inches=FALSE,add=TRUE, fg='light
 par(mar=c(2,2,0,2))
 barplot(matrix(diff(quantile(relData$time2[m], na.rm=T, seq(0,1,0.1))), ncol=1)/365.25, col=brewer.pal(11,"RdBu")[-6], horiz=TRUE, border=NA, xlim=c(0,20))
 
-#' Five plots comparing different intervals
-#+ allVarComp, fig.width=6, fig.height=4
-par(mfrow=c(3,2), xpd=FALSE)
-o <- c(1,4,6,5,2,3,7,8)
-PlotVarianceComponents(coxRFXNcdTD, col=colGroups, order=o)
-title(main="Early deaths")
-PlotVarianceComponents(coxRFXCrTD, col=colGroups, order=o)
-title(main="Remission")
-PlotVarianceComponents(coxRFXRelTD, col=colGroups, order=o)
-title(main="Relapse")
-PlotVarianceComponents(coxRFXNrdTD, col=colGroups, order=o)
-title(main="Non-relapse deaths")
-PlotVarianceComponents(coxRFXPrdTD, col=colGroups, order=o)
-title(main="Post-relapse deaths")
 
-#' Figure 3c
-#' As barplot
-#+ allVarCompBar, fig.width=2, fig.height=2
-par(mar=c(4,3,1,5))
-allVarComp <- sapply(c("NcdTD","CrTD","NrdTD","RelTD","PrdTD"), function(x){
-			m <- get(paste0("coxRFX",x))
-			Z <- get(sub("\\[.+","",as.character(m$call["data"])))
-			i <- if(x%in%c("CrTD","EsTD")) 1:1540 else Z$index
-			VarianceComponents(m, newZ=Z[!rev(duplicated(rev(i))),colnames(m$Z)])})
-colnames(allVarComp) <- c("Early deaths","Remission","Non-relapse d.","Relapse","Post-relapse d.")
-w <- c("CNA","Fusions","Genetics","GeneGene","Clinical","Demographics","Treatment","Nuisance")
-z <- allVarComp[w,]#/rep(colSums(allVarComp[-9,]), each=8)
-b <- barplot(z, col=colGroups[w], ylab="Variance [log hazard]", names.arg=rep("",ncol(z)))
-rotatedLabel(x0=b, labels=colnames(z))
-Z <- rbind(0,apply(z,2,cumsum))
-n <- ncol(z)
-segments(b[-n]+.5,t(Z[,-n]),b[-1]-.5 ,t(Z[,-1]))
-
-z <- allVarComp[w,]/rep(colSums(allVarComp[-9,]), each=8)
-b <- barplot(z, col=colGroups[w], ylab="Relative importance", names.arg=rep("",ncol(z)))
-rotatedLabel(x0=b, labels=colnames(z))
-Z <- rbind(0,apply(z,2,cumsum))
-n <- ncol(z)
-segments(b[-n]+.5,t(Z[,-n]),b[-1]-.5 ,t(Z[,-1]))
-mtext(side=4, at=Z[-1,n] - diff(Z[,n])/2, text=rownames(Z)[-1], las=2)
-
-v <- c(1,3,5,4,2)
-z <- allVarComp[w,v]/rep(colSums(allVarComp[-9,v]), each=8)
-b <- barplot(z, col=colGroups[w], ylab="Relative importance", names.arg=rep("",ncol(z)))
-rotatedLabel(x0=b, labels=colnames(z))
-Z <- rbind(0,apply(z,2,cumsum))
-n <- ncol(z)
-segments(b[-n]+.5,t(Z[,-n]),b[-1]-.5 ,t(Z[,-1]))
-mtext(side=4, at=Z[-1,n] - diff(Z[,n])/2, text=rownames(Z)[-1], las=2)
-
-
-#x <- seq(0,par("usr")[4],l=100)
-#y <- CoxHD:::ConcordanceFromVariance(x)
-#s <- spline(y,x,xout=pretty(y))
-#axis(side=4, at=s$y[s$y < par("usr")[4]], labels=s$x[s$y<par("usr")[4]])
-#mtext(side=4, "Concordance")
-
-#' Risk
-#+ allStagesRisk, fig.width=4,fig.height=4
-allStagesRisk <- as.data.frame(sapply(c("NcdTD","CrTD","NrdTD","RelTD","PrdTD"), function(x){
-					m <- get(paste0("coxRFX",x))
-					#Z <- get(sub("\\[.+","",as.character(m$call["data"])))
-					#i <- if(x=="Cr") 1:1540 else Z$index
-					Z <- if(x=="Cr") dataFrame else data[rownames(dataFrame),]
-					predict(m, newdata=as.data.frame(Z))}))
-f <- function(x,y,...) {points(x,y, col=densCols(x,y),...); lines(lowess(x,y), col='red')}
-pairs(allStagesRisk, panel=f, pch=19)
-
-#' #### Significant terms (BH < 0.1)
-#' Non-complete remission deaths
-w <- WaldTest(coxRFXNcdTD); w[p.adjust(w$p.value, "BH")<.1,]
-#' Complete remission
-w <- WaldTest(coxRFXCrTD); w[p.adjust(w$p.value, "BH")<.1,]
-#' Relapses
-w <- WaldTest(coxRFXRelTD); w[p.adjust(w$p.value, "BH")<.1,]
-#' Post-relapse survival
-w <- WaldTest(coxRFXPrdTD); w[p.adjust(w$p.value, "BH")<.1,]
-#' Non-relapse deaths
-w <- WaldTest(coxRFXNrdTD); w[p.adjust(w$p.value, "BH")<.1,]
-
-
-#' #### Predicting OS from enrollment (static)
-#' Note that the inclusion of transplants is somewhat problematic
-pPostCr <- sapply(1:nrow(allPredictTpl), function(i) allPredictTpl[i,3 - data[i,"transplantCR1"] ])
-pPreCr <- summary(survfit(coxRFXCrTD), time=100)$surv ^ exp(predict(coxRFXCrTD, newdata=data))
-pOS <- summary(survfit(coxRFXFitOsTDGGc), time=1000)$surv ^exp(predict(coxRFXFitOsTDGGc,newdata=dataFrame[whichRFXOsTDGG]))
-
-plot(pOS, pPostCr*pPreCr)
-
-survConcordance(os ~ I(-pOS))
-survConcordance(os ~ I(-pPostCr*pPreCr))
-
-#' #### Figure 3b 
-#' Multi-state using msSurv
-#+ mstate, fig.width=3,fig.height=2.5
-library(msSurv)
-d <- sapply(1:nrow(clinicalData), function(i){
-			i <<- i
-			t <- c(as.numeric(clinicalData[i,c("CR_date","Recurrence_date","Date_LF")]) - as.numeric(clinicalData$ERDate[i]))
-			o <- order(t, na.last=NA)
-			stages <- c(1:3,0)
-			r <- stages[c(1, o+1)]
-			if(clinicalData$Status[i])
-				r[length(r)] <- r[length(r)-1] +3
-			tt <- c(0,t[o])
-			if(length(o)==0)
-				return(c(rep(NA,7),i))
-			s <- cbind(id=i, stop=tt[-1], start.stage=r[-length(r)], end.stage=r[-1])[diff(tt)!=0,]
-			#s <- cbind(time1 = tt[-length(tt)], time2=tt[-1], death=c(rep(0, length(o)-1), clinicalData$Status[i]), outer(0:(length(o)-1), r[-3], `>=`)+0, i=i)[diff(tt)!=0,]
-			return(s)
-		})
-d <- as.data.frame(do.call("rbind",d))
-nodes <- as.character(1:6)
-edges <- list(`1`=list(edges=c("2","4")), `2`=list(edges=c("3","5")), `3`=list(edges="6"), `4`=list(edges=NULL), `5`=list(edges=NULL),`6`=list(edges=NULL))
-struct <-  new("graphNEL", nodes = nodes, edgeL = edges, edgemode = "directed")
-msurv <- msSurv(d, struct, bs = FALSE)
-y <- t(apply(cbind(1,-msurv@ps[,c(4:6, 3:1)]),1,cumsum))
-par(mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0), las=1) 
-plot(msurv@et/365.25, y[,1], ylim=c(0,1), type="s",lty=0, xlab="Time after diagnosis", ylab="Fraction of patients", xlim=c(0,10), xaxs="i", yaxs="i")
-steps <- function(x, type="s") rep(x, each=2)[if(type=="s") -1 else -2*length(x)]
-x <- steps(msurv@et/365.25, type="S")
-for(i in 1:6)
-	polygon(c(x, rev(x)), c(steps(y[,i]), rev(steps(y[,i+1])) ), col=c(brewer.pal(5,"Pastel1")[c(1:3,5,4)],"#DDDDDD")[i], border=NA)
-abline(h=seq(0,1,.2), col='white', lty=3)
-abline(v=seq(0,10,1), col='white', lty=3)
-lines(x, steps(y[,4]), lwd=2)
-w <- which.min(abs(msurv@et/365.25-10))
-text(x=par("usr")[2], y= y[w,-7]+diff(y[w,])/2, labels=c("early death","death in CR","death after relapse","alive with relapse","alive in remission","induction/LOF"), pos=2)
-
-#' #### 5 state hierarchical RFX model 
+#' ### Predicting outcome from diagnosis
+#' The following function fits a 5-stage model
 PredictOS5 <- function(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, tdPrmBaseline = rep(1, ceiling(max(x))+1), tdOsBaseline = rep(1, ceiling(max(x))+1), ciType="analytical"){
 	cppFunction('NumericVector computeHierarchicalSurvival(NumericVector x, NumericVector diffS0, NumericVector S1Static, NumericVector haz1TimeDep) {
 					int xLen = x.size();
