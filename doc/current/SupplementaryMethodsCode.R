@@ -3,6 +3,7 @@
 #' output:
 #'   html_document:
 #'     toc: true
+#'     toc-depth: 4
 #'     number_sections: true
 #'     auto_identifiers: true
 #'     table_captions: true
