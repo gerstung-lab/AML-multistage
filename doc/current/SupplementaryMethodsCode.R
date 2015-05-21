@@ -1783,6 +1783,80 @@ coxRFXNcdTD <- CoxRFX(osData[1:1540, names(crGroups)], Surv(cr[,1], cr[,2]==1), 
 #save(coxRFXRelTD, coxRFXNrdTD, coxRFXPrdTD, coxRFXOsCR, coxRFXEsTD, nrmData, cirData, prsData, osData, crGroups, data, file="../../code/predict/predictGG.RData")
 #save(coxRFXRelTD, coxRFXNrdTD, coxRFXPrdTD, coxRFXOsCR, coxRFXEsTD, coxRFXCrTD, cr, nrmData, cirData, prsData, osData, crGroups, data, file="../../code/predict/predictTest.RData")
 
+#' ### Variance components
+#+ allVarComp, fig.width=6, fig.height=4
+par(mfrow=c(3,2), xpd=FALSE)
+o <- c(1,4,6,5,2,3,7,8)
+PlotVarianceComponents(coxRFXNcdTD, col=colGroups, order=o)
+title(main="Early deaths")
+PlotVarianceComponents(coxRFXCrTD, col=colGroups, order=o)
+title(main="Remission")
+PlotVarianceComponents(coxRFXRelTD, col=colGroups, order=o)
+title(main="Relapse")
+PlotVarianceComponents(coxRFXNrdTD, col=colGroups, order=o)
+title(main="Non-relapse deaths")
+PlotVarianceComponents(coxRFXPrdTD, col=colGroups, order=o)
+title(main="Post-relapse deaths")
+
+#' #### Figure 3c
+#' As barplot
+#+ allVarCompBar, fig.width=2, fig.height=2
+par(mar=c(4,3,1,5))
+allVarComp <- sapply(c("NcdTD","CrTD","NrdTD","RelTD","PrdTD"), function(x){
+			m <- get(paste0("coxRFX",x))
+			Z <- get(sub("\\[.+","",as.character(m$call["data"])))
+			i <- if(x%in%c("CrTD","EsTD")) 1:1540 else Z$index
+			VarianceComponents(m, newZ=Z[!rev(duplicated(rev(i))),colnames(m$Z)])})
+colnames(allVarComp) <- c("Early deaths","Remission","Non-relapse d.","Relapse","Post-relapse d.")
+w <- c("CNA","Fusions","Genetics","GeneGene","Clinical","Demographics","Treatment","Nuisance")
+z <- allVarComp[w,]#/rep(colSums(allVarComp[-9,]), each=8)
+b <- barplot(z, col=colGroups[w], ylab="Variance [log hazard]", names.arg=rep("",ncol(z)))
+rotatedLabel(x0=b, labels=colnames(z))
+Z <- rbind(0,apply(z,2,cumsum))
+n <- ncol(z)
+segments(b[-n]+.5,t(Z[,-n]),b[-1]-.5 ,t(Z[,-1]))
+
+z <- allVarComp[w,]/rep(colSums(allVarComp[-9,]), each=8)
+b <- barplot(z, col=colGroups[w], ylab="Relative importance", names.arg=rep("",ncol(z)))
+rotatedLabel(x0=b, labels=colnames(z))
+Z <- rbind(0,apply(z,2,cumsum))
+n <- ncol(z)
+segments(b[-n]+.5,t(Z[,-n]),b[-1]-.5 ,t(Z[,-1]))
+mtext(side=4, at=Z[-1,n] - diff(Z[,n])/2, text=rownames(Z)[-1], las=2)
+
+v <- c(1,3,5,4,2)
+z <- allVarComp[w,v]/rep(colSums(allVarComp[-9,v]), each=8)
+b <- barplot(z, col=colGroups[w], ylab="Relative importance", names.arg=rep("",ncol(z)))
+rotatedLabel(x0=b, labels=colnames(z))
+Z <- rbind(0,apply(z,2,cumsum))
+n <- ncol(z)
+segments(b[-n]+.5,t(Z[,-n]),b[-1]-.5 ,t(Z[,-1]))
+mtext(side=4, at=Z[-1,n] - diff(Z[,n])/2, text=rownames(Z)[-1], las=2)
+
+
+#' Risk
+#+ allStagesRisk, fig.width=4,fig.height=4
+allStagesRisk <- as.data.frame(sapply(c("NcdTD","CrTD","NrdTD","RelTD","PrdTD"), function(x){
+					m <- get(paste0("coxRFX",x))
+					#Z <- get(sub("\\[.+","",as.character(m$call["data"])))
+					#i <- if(x=="Cr") 1:1540 else Z$index
+					Z <- if(x=="Cr") dataFrame else data[rownames(dataFrame),]
+					predict(m, newdata=as.data.frame(Z))}))
+f <- function(x,y,...) {points(x,y, col=densCols(x,y),...); lines(lowess(x,y), col='red')}
+pairs(allStagesRisk, panel=f, pch=19)
+
+#' #### Significant terms (BH < 0.1)
+#' Non-complete remission deaths
+w <- WaldTest(coxRFXNcdTD); w[p.adjust(w$p.value, "BH")<.1,]
+#' Complete remission
+w <- WaldTest(coxRFXCrTD); w[p.adjust(w$p.value, "BH")<.1,]
+#' Relapses
+w <- WaldTest(coxRFXRelTD); w[p.adjust(w$p.value, "BH")<.1,]
+#' Post-relapse survival
+w <- WaldTest(coxRFXPrdTD); w[p.adjust(w$p.value, "BH")<.1,]
+#' Non-relapse deaths
+w <- WaldTest(coxRFXNrdTD); w[p.adjust(w$p.value, "BH")<.1,]
+
 
 #' ### Predicting outcome after CR
 #' Function to convolute CIR and PRM
@@ -1898,92 +1972,6 @@ allData$transplantRel[!allData$index %in% w] <- 0
 
 allPredict <-  PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, allData, 3*365)
 
-
-#' ### Variance components
-#+ allVarComp, fig.width=6, fig.height=4
-par(mfrow=c(3,2), xpd=FALSE)
-o <- c(1,4,6,5,2,3,7,8)
-PlotVarianceComponents(coxRFXNcdTD, col=colGroups, order=o)
-title(main="Early deaths")
-PlotVarianceComponents(coxRFXCrTD, col=colGroups, order=o)
-title(main="Remission")
-PlotVarianceComponents(coxRFXRelTD, col=colGroups, order=o)
-title(main="Relapse")
-PlotVarianceComponents(coxRFXNrdTD, col=colGroups, order=o)
-title(main="Non-relapse deaths")
-PlotVarianceComponents(coxRFXPrdTD, col=colGroups, order=o)
-title(main="Post-relapse deaths")
-
-#' #### Figure 3c
-#' As barplot
-#+ allVarCompBar, fig.width=2, fig.height=2
-par(mar=c(4,3,1,5))
-allVarComp <- sapply(c("NcdTD","CrTD","NrdTD","RelTD","PrdTD"), function(x){
-			m <- get(paste0("coxRFX",x))
-			Z <- get(sub("\\[.+","",as.character(m$call["data"])))
-			i <- if(x%in%c("CrTD","EsTD")) 1:1540 else Z$index
-			VarianceComponents(m, newZ=Z[!rev(duplicated(rev(i))),colnames(m$Z)])})
-colnames(allVarComp) <- c("Early deaths","Remission","Non-relapse d.","Relapse","Post-relapse d.")
-w <- c("CNA","Fusions","Genetics","GeneGene","Clinical","Demographics","Treatment","Nuisance")
-z <- allVarComp[w,]#/rep(colSums(allVarComp[-9,]), each=8)
-b <- barplot(z, col=colGroups[w], ylab="Variance [log hazard]", names.arg=rep("",ncol(z)))
-rotatedLabel(x0=b, labels=colnames(z))
-Z <- rbind(0,apply(z,2,cumsum))
-n <- ncol(z)
-segments(b[-n]+.5,t(Z[,-n]),b[-1]-.5 ,t(Z[,-1]))
-
-z <- allVarComp[w,]/rep(colSums(allVarComp[-9,]), each=8)
-b <- barplot(z, col=colGroups[w], ylab="Relative importance", names.arg=rep("",ncol(z)))
-rotatedLabel(x0=b, labels=colnames(z))
-Z <- rbind(0,apply(z,2,cumsum))
-n <- ncol(z)
-segments(b[-n]+.5,t(Z[,-n]),b[-1]-.5 ,t(Z[,-1]))
-mtext(side=4, at=Z[-1,n] - diff(Z[,n])/2, text=rownames(Z)[-1], las=2)
-
-v <- c(1,3,5,4,2)
-z <- allVarComp[w,v]/rep(colSums(allVarComp[-9,v]), each=8)
-b <- barplot(z, col=colGroups[w], ylab="Relative importance", names.arg=rep("",ncol(z)))
-rotatedLabel(x0=b, labels=colnames(z))
-Z <- rbind(0,apply(z,2,cumsum))
-n <- ncol(z)
-segments(b[-n]+.5,t(Z[,-n]),b[-1]-.5 ,t(Z[,-1]))
-mtext(side=4, at=Z[-1,n] - diff(Z[,n])/2, text=rownames(Z)[-1], las=2)
-
-
-#' Risk
-#+ allStagesRisk, fig.width=4,fig.height=4
-allStagesRisk <- as.data.frame(sapply(c("NcdTD","CrTD","NrdTD","RelTD","PrdTD"), function(x){
-					m <- get(paste0("coxRFX",x))
-					#Z <- get(sub("\\[.+","",as.character(m$call["data"])))
-					#i <- if(x=="Cr") 1:1540 else Z$index
-					Z <- if(x=="Cr") dataFrame else data[rownames(dataFrame),]
-					predict(m, newdata=as.data.frame(Z))}))
-f <- function(x,y,...) {points(x,y, col=densCols(x,y),...); lines(lowess(x,y), col='red')}
-pairs(allStagesRisk, panel=f, pch=19)
-
-#' #### Significant terms (BH < 0.1)
-#' Non-complete remission deaths
-w <- WaldTest(coxRFXNcdTD); w[p.adjust(w$p.value, "BH")<.1,]
-#' Complete remission
-w <- WaldTest(coxRFXCrTD); w[p.adjust(w$p.value, "BH")<.1,]
-#' Relapses
-w <- WaldTest(coxRFXRelTD); w[p.adjust(w$p.value, "BH")<.1,]
-#' Post-relapse survival
-w <- WaldTest(coxRFXPrdTD); w[p.adjust(w$p.value, "BH")<.1,]
-#' Non-relapse deaths
-w <- WaldTest(coxRFXNrdTD); w[p.adjust(w$p.value, "BH")<.1,]
-
-
-#' #### Predicting OS from enrollment (static)
-#' Note that the inclusion of transplants is somewhat problematic
-pPostCr <- sapply(1:nrow(allPredictTpl), function(i) allPredictTpl[i,3 - data[i,"transplantCR1"] ])
-pPreCr <- summary(survfit(coxRFXCrTD), time=100)$surv ^ exp(predict(coxRFXCrTD, newdata=data))
-pOS <- summary(survfit(coxRFXFitOsTDGGc), time=1000)$surv ^exp(predict(coxRFXFitOsTDGGc,newdata=dataFrame[whichRFXOsTDGG]))
-
-plot(pOS, pPostCr*pPreCr)
-
-survConcordance(os ~ I(-pOS))
-survConcordance(os ~ I(-pPostCr*pPreCr))
 
 #' ### Model assessment
 #' #### Random cross-validation
@@ -2308,7 +2296,8 @@ for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 	#legend("bottomright", lty=c(1,3), bty="n", c("no TPL","TPL"), col=riskCol[l])
 }
 
-#' mstate CR fits
+#' #### Figure 4a
+#' We use the survival package to compute the following mstate fits of CIR and NRM
 t <- clinicalData$Recurrence_date
 t[is.na(t)] <-  clinicalData$Date_LF[is.na(t)]
 time <- as.numeric(pmin(t, clinicalData$Date_LF) - clinicalData$CR_date)
@@ -2402,13 +2391,6 @@ survivalTpl <- data.frame(allPredictTpl, os=osYr, age=clinicalData$AOD, ELN=clin
 #+ survivalTplOut, results='asis'
 datatable(format(survivalTpl[order(survivalTpl$CR1 -survivalTpl$Relapse),], digits=4))
 datatable(allPredictTpl[patients,])
-
-#+survivalTplPlot
-plot(survivalTpl[,c(1,2)], xlab="Survival at 1,000 days without transplant", ylab="Survival at 1,000 days with transplant", pch=19)
-points(survivalTpl[,c(1,3)], pch=1)
-arrows(survivalTpl$None, survivalTpl$Relapse,survivalTpl$None, survivalTpl$CR1, length=0.05)
-abline(0,1)
-legend("bottomright", bty="n", pch=c(1,19),c("Relapse","CR1"), title="Allograft in")
 
 #' Function to predict OS from  CIR, PRS and NRM
 PredictOSTpl <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, ciType="simulated", nSim = 200, mc.cores=10){
@@ -2558,9 +2540,9 @@ set.seed(42)
 allPredictTplCi <- PredictOSTpl(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=200) ## others with 200
 dimnames(allPredictTplCi)[[4]] <- rownames(dataFrame)
 
-#+mortalityReduction, fig.width=6, fig.height=3
+#+mortalityReduction, fig.width=3.5, fig.height=2.5
 set.seed(42)
-par(mar=c(3,3,1,3), las=2, mgp=c(2,.5,0), mfrow=c(1,2), bty="n")
+par(mar=c(3,3,1,3), las=2, mgp=c(2,.5,0), bty="n")
 patients <- grep("PD11104a|PD8314a",rownames(dataFrame))
 for(t in c("dCr1","dRel","dCr1Rel")){
 	s <- TRUE#sample(1:1540,100)
@@ -2793,7 +2775,13 @@ for(i in 1:nStars^2){
 	
 }
 
-#' #### 10-fold cross-validation of 5-state RFX model
+#' Multistage predictions v overall survival
+#+ HRFXvRFX
+for(i in 1:5)
+plot(summary(survfit(coxRFXFitOsTDGGc), i*365)$surv^ exp(coxRFXFitOsTDGGc$linear.predictors[1:1540]), 1-rowSums(aperm(fiveStagePredicted[,1:3,], c(3,1,2)), dim=2)[,365*3],
+		xlab="Survival RFX OS", ylab="Survival RFX Multistage", main=paste(i, "years"))
+
+#' #### 10x10-fold cross-validation of 5-state RFX model
 #+ fiveStageCV, cache=TRUE
 cvFold <- 10
 fiveStageCV <- sapply(1:10, function(foo){ ## repeat 10 times, ie. 100 fits
@@ -2826,6 +2814,7 @@ fiveStageCV <- sapply(1:10, function(foo){ ## repeat 10 times, ie. 100 fits
 
 any(is.na(fiveStageCV))
 
+#' Concordance
 cvFold <- 10
 cOs <- sapply(1:10, function(foo){
 			set.seed(foo)
@@ -2849,18 +2838,12 @@ c <- sapply(1:10, function(j) sapply(x, function(i) {c <- survConcordance(os ~ f
 plot(x, rowMeans(c[1,,]), type='l', xlab="Time", ylab="Concordance", ylim=c(0.65, 0.73))
 for(j in 1:10) lines(x, c[1,,j], col='grey')
 lines(x, rowMeans(c[1,,]), lwd=2)
-#lines(x, c[1,]-c[2,], lty=3)
-#lines(x, c[1,]+c[2,], lty=3)
-#table(is.na(fiveStageCV[o,2000]),cvIdx)
-
 c <- mean(unlist(cOs[1,]))
 abline(h=unlist(cOs[1,]), col='#FBB4AE')
 abline(h=c, col=brewer.pal(3,"Set1")[1], lwd=2)
-#abline(h=c-cOs[,1]$std.err, col='red', lty=3)
-#abline(h=c+cOs[,1]$std.err, col='red', lty=3)
 legend("bottomright",c("RFX OS","RFX Multistage"), col=c(2,1), lty=1, bty="n")
 
-
+#' Area under the ROC curve
 #+ fiveStageCVauc, cache=TRUE, fig.width=2.5, fig.height=2.5
 x <- seq(1,2000,10)
 cvFold <- 10
@@ -2884,10 +2867,12 @@ a <- sapply(1:10, function(j) sapply(x, function(i) {w <- !is.na(fiveStageCV[,i,
 plot(x, rowMeans(a), type='l', xlab="Time", ylab="AUC")
 for(j in 1:10) lines(x, a[,j], col='grey')
 lines(x, rowMeans(a[,]), lwd=2)
+o <- as.data.frame(aOs[1,])
+for(j in 1:10) lines(x, o[,j], col='#FBB4AE')
+lines(x, rowMeans(o), col="red", lwd=2)
+lines(x, rowMeans(a), lwd=2)
+legend("bottomright",c("RFX OS","RFX Multistage"), col=c(2,1), lty=1, bty="n")
 
-a <- as.data.frame(aOs[1,])
-lines(x, rowMeans(a), col="red", lwd=2)
-for(j in 1:10) lines(x, a[,j], col='#FBB4AE')
 
 #' Each event type
 #+ fiveStageCVeach, cache=TRUE
@@ -3362,6 +3347,12 @@ axis(side=2, at=rep(c(1:10), 4) * 10^rep(1:4, each=10), labels=rep("",40), tcl=-
 legend("topright", legend=c("P < 0.05 *","P < 0.001 ***"), lty=c(1,3), bty="n")
 
 #' # R session
+#' This document was written entirely in R with markdown annotation. It was compiled with `knitr::spin()` and `pandoc` using the `rmarkdown` package:
+#+ compile, eval=FALSE
+rmarkdown::render("SupplementaryMethodsCode.R")
+#' The total runtime is approximately 24h using 10 cores. This excludes the extrapolations, which were run on a a computing grid.
+#' 
+#' The packages and specifics of the R session are:
 #+ sessionInfo, eval=TRUE
 library(devtools)
 devtools::session_info()
