@@ -3,7 +3,7 @@
 #' output:
 #'   html_document:
 #'     toc: true
-#'     toc-depth: 4
+#'     toc_depth: 4
 #'     number_sections: true
 #'     auto_identifiers: true
 #'     table_captions: true
@@ -3357,5 +3357,6 @@ rmarkdown::render("SupplementaryMethodsCode.R")
 #+ sessionInfo, eval=TRUE
 library(devtools)
 devtools::session_info()
+sessionInfo()
 #' 
 #' # References
