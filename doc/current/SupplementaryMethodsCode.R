@@ -67,6 +67,7 @@
 #' ### Treatment
 #' 
 #' The following variables were included in the model:
+#' 
 #' 1.	Allograft (MRD, MUD) in CR1 as a time-dependent covariate. 
 #' Not considered for RFS, CPSS (no time-dependence allowed)
 #' 2. Allograft (MRD, MUD) after relapse as a time-dependent covariate. 
@@ -585,13 +586,13 @@ waldOut <- data.frame(group = groups[whichRFXOsTDGG],
 datatable(as.data.frame(lapply(waldOut, function(x) if(class(x)=="numeric") round(x,4) else x), check.names=FALSE, row.names=row.names(waldOut)))
 library(xlsx)
 wb <- createWorkbook("xlsx")
-sheet  <- createSheet(wb, sheetName="Wald Tests")
+sheet  <- createSheet(wb, sheetName="Overall survival")
 addDataFrame(waldOut, 
 		sheet,
 		colnamesStyle = CellStyle(wb) + Font(wb, isBold=TRUE) + Border(),
 		rownamesStyle = CellStyle(wb) + Font(wb, isBold=TRUE)
 )
-saveWorkbook(wb, file="SupplementaryTable1.xlsx")
+#saveWorkbook(wb, file="SupplementaryTable1.xlsx") #more added later
 
 #' #### Figure 1c
 #' Volcano plot
@@ -699,7 +700,7 @@ x <- x/(2*sd(x)) + 1
 c <- cut(t[patients,1], quantile(t[,1], seq(0,1,0.1), na.rm=TRUE))
 x <- x[patients,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical")]
 locations <- expand.grid(seq_along(patients)* 1.5, 1)
-mg14:::stars(x/2, scale=FALSE, locations=locations, key.loc=NA, col.lines=rep(1,(nStars^2)), col.stars = (brewer.pal(11,'RdBu'))[c], density=ifelse(t[patients,2],NA,72))
+mg14:::stars(x/2, scale=FALSE, locations=locations, key.loc=NA, col.lines=ifelse(t[patients,2],1,NA), col.stars = (brewer.pal(11,'RdBu'))[c])
 symbols(locations[,1], locations[,2], circles=rep(.5,length(patients)), inches=FALSE, fg="grey", add=TRUE, lty=1)
 text(locations[,1], locations[,2]-1,labels=clinicalData$PDID[patients], pos=1)
 l <- apply(dataFrame[patients,c("gender","AOD_10","TPL_os","wbc_100")], 1,paste, collapse=";")
@@ -983,7 +984,6 @@ allModelsCvTdC <- sapply(allModelsCvTdPredictions, function(x){
 					})
 		})
 apply(allModelsCvTdC,1,quantile)
-boxplot(t(allModelsCvTdC), ylim=c(0,0.5), notch=TRUE, ylab="Concordance", border=colModels, las=2, lty=1, pch=16, staplewex=0)
 
 
 #+ allModelsCvTdCBoxplot, fig.width=1.5, fig.height=1.5
@@ -991,7 +991,7 @@ par(mar=c(3,3,1,1),bty="n", mgp=c(2,.5,0), las=2)
 r <- sapply(as.data.frame(lapply(as.data.frame(t(apply(-allModelsCvTdC,2,rank))),factor, levels=1:6)),table)
 o <- order(apply(allModelsCvTdC,1,median))
 boxplot(t(allModelsCvTdC[o,]), notch=TRUE, ylab="Concordance", staplewex=0, lty=1, pch=16, xaxt="n")
-rotatedLabel(1:nrow(allModelsCvTdC), rep(par("usr")[3],ncol(allModelsCvTdC)), rownames(allModelsCvTdC)[o])
+rotatedLabel(1:nrow(allModelsCvTdC), rep(par("usr")[3],nrow(allModelsCvTdC)), rownames(allModelsCvTdC)[o])
 
 #+ allModelsCvTdCRank, fig.width=1.5, fig.height=1.5
 par(mar=c(3,3,3,1), xpd=NA, las=2, mgp=c(2,.5,0))
@@ -1143,7 +1143,8 @@ survConcordance(na.omit(os)~predict(tree))
 #' Random forest
 #+ rForest, cache=TRUE
 rForest <- rfsrc(Surv(time, status) ~.,data= cbind(time = os[,1], status = os[,2], dataFrame[,mainIdxOs & osIdx]), ntree=100)
-boxplot(rForest$importance ~ factor(as.character(groups[mainIdxOs & osIdx])), border= colGroups, staplewex=0, pch=16, cex=0.75, ylab="RSF importance", lty=1, xaxt="n")
+boxplot(rForest$importance ~ droplevels(groups[mainIdxOs & osIdx]), border= colGroups[mainGroups], staplewex=0, pch=16, cex=0.75, ylab="RSF importance", lty=1, xaxt="n")
+rotatedLabel(labels=mainGroups)
 rForestVimp <- sapply(mainGroups, function(g) vimp(rForest, colnames(dataFrame)[which(groups==g)]))
 
 survConcordance(na.omit(os)~predict(rForest, importance="none")$predicted)
@@ -1846,18 +1847,72 @@ allStagesRisk <- as.data.frame(sapply(c("NcdTD","CrTD","NrdTD","RelTD","PrdTD"),
 f <- function(x,y,...) {points(x,y, col=densCols(x,y),...); lines(lowess(x,y), col='red')}
 pairs(allStagesRisk, panel=f, pch=19)
 
-#' #### Significant terms (BH < 0.1)
+#' #### Supplementary Table 1 (ctd) 
 #' Non-complete remission deaths
-w <- WaldTest(coxRFXNcdTD); w[p.adjust(w$p.value, "BH")<.1,]
-#' Complete remission
-w <- WaldTest(coxRFXCrTD); w[p.adjust(w$p.value, "BH")<.1,]
-#' Relapses
-w <- WaldTest(coxRFXRelTD); w[p.adjust(w$p.value, "BH")<.1,]
-#' Post-relapse survival
-w <- WaldTest(coxRFXPrdTD); w[p.adjust(w$p.value, "BH")<.1,]
-#' Non-relapse deaths
-w <- WaldTest(coxRFXNrdTD); w[p.adjust(w$p.value, "BH")<.1,]
+w <- WaldTest(coxRFXNcdTD)
+w$Q.BH <- p.adjust(w$p.value, "BH")
+w$Q.BY <- p.adjust(w$p.value, "BH")
+datatable(w)
+sheet  <- createSheet(wb, sheetName="Non-complete remission deaths")
+addDataFrame(w, 
+		sheet,
+		colnamesStyle = CellStyle(wb) + Font(wb, isBold=TRUE) + Border(),
+		rownamesStyle = CellStyle(wb) + Font(wb, isBold=TRUE)
+)
 
+#' Complete remission
+w <- WaldTest(coxRFXCrTD)
+w$Q.BH <- p.adjust(w$p.value, "BH")
+w$Q.BY <- p.adjust(w$p.value, "BH")
+datatable(w)
+sheet  <- createSheet(wb, sheetName="Complete remission")
+addDataFrame(w, 
+		sheet,
+		colnamesStyle = CellStyle(wb) + Font(wb, isBold=TRUE) + Border(),
+		rownamesStyle = CellStyle(wb) + Font(wb, isBold=TRUE)
+)
+
+
+#' Relapses
+w <- WaldTest(coxRFXRelTD)
+w$Q.BH <- p.adjust(w$p.value, "BH")
+w$Q.BY <- p.adjust(w$p.value, "BH")
+datatable(w)
+sheet  <- createSheet(wb, sheetName="Relapse")
+addDataFrame(w, 
+		sheet,
+		colnamesStyle = CellStyle(wb) + Font(wb, isBold=TRUE) + Border(),
+		rownamesStyle = CellStyle(wb) + Font(wb, isBold=TRUE)
+)
+
+
+#' Post-relapse survival
+w <- WaldTest(coxRFXPrdTD)
+w$Q.BH <- p.adjust(w$p.value, "BH")
+w$Q.BY <- p.adjust(w$p.value, "BH")
+datatable(w)
+sheet  <- createSheet(wb, sheetName="Post-relapse deaths")
+addDataFrame(w, 
+		sheet,
+		colnamesStyle = CellStyle(wb) + Font(wb, isBold=TRUE) + Border(),
+		rownamesStyle = CellStyle(wb) + Font(wb, isBold=TRUE)
+)
+
+
+#' Non-relapse deaths
+w <- WaldTest(coxRFXNrdTD)
+w$Q.BH <- p.adjust(w$p.value, "BH")
+w$Q.BY <- p.adjust(w$p.value, "BH")
+datatable(w)
+sheet  <- createSheet(wb, sheetName="Non-relapse deaths")
+addDataFrame(w, 
+		sheet,
+		colnamesStyle = CellStyle(wb) + Font(wb, isBold=TRUE) + Border(),
+		rownamesStyle = CellStyle(wb) + Font(wb, isBold=TRUE)
+)
+
+
+saveWorkbook(wb, file="SupplementaryTable1.xlsx") #more added later
 
 #' ### Predicting outcome after CR
 #' Function to convolute CIR and PRM
@@ -2541,22 +2596,24 @@ set.seed(42)
 allPredictTplCi <- PredictOSTpl(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=200) ## others with 200
 dimnames(allPredictTplCi)[[4]] <- rownames(dataFrame)
 
+#' #### Figure 4f
+
 #+mortalityReduction, fig.width=3.5, fig.height=2.5
 set.seed(42)
 par(mar=c(3,3,1,3), las=2, mgp=c(2,.5,0), bty="n")
 patients <- grep("PD11104a|PD8314a",rownames(dataFrame))
 for(t in c("dCr1","dRel","dCr1Rel")){
-	s <- TRUE#sample(1:1540,100)
+	s <- clinicalData$AOD < 60 #sample(1:1540,100)
 	x <- 1-allPredictTplCi["none","hat","os",]
 	y <- allPredictTplCi[t,"hat","os",]
 	plot(x[s], y[s], pch=NA, ylab="Mortality reduction from allograft", xlab="3yr mortality with standard chemo", col=riskCol[clinicalData$M_Risk], cex=.8, las=1, ylim=range(allPredictTpl$CR1-allPredictTpl$None))
 	abline(h=seq(-.1,.3,.1), col='grey', lty=3)
 	abline(v=seq(.2,.9,0.2), col='grey', lty=3)
-	points(x[s], y[s], pch=ifelse(clinicalData$AOD[s]>60, 1, 16),  col=riskCol[clinicalData$M_Risk[s]], cex=.8)
+	points(x[s], y[s], pch=16,  col=riskCol[clinicalData$M_Risk[s]], cex=.8)
 	segments(1-allPredictTplCi["none","lower","os",patients], y[patients],1-allPredictTplCi["none","upper","os",patients],y[patients])
 	segments(x[patients], allPredictTplCi[t,"lower","os",patients],x[patients], allPredictTplCi[t,"upper","os",patients])
 	xn <- seq(0,1,0.01)
-	p <- predict(loess(y~x, data=data.frame(x=x, y=y)), newdata=data.frame(x=xn), se=TRUE)
+	p <- predict(loess(y~x, data=data.frame(x=x[s], y=y[s])), newdata=data.frame(x=xn), se=TRUE)
 	yn <- c(p$fit + 2*p$se.fit,rev(p$fit - 2*p$se.fit))
 	polygon(c(xn, rev(xn))[!is.na(yn)],yn[!is.na(yn)], border=NA, col="#00000044", lwd=1)
 	lines(xn,p$fit, col='black', lwd=2)
@@ -2815,6 +2872,7 @@ fiveStageCV <- sapply(1:10, function(foo){ ## repeat 10 times, ie. 100 fits
 
 any(is.na(fiveStageCV))
 
+#' #### Supplementary Figure 6
 #' Concordance
 cvFold <- 10
 cOs <- sapply(1:10, function(foo){
@@ -2910,6 +2968,7 @@ survConcordance(Surv(cr[,1], cr[,2]==2) ~ fiveStageCVeach[[4]][order(names(fiveS
 survConcordance(Surv(cr[,1], cr[,2]==1) ~ fiveStageCVeach[[5]][order(names(fiveStageCVeach[[5]]))])
 
 
+#' #### Figure 4b-e
 #' With and wihout TPL
 #+ threePatientsAllo, fig.width=3, fig.height=2.5
 xmax=2000
