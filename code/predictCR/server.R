@@ -201,8 +201,8 @@ shinyServer(function(input, output) {
 				s <- survfit(surv~1)
 				splinefun(s$time, s$surv, method="monoH.FC")
 			}
-			prsP <- survPredict(Surv(prsData$time2-prsData$time1, prsData$status))(x) # Baseline Prs (measured from relapse)
-			coxphPrs <- coxph(Surv(time2-time1, status)~ pspline(time1, df=10), data=prsData) # PRS baseline with spline-based dep on CR length)
+			prsP <- survPredict(Surv(prdData$time2-prdData$time1, prdData$status))(x) # Baseline Prs (measured from relapse)
+			coxphPrs <- coxph(Surv(time2-time1, status)~ pspline(time1, df=10), data=prdData) # PRS baseline with spline-based dep on CR length)
 			tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time1=x[-1])))	
 
 			coxphOs <- coxph(Surv(time2-time1, status)~ pspline(cr[osData$index,1], df=10), data=osData) # PRS baseline with spline-based dep on CR length)
