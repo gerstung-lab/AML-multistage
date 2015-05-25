@@ -223,101 +223,81 @@ shinyServer(function(input, output) {
 						par(bty="n", mar=c(3,3,2,1), mgp=c(2,0.5,0), tcl=-.25, xaxs="i", yaxs="i")
 						layout(matrix(1:3, ncol=3), widths=c(1,1,0.5))
 						par(cex=1)
-						kmEs <- computeIncidence(coxRFX = coxRFXNcdTD, r = riskMissing()[["Ncd"]], x=x)
+						
+						## KM incidence of NCD and CR
+						kmNcd <- computeIncidence(coxRFX = coxRFXNcdTD, r = riskMissing()[["Ncd"]], x=x)
 						kmCr <- computeIncidence(coxRFX = coxRFXCrTD, r = riskMissing()[["Cr"]], x=x)
-						es <- crAdjust(x= kmEs, time=x, y=kmCr) ## Correct KM estimate for competing risk
-						cr <- crAdjust(x= kmCr, time=x, y=kmEs) ## Correct KM estimate for competing risk
 						
-						#plotRisk(coxRFX = coxRFXNcdTD, kmEs,  p=partialRiskMissing()[["Es"]], ylab="Incidence", xlab="Days after diagnosis", col=set1[1])
-						#lines(x, 1-es, col=set1[1], lty=1, lwd=2)
-						#title("Early deaths")
+						## Correct KM estimate for competing risk
+						ncd <- crAdjust(x= kmNcd, time=x, y=kmCr) ## Correct KM estimate for competing risk
+						cr <- crAdjust(x= kmCr, time=x, y=kmNcd) ## Correct KM estimate for competing risk
 						
-						#plotRisk(coxRFX = coxRFXCrTD, kmCr,  p=partialRiskMissing()[["Cr"]], ylab="Incidence", xlab="Days after diagnosis", col=set1[4])
-						#lines(x, 1-cr, col=set1[4], lty=1, lwd=2)
-						#title("Remission")
-						
-						kmCir <- computeIncidence(coxRFX = coxRFXRelTD, r = riskMissing()[["Rel"]], x=x)
-						kmNrm <-  computeIncidence(coxRFX = coxRFXNrdTD, r = riskMissing()[["Nrd"]], x=x)
+						## KM incidence of Relapse and NRD
+						kmRel <- computeIncidence(coxRFX = coxRFXRelTD, r = riskMissing()[["Rel"]], x=x)
+						kmNrd <-  computeIncidence(coxRFX = coxRFXNrdTD, r = riskMissing()[["Nrd"]], x=x)
 
-						#plotRisk(coxRFX = coxRFXRelTD, kmCir,  p=partialRiskMissing()[["Cir"]], ylab="Incidence", xlab="Days after remission", col=set1[5])
-						cir <- crAdjust(x= kmCir, time=x, y=kmNrm) ## Correct KM estimate for competing risk
-						#lines(x, 1-cir, col=set1[5], lty=1, lwd=2)
-						#title("Relapse")
-
-						#plotRisk(coxRFX = coxRFXNrdTD, kmNrm, p=partialRiskMissing()[["Nrd"]], ylab="Incidence", xlab="Days after remission", col=set1[2])
-						nrs <- crAdjust(x = kmNrm, time = x, y = kmCir)
-						#lines(x, 1-nrs, col=set1[2], lty=1, lwd=2)
-						#title("Non-relapse mortality")
+						## Correct KM estimate for competing risk
+						relCr <- crAdjust(x= kmRel, time=x, y=kmNrd) ## Correct KM estimate for competing risk
+						nrsCr <- crAdjust(x = kmNrd, time = x, y = kmRel)
 						
+						## KM incidence of PRS
 						kmPrs <-  computeIncidence(coxRFX = coxRFXPrdTD, r = riskMissing()[["Prd"]], x=x)
-						#plotRisk(coxRFX = coxRFXPrdTD, kmPrs, p=partialRiskMissing()[["Prs"]], ylab="Incidence", xlab="Days after remission", col=set1[3])
-						#title("Post-relapse mortality")
-						l <- length(kmCir$inc)
 						
-
-## Correct KM estimate for competing risk
+						## Outcome after Remission
+						rsCr <- computeHierarchicalSurvival(x = x, diffS0 = diff(relCr), S1Static = prsP, haz1TimeDep = tdPrmBaseline * exp(kmPrs$r[,1]-kmPrs$r0))
+						osCr <- 1-(1-nrsCr)-(1-rsCr)
 						
-						# Survival after Relapse
-						rs <- computeHierarchicalSurvival(x = x, diffS0 = diff(cir), S1Static = prsP, haz1TimeDep = tdPrmBaseline * exp(kmPrs$r[,1]-kmPrs$r0))
-						# Sum up to OS
-						os <- 1-(1-nrs)-(1-rs)#nrs*rs
+						## Outcome from diagnosis
+						osDiag <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = osCr, haz1TimeDep = tdOsBaseline)
+						nrsDiag <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = nrsCr, haz1TimeDep = tdOsBaseline)
+						rsDiag <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = rsCr, haz1TimeDep = tdOsBaseline)
+						relDiag <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = relCr, haz1TimeDep = tdOsBaseline)
 						
 						xLen <- length(x)						
 						
-						### Overall survival from enrollment
-						osCr <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = os, haz1TimeDep = tdOsBaseline)
-						nrsCr <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = nrs, haz1TimeDep = tdOsBaseline)
-						rsCr <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = rs, haz1TimeDep = tdOsBaseline)
-						cirCr <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = cir, haz1TimeDep = tdOsBaseline)
-						
-						
 						# Sum up to OS
-						plot(x, 1-(1-es)-(1-osCr), type="l", xlab="Days from diagnosis", ylab="Probability", main="Outcome after diagnosis", ylim=c(0,1), lwd=3, lty=0) 
+						plot(x, 1-(1-ncd)-(1-osDiag), type="l", xlab="Days from diagnosis", ylab="Probability", main="Outcome after diagnosis", ylim=c(0,1), lwd=3, lty=0) 
 						y0 <- 1
-						y <- es
+						y <- ncd
 						polygon(c(x, x[xLen]), c(y,y0), border=NA, col=pastel1[1])
-						y0 <- y0 - (1-es)
-						y <- y - (1-nrsCr)
+						y0 <- y0 - (1-ncd)
+						y <- y - (1-nrsDiag)
 						polygon(c(x, rev(x)), c(y, rev(y0))  , border=NA, col=pastel1[2])
-						y0 <- y0 - (1-nrsCr)
-						y <- y - (1-rsCr)
-						osER <- y
+						y0 <- y0 - (1-nrsDiag)
+						y <- y - (1-rsDiag)
+						osDiag <- y
 						polygon(c(x, rev(x)), c(y, rev(y0)),  border=NA, col=pastel1[3])
-						y0 <- y0 - (1-rsCr)
-						y <- y - (1-cirCr) + (1-rsCr) 
+						y0 <- y0 - (1-rsDiag)
+						y <- y - (1-relDiag) + (1-rsDiag) 
 						polygon(c(x, rev(x)), c(y, rev(y0)),  border=NA, col=pastel1[5])
-						polygon(c(x, rev(x)), c(cr - (1-es), rev(y)),  border=NA, col=pastel1[4])
-						polygon(c(x, rev(x)), c(cr - (1-es), rev(rep(0, length(x)))),  border=NA, col="#DDDDDD")
-						lines(x, osER, lwd=3)
+						polygon(c(x, rev(x)), c(cr - (1-ncd), rev(y)),  border=NA, col=pastel1[4])
+						polygon(c(x, rev(x)), c(cr - (1-ncd), rev(rep(0, length(x)))),  border=NA, col="#DDDDDD")
+						lines(x, osDiag, lwd=3)
 
 						addGrid()
 						
-						#legend("bottomleft", bty="n", col=c(pastel1[c(1,2,3)],"black"), lty=c(NA,NA,NA,1), fill=c(pastel1[c(1,2,3)],NA),lwd=2 , c("NCD","NRD","PRD","OS"), box.lwd = 0, bg="#FFFFFF88")
-						#lines(x, osEr, type="l", lty=2) 
-						#abline(h=seq(0,1,.2), lty=3)
-						#abline(v=seq(0,2000,365), lty=3)
 
 						### Plot outcome after remission
 						plot(NA,NA, xlab="Days from remission", ylab="Probability",  xlim=c(0,2000), ylim=c(0,1), lty=2)
-						polygon(c(x, x[xLen]), c(nrs,1)  , border=NA, col=pastel1[2])
-						polygon(c(x, rev(x)), c(nrs, rev(os)),  border=NA, col=pastel1[3])
-						polygon(c(x, rev(x)), c(os, rev(1-(1-nrs)-(1-cir))),  border=NA, col=pastel1[5])
-						polygon(c(x, rev(x)), c(1-(1-nrs)-(1-cir), rep(0,length(x))),  border=NA, col=pastel1[4])
+						polygon(c(x, x[xLen]), c(nrsCr,1)  , border=NA, col=pastel1[2])
+						polygon(c(x, rev(x)), c(nrsCr, rev(osCr)),  border=NA, col=pastel1[3])
+						polygon(c(x, rev(x)), c(osCr, rev(1-(1-nrsCr)-(1-relCr))),  border=NA, col=pastel1[5])
+						polygon(c(x, rev(x)), c(1-(1-nrsCr)-(1-relCr), rep(0,length(x))),  border=NA, col=pastel1[4])
 						abline(h=seq(0,1,.2), lty=3)
 						abline(v=seq(0,2000,365), lty=3)
 						
-						lines(x, os, col=1, lwd=3)
+						lines(x, osCr, col=1, lwd=3)
 						
 						z <- c(365,3*365)
-						y <- (os)[z+1]
+						y <- (osCr)[z+1]
 						points(z,y, pch=16, col=1)
 						if("analytical" %in% input$ciType){
 							## Confidence intervals
 							PlogP2 <- function(x) {(x * log(x))^2}
-							errOs <- kmNrm$r[,2] * PlogP2(kmNrm$inc) * (1-(1-kmCir$inc) * (1-kmPrs$inc))^2 + kmCir$r[,2] * PlogP2(kmCir$inc) * (1-kmPrs$inc)^2* kmNrm$inc^2 +  kmPrs$r[,2] * PlogP2(kmPrs$inc) * (1-kmCir$inc)^2* kmNrm$inc^2 
-							errOs <- sqrt(errOs / PlogP2(os))
-							osUp <- os ^ exp(2* errOs)
-							osLo <- os ^ exp(-2*errOs)
+							errOs <- kmNrd$r[,2] * PlogP2(kmNrd$inc) * (1-(1-kmRel$inc) * (1-kmPrs$inc))^2 + kmRel$r[,2] * PlogP2(kmRel$inc) * (1-kmPrs$inc)^2* kmNrd$inc^2 +  kmPrs$r[,2] * PlogP2(kmPrs$inc) * (1-kmRel$inc)^2* kmNrd$inc^2 
+							errOs <- sqrt(errOs / PlogP2(osCr))
+							osUp <- osCr ^ exp(2* errOs)
+							osLo <- osCr ^ exp(-2*errOs)
 							lines(x, osUp, col=1, lty=2)
 							lines(x, osLo, col=1, lty=2)
 							#segments(z, osLo[z+1] ,z,osUp[z+1], col=1, lwd=2)
@@ -326,9 +306,9 @@ shinyServer(function(input, output) {
 							## Simulate CI
 							nSim <- 200
 							osCiMc <- sapply(1:nSim, function(i){
-										r <- exp(rnorm(3,0,sqrt(c(kmCir$r[,2],kmNrm$r[,2],kmPrs$r[,2]))))
-										nrs <- cumsum(c(1,diff(kmNrm$inc^r[2]) * kmCir$inc[-1]^r[1])) ## Correct KM estimate for competing risk
-										diffCir <- diff(kmCir$inc^r[1]) * kmNrm$inc[-1]^r[2] ## Correct KM estimate for competing risk							
+										r <- exp(rnorm(3,0,sqrt(c(kmRel$r[,2],kmNrd$r[,2],kmPrs$r[,2]))))
+										nrs <- cumsum(c(1,diff(kmNrd$inc^r[2]) * kmRel$inc[-1]^r[1])) ## Correct KM estimate for competing risk
+										diffCir <- diff(kmRel$inc^r[1]) * kmNrd$inc[-1]^r[2] ## Correct KM estimate for competing risk							
 										rs <- computeTotalPrsC(x = x, diffCir = diffCir, prsP = prsP, tdPrmBaseline = tdPrmBaseline, risk = kmPrs$r[,1]-kmPrs$r0+log(r[3]))
 										return(1-(1-nrs)-(1-rs))
 									})
