@@ -29,7 +29,7 @@ shinyUI(fluidPage(
 										uiOutput("ui")
 								),
 								wellPanel(
-										checkboxGroupInput("ciType", tags$b("Confidence intervals"), c("analytical","simulated"), selected = "analytical") ## CI type
+										radioButtons("ciType", tags$b("Confidence intervals"), choices=c("analytical (fast, CR only)"="analytical","simulated (slow)"="simulated"), selected = "analytical") ## CI type
 								)
 						),
 						
