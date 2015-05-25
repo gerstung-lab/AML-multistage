@@ -210,13 +210,11 @@ shinyServer(function(input, output) {
 			
 			# CR adjustments to obtain absolute probabilities
 			crAdjust <- function(x, y, time=x$x) {
-				nrs <- cumsum(c(1,diff(x$inc) * splinefun(time, y$inc)(time[-1])))
+				xadj <- .crAdjust(x$inc, y$inc, time)
 			}
 			
-			crAdjustIncidence <- function(inc1, inc2, time=inc1$x) {
-				incOut <- incidence
-				incOut$inc <- crAdjust(inc1, inc2)
-				incOut$ciUp <- crAdjust(inc1, inc2)
+			.crAdjust <- function(inc1, inc2, time) {
+				cumsum(c(1,diff(inc1) * splinefun(time, inc2)(time[-1])))
 			}
 			
 			output$KM <- renderPlot({
@@ -255,7 +253,7 @@ shinyServer(function(input, output) {
 						
 						xLen <- length(x)						
 						
-						# Sum up to OS
+						## Plot probabilities
 						plot(x, 1-(1-ncd)-(1-osDiag), type="l", xlab="Days from diagnosis", ylab="Probability", main="Outcome after diagnosis", ylim=c(0,1), lwd=3, lty=0) 
 						y0 <- 1
 						y <- ncd
@@ -274,10 +272,51 @@ shinyServer(function(input, output) {
 						polygon(c(x, rev(x)), c(cr - (1-ncd), rev(rep(0, length(x)))),  border=NA, col="#DDDDDD")
 						lines(x, osDiag, lwd=3)
 
+						z <- c(365,3*365)
+						y <- (osDiag)[z+1]
+						points(z,y, pch=16, col=1)
+						text(z, y, labels=round(y,2), pos=1)
 						addGrid()
 						
+						## Confidence intervals
+						osLoDiag <- osUpDiag <- rep(NA, length(osDiag))
+						
+						if("analytical" %in% input$ciType){
+							PlogP2 <- function(x) {(x * log(x))^2}
+							errOsCr <- kmNrd$r[,2] * PlogP2(kmNrd$inc) * (1-(1-kmRel$inc) * (1-kmPrs$inc))^2 + kmRel$r[,2] * PlogP2(kmRel$inc) * (1-kmPrs$inc)^2* kmNrd$inc^2 +  kmPrs$r[,2] * PlogP2(kmPrs$inc) * (1-kmRel$inc)^2* kmNrd$inc^2 
+							errOsCr <- sqrt(errOsCr / PlogP2(osCr))
+							osUpCr <- osCr ^ exp(2* errOsCr)
+							osLoCr <- osCr ^ exp(-2*errOsCr)
+							#segments(z, osLo[z+1] ,z,osUp[z+1], col=1, lwd=2)
+						}
+						if("simulated" %in% input$ciType){
+							## Simulate CI
+							nSim <- 200
+							osCrMc <- sapply(1:nSim, function(i){
+										r <- exp(rnorm(5,0,sqrt(c(kmRel$r[,2],kmNrd$r[,2],kmPrs$r[,2], kmNcd$r[,2], kmCr$r[,2]))))
+										nrsCr <- .crAdjust(kmNrd$inc^r[2],  kmRel$inc^r[1], time=x) ## Correct KM estimate for competing risk
+										diffCir <- diff(kmRel$inc^r[1]) * kmNrd$inc[-1]^r[2] ## Correct KM estimate for competing risk							
+										rsCr <- computeHierarchicalSurvival(x = x, diffS0 = diffCir, S1Static = prsP, haz1TimeDep = tdPrmBaseline * exp(kmPrs$r[,1]-kmPrs$r0+log(r[3])))
+										osCr <- 1-(1-nrsCr)-(1-rsCr)
+										
+										cr <- .crAdjust(kmCr$inc^r[5], kmNcd$inc^r[4], time=x)
+										ncd <- .crAdjust(kmNcd$inc^r[4], kmCr$inc^r[5], time=x)
+										osDiag <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = osCr, haz1TimeDep = tdOsBaseline)
+										
+										return(cbind(osCr, osDiag - (1-ncd)))
+									}, simplify="array")
+							osCrMcQ <- apply(osCrMc,1:2,quantile, c(0.025,0.975))
+							osLoCr <- osCrMcQ[1,,1]
+							osUpCr <- osCrMcQ[2,,1]
+							osLoDiag <- osCrMcQ[1,,2]
+							osUpDiag <- osCrMcQ[2,,2]
+						}		
+						
+						## CI
+						lines(x, osUpDiag, col=1, lty=2)
+						lines(x, osLoDiag, col=1, lty=2)
 
-						### Plot outcome after remission
+						## Plot outcome after remission
 						plot(NA,NA, xlab="Days from remission", ylab="Probability",  xlim=c(0,2000), ylim=c(0,1), lty=2)
 						polygon(c(x, x[xLen]), c(nrsCr,1)  , border=NA, col=pastel1[2])
 						polygon(c(x, rev(x)), c(nrsCr, rev(osCr)),  border=NA, col=pastel1[3])
@@ -285,46 +324,21 @@ shinyServer(function(input, output) {
 						polygon(c(x, rev(x)), c(1-(1-nrsCr)-(1-relCr), rep(0,length(x))),  border=NA, col=pastel1[4])
 						abline(h=seq(0,1,.2), lty=3)
 						abline(v=seq(0,2000,365), lty=3)
-						
 						lines(x, osCr, col=1, lwd=3)
+						title("Outcome after remission")
 						
-						z <- c(365,3*365)
 						y <- (osCr)[z+1]
 						points(z,y, pch=16, col=1)
-						if("analytical" %in% input$ciType){
-							## Confidence intervals
-							PlogP2 <- function(x) {(x * log(x))^2}
-							errOs <- kmNrd$r[,2] * PlogP2(kmNrd$inc) * (1-(1-kmRel$inc) * (1-kmPrs$inc))^2 + kmRel$r[,2] * PlogP2(kmRel$inc) * (1-kmPrs$inc)^2* kmNrd$inc^2 +  kmPrs$r[,2] * PlogP2(kmPrs$inc) * (1-kmRel$inc)^2* kmNrd$inc^2 
-							errOs <- sqrt(errOs / PlogP2(osCr))
-							osUp <- osCr ^ exp(2* errOs)
-							osLo <- osCr ^ exp(-2*errOs)
-							lines(x, osUp, col=1, lty=2)
-							lines(x, osLo, col=1, lty=2)
-							#segments(z, osLo[z+1] ,z,osUp[z+1], col=1, lwd=2)
-						}
-						if("simulated" %in% input$ciType){
-							## Simulate CI
-							nSim <- 200
-							osCiMc <- sapply(1:nSim, function(i){
-										r <- exp(rnorm(3,0,sqrt(c(kmRel$r[,2],kmNrd$r[,2],kmPrs$r[,2]))))
-										nrs <- cumsum(c(1,diff(kmNrd$inc^r[2]) * kmRel$inc[-1]^r[1])) ## Correct KM estimate for competing risk
-										diffCir <- diff(kmRel$inc^r[1]) * kmNrd$inc[-1]^r[2] ## Correct KM estimate for competing risk							
-										rs <- computeTotalPrsC(x = x, diffCir = diffCir, prsP = prsP, tdPrmBaseline = tdPrmBaseline, risk = kmPrs$r[,1]-kmPrs$r0+log(r[3]))
-										return(1-(1-nrs)-(1-rs))
-									})
-							osCiMcQ <- apply(osCiMc,1,quantile, c(0.025,0.975))
-							lines(x, osCiMcQ[1,], col=set1[1], lty=2)
-							lines(x, osCiMcQ[2,], col=set1[1], lty=2)
-						}
-						
-#polygon(c(x, rev(x)), c(nrslo2, rev(nrsup2))*c(rslo2, rev(rsup2)), col=paste("#FF000044",sep=""), border=NA)
-#polygon(c(x, rev(x)), c(nrslo, rev(nrsup))*c(rslo, rev(rsup)), col=paste("#FF000044",sep=""), border=NA)
 						text(z, y, labels=round(y,2), pos=1)
-						title("Outcome after remission")
+
+						## CI
+						lines(x, osUpCr, col=1, lty=2)
+						lines(x, osLoCr, col=1, lty=2)
+
 						
 						par(mar=c(0,0,0,0))
 						plot(NA,NA, xlab="",ylab="", xaxt="n", yaxt="n", xlim=c(0,1), ylim=c(0,1))
-						legend(x=0,y=1, col=c(NA,NA,NA,NA,NA,NA,"black"), lty=c(NA,NA,NA,NA,NA,NA,1), fill=c(pastel1[c(1,2,3,5,4)],"#DDDDDD",NA), border=c(1,1,1,1,1,1,NA), lwd=2 , y.intersp = 1.5, c("Death without \nremission","Death without \nrelapse","Death after \nrelapse","Alive after \nrelapse","Alive in CR1", "Alive in \ninduction", "Overall survival"), box.lwd = 0,  bg="#FFFFFF88", seg.len=1)
+						legend(x=0,y=1, col=c(NA,NA,NA,NA,NA,NA,"black","black"), lty=c(NA,NA,NA,NA,NA,NA,1,4), fill=c(pastel1[c(1,2,3,5,4)],"#DDDDDD",NA,NA), border=c(1,1,1,1,1,1,NA,NA), lwd=c(NA,NA,NA,NA,NA,NA,3,1), y.intersp = 1.5, c("Death without \nremission","Death without \nrelapse","Death after \nrelapse","Alive after \nrelapse","Alive in CR1", "Alive in \ninduction", "Overall survival", "95% C.I."), box.lwd = 0,  bg="#FFFFFF88", seg.len=1)
 
 					})
 			
