@@ -13,7 +13,7 @@ load("predictTest.RData", envir=globalenv())
 shinyUI(fluidPage(
 				
 				# Application title
-				titlePanel("AML multistage predictions"),
+				titlePanel("AML multistage predictions (beta)"),
 				
 				fluidRow(
 						# Sidebar with a slider input for number of observations
@@ -21,11 +21,11 @@ shinyUI(fluidPage(
 								wellPanel(div(HTML('<b><a href="help.html">Help</a></b>'))),
 								wellPanel(
 										selectInput("pdid", tags$b("Select sample"), c("reset",rownames(data)), selected = "reset", multiple=FALSE), ## select sample
-										submitButton("Load presets")
+										submitButton("1. Load presets")
 								),
+								wellPanel(submitButton("2. Compute survival")),
 								wellPanel(
 										tags$b("Prognostic variables"),
-										submitButton("Compute survival"),
 										uiOutput("ui")
 								),
 								wellPanel(
