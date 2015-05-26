@@ -1436,8 +1436,8 @@ legend("bottomright",
 #' * no subsequent transition has occured yet
 #' * no other endpoint has been reached yet
 #'  
-#' To be alive in CR at time t, for example, requires that CR occurred before t, CR was achieved before NCD, and neither CIR nor NCD have occurred yet.
-#' Overall a patient can only be in one of the following six states at time t, each corresponding to
+#' To be alive in CR at time t, for example, requires that CR occurred before t, CR was achieved before NCD, and neither Relaps nor NCD have occurred yet.
+#' Overall, a patient can only be in one of the following six states at time t, each corresponding to
 #' a particular ordering of event times:
 #' 
 #' 
@@ -1460,13 +1460,12 @@ legend("bottomright",
 #' 
 #' $$ f(T_{CR},T_{NCD}, T_{R}, T_{NRD}, T_{PRD}) = f(T_{CR}) \times f(T_{NCD}) \times f(T_R \mid  T_{CR})\times f(T_{NRD}\mid T_{CR})\times f(T_{PRD} \mid  T_R). \label{eq:joint-density}$$
 #' 
-#' The above factorisation lays out a strategy by which each of the 5 factors may be estimated separately. 
+#' The above factorisation lays out a strategy in which each of the 5 factors may be estimated separately. 
 #' The probability of each state $P(X_t)$, defined in section [states](#states), are then computed by integrating the joint density $f$, Eq.$\eqref{eq:joint-density}$ over the
 #' simplexes $\mathcal{I}_{\cdot}(t)$ defining a particular ordering of transitions detailed in table 2:
 #' $$ P(X_t = x) =  \iiiint\!\!\!\!\!\int_{\mathcal{I}_x(t)} f(t_{CR},t_{NCD}, t_{R}, t_{NRD}, t_{PRD})\ dt_{CR}\ dt_{NCD}\ dt_{R}\ dt_{NRD}\ dt_{PRD}. \label{eq:mult-prob}$$
 #' 
-#'  The integral can be successively evaluated as laid out
-#' below.
+#' The integral can be successively evaluated as described below.
 #' 
 #' 
 #' ## Static multistage models
@@ -1608,26 +1607,29 @@ legend("bottomright",
 #' 
 #' We observed, however, a good consistency of the average
 #' predictions and static multistage probablities, indicating that those biases, on average, tend to cancel. Moreover cross-validation of our methodology ascertained 
-#' a very good predictive performance despite all potential statistical biases.
+#' a very good predictive performance despite all potential shortcomings.
 #' 
 #'     
 #' ## Confidence intervals
 #' 
 #' ### Marginal probabilities
 #' 	
-#' For each directly predicted variable we can derive 95% confidence intervals from the prediction error of
-#'  the log hazard,  $(h_{0.025},h_{0.975})\approx  h + (-2,2) \times \hat V[h \mid  Z]$, with $V[h\mid Z]$ This translates to
-#'  the survival function as follows:
+#' For each predicted variable we can derive 95% confidence intervals from the prediction error of
+#' the log hazard,  $(h_{0.025},h_{0.975})\approx  h + (-2,2) \times \hat V[h \mid  Z]$, with $V[h\mid Z]$. 
+#' This translates to
+#'  the survival function as follows using the log-log approach:
 #' 	$$S_{0.025}(t \mid  Z) = S_0(t)^{\exp(h_{0.025})}$$
-#' 	$$S_{0.975}(t \mid  Z) = S_0(t)^{\exp(h_{0.975})}$$
-#' 		
+#' 	$$S_{0.975}(t \mid  Z) = S_0(t)^{\exp(h_{0.975})}.$$
+#' 
+#' Note that this does not model the error of the baseline survival estimate $S_0(t)$.
+#' 
 #' ### Survival after remission
 #' 
 #' Let the symbol PCS denot post remission survival. In the following sections all quantities are conditional on the data $Z$.
 #' 
 #' #### Analytical confidence intervals
 #' 	
-#' Analytical confidence interavls can be more accurate to use a Taylor expansion for the propagation of errors:
+#' Analytical confidence intervals can be calculated using a the propagation of errors based on a Taylor expansion of the PCS probability:
 #' $$\begin{align}
 #' V[h_{PCS}]  &\approx \sum_i \left(\frac{\partial h_{PCS}}{\partial h_i}\right)^2 V[h_i] \\
 #' h_{PCS} &=  \log\log P_{PCS} +  \log\log P_0(t)\\
@@ -1661,11 +1663,11 @@ legend("bottomright",
 #' #### Simulated
 #' A more accurate account comes from simulations of errors in the predicted log hazard. The cumulative
 #' survival functions are given by
-#' $$F{_\cdot}(t) = F_{0\cdot}(t)^{\exp(h_\cdot + \epsilon_\cdot)}$$
+#' $$S{_\cdot}(t) = S_{0\cdot}(t)^{\exp(h_\cdot + \epsilon_\cdot)}$$
 #' So drawing 
 #' $$\epsilon_\cdot \sim N(0,\hat V[h_\cdot])$$ 
 #' for each event type and repeating the computations outlined in [combined-os] yields
-#' an empirical distribution of the surival distribution of $F_{PCS}(t)$.
+#' an empirical distribution of the surival distribution of $S_{PCS}(t)$.
 #' 
 #' We use `i=200` simulations to compute the empirical confidence intervals.
 #' 
@@ -1687,7 +1689,7 @@ legend("bottomright",
 #' 
 #' ### Static multistage model
 #' #### Figure 3b 
-#' Multi-state using msSurv
+#' Multi-state using msSurv  [@FergusonJOSS2012].
 #+ mstate, fig.width=3,fig.height=2.5
 library(msSurv)
 d <- sapply(1:nrow(clinicalData), function(i){
@@ -1844,7 +1846,7 @@ segments(b[-n]+.5,t(Z[,-n]),b[-1]-.5 ,t(Z[,-1]))
 mtext(side=4, at=Z[-1,n] - diff(Z[,n])/2, text=rownames(Z)[-1], las=2)
 
 
-#' Risk
+#' Pairwise scatter plots of the log hazard for each transition
 #+ allStagesRisk, fig.width=4,fig.height=4
 allStagesRisk <- as.data.frame(sapply(c("NcdTD","CrTD","NrdTD","RelTD","PrdTD"), function(x){
 					m <- get(paste0("coxRFX",x))
@@ -1923,7 +1925,7 @@ addDataFrame(w,
 saveWorkbook(wb, file="SupplementaryTables.xlsx") 
 
 #' ### Predicting outcome after CR
-#' Function to convolute CIR and PRM
+#' We use the following function to compute the hierarchical adjustment for two subsequent stages. It is implemented in C++ for efficiency using the `Rcpp` package [@EddelbuettelJOSS2011]. 
 library(Rcpp)
 cppFunction('NumericVector computeTotalPrsC(NumericVector x, NumericVector diffCir, NumericVector prsP, NumericVector tdPrmBaseline, double risk) {
 				int xLen = x.size();
@@ -1940,7 +1942,7 @@ cppFunction('NumericVector computeTotalPrsC(NumericVector x, NumericVector diffC
 				return rs;
 				}', rebuild=TRUE)
 
-#' Function to predict OS from  CIR, PRS and NRM
+#' Function to predict OS from Relapse, PRS and NRM, as described in [Section 4.3.5](#probabilities-of-each-state).
 PredictOS <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, ciType="analytical"){
 	## Step 1: Compute KM survival curves and log hazard
 	getS <- function(coxRFX, data, max.x=5000) {		
@@ -2300,7 +2302,7 @@ boxplot(t(absoluteErrorsCIRcv[[2]][,1,]), main="Training")
 summary(t(absoluteErrorsCIRcv[[2]][,2,]))
 boxplot(t(absoluteErrorsCIRcv[[2]][,2,]), main="Test")
 
-#' #### Sources of mortality
+#' #### KM curves after remission
 riskCol=set1[c(1,3,4,2)]
 names(riskCol) <- levels(clinicalData$M_Risk)
 
@@ -2333,7 +2335,7 @@ f <- function(x) 1-x
 plot(survfit(Surv(time1/365, time2/365, status) ~ clinicalData$M_Risk[relData$index], data=relData), col=riskCol, ylab="CIR", xlab="Time after CR", main="Molecular risk groups, all cases", fun=f , ylim=c(0,1))
 legend("bottomright", lty=1, bty="n", paste(levels(clinicalData$M_Risk), table(clinicalData$M_Risk[!is.na(c)])), col=riskCol)
 
-#' CIR Plots
+#' Incidence of relapse v risk tercile
 #+ cirSplits, fig.width=3, fig.height=3
 par(mfrow=c(2,2), mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0))
 riskCirTD <- coxRFXRelTD$Z %*% coef(coxRFXRelTD) - relData$transplantCR1 * coef(coxRFXRelTD)["transplantCR1"]
@@ -2362,7 +2364,7 @@ for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 }
 
 #' #### Figure 4a
-#' We use the survival package to compute the following mstate fits of CIR and NRM
+#' We use the `survival` package to compute the following mstate fits of CIR and NRM
 t <- clinicalData$Recurrence_date
 t[is.na(t)] <-  clinicalData$Date_LF[is.na(t)]
 time <- as.numeric(pmin(t, clinicalData$Date_LF) - clinicalData$CR_date)
@@ -2389,7 +2391,7 @@ for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 }
 
 
-#' OS Plots
+#' Overall survival after remission v risk tercile
 #+ osSplits, fig.width=3, fig.height=3
 par(mfrow=c(2,2), mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0))
 riskOsCR <- coxRFXOsCR$Z %*% coef(coxRFXOsCR) - osData$transplantCR1 * coef(coxRFXOsCR)["transplantCR1"]
@@ -2405,7 +2407,7 @@ for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 	legend("bottomright", lty=c(1,3), bty="n", c("no TPL","TPL"), col=riskCol[l])
 }
 
-#' Prevalence of risk factors
+#' #### Risk factors of relapse and survival
 p <- lapply(levels(clinicalData$M_Risk), function(l) {
 			w <- which(clinicalData$M_Risk==l)
 			q <- cut(riskOsCR[w], quantile(riskOsCR[w], seq(0,1,.33)), include.lowest=TRUE, labels=c("T1","T2","T3"))
@@ -2435,6 +2437,7 @@ s <- do.call("rbind",lapply(levels(clinicalData$M_Risk)[c(2,4,3,1)], function(l)
 					t(sapply(split(partialRiskOsCR[w, ], q), colMeans) +.5 - colMeans(partialRiskOsCR))
 				}))
 
+#' Risk constellation for OS after remission
 #+relapseStars, fig.width=3,fig.heigh=3
 c <- sapply(2:0, function(t) sapply(riskCol[c(2,4,3,1)], function(c) colTrans(c,t)))
 g <- expand.grid(1:3,1:4-1)*3
@@ -2443,7 +2446,46 @@ symbols(g[,1], g[,2], circles=rep(1,12), inches=FALSE, add=TRUE)
 text(1, 0:3*3, names(riskCol[c(2,4,3,1)]), pos=2)
 text(1:3*3, 11, c("Best","Intermediate","Worst"), pos=3)
 
+#' Prototypical risk constellations
+prototypes <- sapply(levels(clinicalData$M_Risk)[c(2,4,3,1)], function(l) sapply(1:3, function(i){
+						#d <- dist(as.data.frame(coxRFXRelTD$Z[which(clinicalData$M_Risk[cirData$index]==l & quantileRiskCirTD==i &! is.na(clinicalData$CR_date[cirData$index])), ])) 
+						w <- which(clinicalData$M_Risk[relData$index]==l & quantileRiskOsCR==i &! is.na(clinicalData$CR_date[relData$index]))
+						d <- dist(t(t(coxRFXOsCR$Z[w, ]) ))
+						osData$index[w][which.min(rowMeans(as.matrix(d), na.rm=TRUE))]
+					}))
+
+c <- sapply(2:0, function(t) sapply(riskCol[c(2,4,3,1)], function(c) colTrans(c,t)))
+g <- expand.grid(1:3,1:4-1)*3
+stars(2*t(t(partialRiskOsCR[prototypes,])- colMeans(partialRiskOsCR))[,c("Clinical","Demographics","Genetics","CNA","Fusions","Treatment")] +1, scale=FALSE, col.stars=t(c), key.loc = c(13,0), locations=g, labels=NA)
+symbols(g[,1], g[,2], circles=rep(1,12), inches=FALSE, add=TRUE)
+text(1, 0:3*3, names(riskCol[c(2,4,3,1)]), pos=2)
+text(1:3*3, 11, c("Low","Intermediate","High"), pos=3)
+
+#+ starsOS, fig.width=4, fig.height=4
+s <- partialRiskOsCR - rep(colMeans(partialRiskOsCR), each=nrow(partialRiskOsCR))
+w <- sapply(split(1:1540, paste(clinicalData$M_Risk, quantileRiskOsCR[1:1540])), `[`, 1:12)
+w <- w[,!grepl("NA", colnames(w))][,c(4:6,10:12,7:9,1:3)]
+l <- stars(s[w,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical")] + .5, scale=FALSE, col.stars = mapply(function(i,j) {t <- try(c[i,j]); if(class(t)=="try-error") NA else t}, as.character(clinicalData$M_Risk[w]),quantileRiskCirTD[w]), labels="")
+symbols(l[,1],l[,2], circles=rep(0.5, nrow(l)), inches=FALSE,add=TRUE)
+
+#+ starsCIR, fig.width=4, fig.height=4
+layout(matrix(c(1:4), ncol=2),heights = c(10,1), widths = c(10,1))
+partialRiskCirTD <- as.data.frame(PartialRisk(coxRFXRelTD))
+s <- partialRiskCirTD[1:nrow(clinicalData),] - rep(colMeans(partialRiskCirTD), each=nrow(clinicalData))
+u <- unique(relData$index[!is.na(relData$time2)])
+w <- sapply(split(u, paste(clinicalData$M_Risk, quantileRiskCirTD[1:1540])[u]), `[`, 1:12)
+w <- w[,!grepl("NA", colnames(w))][,c(4:6,10:12,7:9,1:3)]
+i <- which(rev(!duplicated(rev(relData$index))))
+m <- i[order(relData$index[i])]
+c <- cut(relData$time2, quantile(relData$time2[m], seq(0,1,0.1), na.rm=TRUE))
+l <- mg14:::stars(s[w,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical")] + .5, scale=FALSE, col.stars = brewer.pal(11,"RdBu")[-6][c[w]], labels="", density=ifelse(relData$status[m][w]==1,NA,48),  col.lines=rep(1,(12^2)))
+symbols(l[,1],l[,2], circles=rep(0.5, nrow(l)), inches=FALSE,add=TRUE, fg='lightgrey')
+par(mar=c(2,2,0,2))
+barplot(matrix(diff(quantile(relData$time2[m], na.rm=T, seq(0,1,0.1))), ncol=1)/365.25, col=brewer.pal(11,"RdBu")[-6], horiz=TRUE, border=NA, xlim=c(0,20))
+
+
 #' ### Allografts
+#' Create a data.frame with all possibilities for allografts - none, CR1, after relapse.
 #+survivalTpl, cache=TRUE
 w <- sort(unique(osData$index[which(quantileRiskOsCR==3 & clinicalData$M_Risk[osData$index]=="Favorable")]))
 allDataTpl <- osData[rep(1:nrow(dataFrame), each=3),]
@@ -2457,7 +2499,7 @@ survivalTpl <- data.frame(allPredictTpl, os=osYr, age=clinicalData$AOD, ELN=clin
 datatable(format(survivalTpl[order(survivalTpl$CR1 -survivalTpl$Relapse),], digits=4))
 datatable(allPredictTpl[patients,])
 
-#' Function to predict OS from  CIR, PRS and NRM
+#' Function to predict OS from  Relapse, PRS and NRM. This one also computes confidence intervals for each type of allograft and the predicted differences in outcome between allograft types.
 PredictOSTpl <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, ciType="simulated", nSim = 200, mc.cores=10){
 	## Step 1: Compute KM survival curves and log hazard
 	getS <- function(coxRFX, data, max.x=5000) {		
@@ -2606,7 +2648,7 @@ allPredictTplCi <- PredictOSTpl(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[,c
 dimnames(allPredictTplCi)[[4]] <- rownames(dataFrame)
 
 #' #### Figure 4f
-
+#' The figure shows the mortality reduction of allograft CR1 v none, allograft in Rel v none, and CR1 v Relapse.
 #+mortalityReduction, fig.width=3.5, fig.height=2.5
 set.seed(42)
 par(mar=c(3,3,1,3), las=2, mgp=c(2,.5,0), bty="n")
@@ -2634,81 +2676,54 @@ for(t in c("dCr1","dRel","dCr1Rel")){
 	mtext("Number needed to harm", side=4, at=-.1, line=2, las=0)
 }
 
+#' The following shows boxplots of the mortality reduction v the risk terciles.
 #+survivalTplBoxPlot
 par(mar=c(7,5,1,1))
 f <- factor(clinicalData$M_Risk, levels=levels(clinicalData$M_Risk)[c(2,4,3,1)])
-boxplot(allPredictTpl$CR1 - allPredictTpl$None ~ quantileRiskOsCR[1:1540]  + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL CR1 at 1000d")
-boxplot(allPredictTpl$Relapse - allPredictTpl$None ~ quantileRiskOsCR[1:1540]  + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL Relapse at 1000d")
-boxplot(allPredictTpl$CR1 - allPredictTpl$Relapse ~ quantileRiskOsCR[1:1540] + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL in CR1 over salvage at 1000d")
+boxplot(allPredictTpl$CR1 - allPredictTpl$None ~ quantileRiskOsCR[1:1540]  + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL CR1 at 3yr")
+boxplot(allPredictTpl$Relapse - allPredictTpl$None ~ quantileRiskOsCR[1:1540]  + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL Relapse at 3yr")
+boxplot(allPredictTpl$CR1 - allPredictTpl$Relapse ~ quantileRiskOsCR[1:1540] + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL in CR1 over salvage at 3yr")
 abline(h=0)
 
+#' Mortality rediction v age
 par(c(3,3,1,1))
-plot(allPredictTpl$CR1 - allPredictTpl$None ~ dataFrame$AOD_10)
+y <- allPredictTpl$CR1 - allPredictTpl$None
+x <- dataFrame$AOD_10*10
+plot(y ~ x)
+lines(lowess(x[x<60], y[x<60]), col="green")
+#' Note: The jump after 60 ariese from patients after 60 in AMLHD98B not having received allografts and hence (incorrectly) predicted to have v low non-relapse mortality upon allograft.
+
 plot(allPredictTpl$CR1 - allPredictTpl$None ~ predict(coxRFXOsCR, newdata=osData[1:1540,]), xlab="Risk", ylab="Survival gain TPL CR1 at 1000d")
 lines(lowess(predict(coxRFXOsCR, newdata=osData[1:1540,]), allPredictTpl$CR1 - allPredictTpl$None), col='green')
 
+
 #' #### Best treatment options
-#' Ranking
+#' We can explore the the hypothetical survival gain if each patient had received the optimal treatment strategy.
+#' Distribution of ranks.
 apply(apply(-allPredictTpl,1,rank),1,function(x) table(factor(x, levels=1:3)))
 
 #' Split by ELN risk
-table(clinicalData$M_Risk, factor(apply(allPredictTpl, 1, which.max), levels=1:3, labels=colnames(allPredictTpl)))
+table(clinicalData$M_Risk, factor(apply(allPredictTpl, 1, which.max), levels=1:3, labels=colnames(allPredictTpl)))[c(2,4,3,1),]
 
 #' Split by ELN risk, requiring TPL in CR1 to offer 5% advantage over salvage
-table(clinicalData$M_Risk, apply(allPredictTpl, 1, function(x) x[2] > x[3]+.05))
+table(clinicalData$M_Risk, apply(allPredictTpl, 1, function(x) x[2] > x[3]+.05))[c(2,4,3,1),]
 
 #' Observed outcome
-summary(survfit(Surv(time1, time2, status) ~ 1, data=osData), time=1000)
+summary(survfit(Surv(time1, time2, status) ~ 1, data=osData), time=3*365)
+
 #' Under different scenarios
 colMeans(allPredictTpl)
 
 #' Using observed (assuming salvage as fallback)
 mean(sapply(1:nrow(data), function(i) allPredictTpl[i,3 - data[i,"transplantCR1"] ]))
 
-#'Best 
+#' Best possible - everyone had received the optimum 
 mean(apply(allPredictTpl,1,max))
 
 
-#' #### Find prototypes
-prototypes <- sapply(levels(clinicalData$M_Risk)[c(2,4,3,1)], function(l) sapply(1:3, function(i){
-						#d <- dist(as.data.frame(coxRFXRelTD$Z[which(clinicalData$M_Risk[cirData$index]==l & quantileRiskCirTD==i &! is.na(clinicalData$CR_date[cirData$index])), ])) 
-						w <- which(clinicalData$M_Risk[relData$index]==l & quantileRiskOsCR==i &! is.na(clinicalData$CR_date[relData$index]))
-						d <- dist(t(t(coxRFXOsCR$Z[w, ]) ))
-						osData$index[w][which.min(rowMeans(as.matrix(d), na.rm=TRUE))]
-					}))
-
-c <- sapply(2:0, function(t) sapply(riskCol[c(2,4,3,1)], function(c) colTrans(c,t)))
-g <- expand.grid(1:3,1:4-1)*3
-stars(2*t(t(partialRiskOsCR[prototypes,])- colMeans(partialRiskOsCR))[,c("Clinical","Demographics","Genetics","CNA","Fusions","Treatment")] +1, scale=FALSE, col.stars=t(c), key.loc = c(13,0), locations=g, labels=NA)
-symbols(g[,1], g[,2], circles=rep(1,12), inches=FALSE, add=TRUE)
-text(1, 0:3*3, names(riskCol[c(2,4,3,1)]), pos=2)
-text(1:3*3, 11, c("Low","Intermediate","High"), pos=3)
-
-#+ starsOS, fig.width=4, fig.height=4
-s <- partialRiskOsCR - rep(colMeans(partialRiskOsCR), each=nrow(partialRiskOsCR))
-w <- sapply(split(1:1540, paste(clinicalData$M_Risk, quantileRiskOsCR[1:1540])), `[`, 1:12)
-w <- w[,!grepl("NA", colnames(w))][,c(4:6,10:12,7:9,1:3)]
-l <- stars(s[w,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical")] + .5, scale=FALSE, col.stars = mapply(function(i,j) {t <- try(c[i,j]); if(class(t)=="try-error") NA else t}, as.character(clinicalData$M_Risk[w]),quantileRiskCirTD[w]), labels="")
-symbols(l[,1],l[,2], circles=rep(0.5, nrow(l)), inches=FALSE,add=TRUE)
-
-#+ starsCIR, fig.width=4, fig.height=4
-layout(matrix(c(1:4), ncol=2),heights = c(10,1), widths = c(10,1))
-partialRiskCirTD <- as.data.frame(PartialRisk(coxRFXRelTD))
-s <- partialRiskCirTD[1:nrow(clinicalData),] - rep(colMeans(partialRiskCirTD), each=nrow(clinicalData))
-u <- unique(relData$index[!is.na(relData$time2)])
-w <- sapply(split(u, paste(clinicalData$M_Risk, quantileRiskCirTD[1:1540])[u]), `[`, 1:12)
-w <- w[,!grepl("NA", colnames(w))][,c(4:6,10:12,7:9,1:3)]
-i <- which(rev(!duplicated(rev(relData$index))))
-m <- i[order(relData$index[i])]
-c <- cut(relData$time2, quantile(relData$time2[m], seq(0,1,0.1), na.rm=TRUE))
-l <- mg14:::stars(s[w,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical")] + .5, scale=FALSE, col.stars = brewer.pal(11,"RdBu")[-6][c[w]], labels="", density=ifelse(relData$status[m][w]==1,NA,48),  col.lines=rep(1,(12^2)))
-symbols(l[,1],l[,2], circles=rep(0.5, nrow(l)), inches=FALSE,add=TRUE, fg='lightgrey')
-par(mar=c(2,2,0,2))
-barplot(matrix(diff(quantile(relData$time2[m], na.rm=T, seq(0,1,0.1))), ncol=1)/365.25, col=brewer.pal(11,"RdBu")[-6], horiz=TRUE, border=NA, xlim=c(0,20))
-
 
 #' ### Predicting outcome from diagnosis
-#' The following function fits a 5-stage model
+#' The following function fits a 5-stage model. Note that we use a single smooth function g(t) to model the association between time of CR and all subsequent events.
 PredictOS5 <- function(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, tdPrmBaseline = rep(1, ceiling(max(x))+1), tdOsBaseline = rep(1, ceiling(max(x))+1), ciType="analytical"){
 	cppFunction('NumericVector computeHierarchicalSurvival(NumericVector x, NumericVector diffS0, NumericVector S1Static, NumericVector haz1TimeDep) {
 					int xLen = x.size();
@@ -3015,14 +3030,14 @@ for(i in c(2,3,5,6,8,9)){
 #' 
 #' $$ \lambda(t) = \lambda_0(t) \exp(u Z) = -\frac{dS(t)}{dt}\frac{1}{S(t)}.$$
 #' 
-#' On transformed time-scale $\tau(t) = \int_0^t \lambda_0(t') dt'$, the 
+#' On the transformed time-scale $\tau(t) = \int_0^t \lambda_0(t') dt'$, the 
 #' hazard is constant and survival times are distributed exponentially. 
 #' A strategy to model survival times according to the Cox proportional
 #' hazards model is therefore to draw unit survival times $\tau ~ \operatorname{Exp}(u Z)$ and 
 #' to scale those according to $\tau^{-1}$. 
 #' 
 #' The observed survival times $T_o$ are subject to censoring. The generative process can
-#' be thought of as $T_o = \min\{T, T_c\}$, where $T_c$ is a censonring time and $T$ the actual survival. 
+#' be thought of as $T_o = \min\{T, T_c\}$, where $T_c$ is a censoring time and $T$ the actual survival. 
 #' This process may be simulated by estimating
 #' the cumulative distribution of censoring times $\hat F(T_c)$ using the Kaplan-Meier estimator and subsequently
 #' simulating censoring times $T_c = \hat F^{-1}(U); U \sim \operatorname{Unif}(0,1)$.
@@ -3118,13 +3133,14 @@ for(i in c(2,3,5,6,8,9)){
 #' 
 #' #### TCGA
 #' 
-#' On TCGA data we can estimate the number of drivers by means of the excess of non-synonymous of synonymous mutations at each gene, summed over each gene [@Martincorena2015].
-#' The excess of indels may be obtained as follows.
+#' On TCGA data we can estimate the number of drivers by means of the sum of the excess of non-synonymous over synonymous mutations at each gene [@Martincorena2015].
+#' We use the total number of indels as an upper bound for the number of driver indels.
 #' 
-#' Using this approach we detect an average of 3.3 drivers per AML case when considering the entire exome. This compares to 
-#' just 2.2 mutations in our cohort, having sequenced the 111 most prevalent driver genes.
+#' Using this approach we detect an average of 2.3 point mutations and 1.4 indels adding to 3.7 drivers per AML case when considering the entire exome. This compares to 
+#' an average of 1.55 driver substitutions and 0.94 driver indels, with a total of 2.3 mutations (excluding multiple mutations in the same gene) in our cohort, 
+#' having sequenced the 111 most prevalent driver genes.
 #' 
-#' It therefore appears that the variance explained du to the number of genes considered could be increased by another 50%.
+#' It therefore appears that the variance explained due to the number of genes considered could be increased by approximately 50%.
 #' 
 #' ## Code
 
@@ -3416,7 +3432,7 @@ axis(side=2, at=rep(c(1:10), 4) * 10^rep(1:4, each=10), labels=rep("",40), tcl=-
 legend("topright", legend=c("P < 0.05 *","P < 0.001 ***"), lty=c(1,3), bty="n")
 
 #' # R session
-#' This document was written entirely in R with markdown annotation. It was compiled with `knitr::spin()` and `pandoc` using the `rmarkdown` package:
+#' This document was written entirely in R with markdown annotation. It was compiled with `knitr::spin()` [@Xie2015] and `pandoc` using the `rmarkdown` package [@Allaire2015]:
 #+ compile, eval=FALSE
 rmarkdown::render("SupplementaryMethodsCode.R")
 #' The total runtime is approximately 24h using 10 cores. This excludes the extrapolations, which were run on a a computing grid.
