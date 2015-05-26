@@ -288,9 +288,9 @@ rownames(dataFrame) <- clinicalData$PDID
 #' 
 #' Iterate until convergence of parameters and penalised likelihood.
 #' 
-#' The final parameters are given by uncentering $\hatu_j = \hat u_j + \hat \mu_g$.
+#' The final parameters are given by uncentering $\hat{u}_j = \hat u_j + \hat \mu_g$.
 #' 
-#' **Note**: There estimates $\hatu$ are maximum a posteriori (MAP) from a Bayesian interpretation with
+#' **Note**: There estimates $\hat{u}$ are maximum a posteriori (MAP) from a Bayesian interpretation with
 #'  $\hat\sigma^2$ and $\hat\mu$ being empirical Bayes estimates. 
 #' 
 #' 
@@ -300,7 +300,7 @@ rownames(dataFrame) <- clinicalData$PDID
 #' 
 #' For i=1:100 simulate $n$ semiparametric survial times `Y` (see [#survival]):
 #' 	
-#' * Using MAP estimates $\hatu$
+#' * Using MAP estimates $\hat{u}$
 #' * Using full covariate set $Z$
 #' 	
 #' This allows to assess the distribution of all estimates in a semi-parametric way.
@@ -328,7 +328,7 @@ rownames(dataFrame) <- clinicalData$PDID
 #' 
 #' $$
 #' \begin{align}
-#' z &= \hatu^2 / \hat V_2[u] \\\\
+#' z &= \hat{u}^2 / \hat V_2[u] \\\\
 #' Z &\sim \chi^2_1
 #' \end{align} 
 #' $$
@@ -386,9 +386,9 @@ rownames(dataFrame) <- clinicalData$PDID
 #' 
 #' The prediction error of a the log hazard for patient $i$ is given by
 #' 
-#' $$\hat V[h_i] = V[\hatu^T Z_{i\cdot}] = Z_{i\cdot}^T \hat V[u] Z_{i\cdot}$$
+#' $$\hat V[h_i] = V[\hat{u}^T Z_{i\cdot}] = Z_{i\cdot}^T \hat V[u] Z_{i\cdot}$$
 #' 
-#' where $V[\hatu]$ is the covariance matrix of the parameters defined in [Analytical confidence intervals](#analytical-confidence-intervals-of-individual-parameters).
+#' where $V[\hat{u}]$ is the covariance matrix of the parameters defined in [Analytical confidence intervals](#analytical-confidence-intervals-of-individual-parameters).
 #' 
 #' **Note**:  In a linear model, the lhs corresponds to the the residual $r_i$ of observation $i$ and
 #' the identity $\hat V = Z^T Z \times RSS/n$ holds. In our case $V$ is derived from the Fisher information,
