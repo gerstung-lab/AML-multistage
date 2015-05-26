@@ -1316,14 +1316,14 @@ rotatedLabel(b[seq(3, length(b), 3)], rep(0.49,length(tcgaRisk)), names(tcgaRisk
 
 #' KM curves for four risk categories (quartiles)
 #+ kmTCGA, fig.width=3, fig.height=2.5
-risk <- cut(tcgaRiskRFXOs, quantile(tcgaRiskRFXOs), labels=c("1st Q","2nd Q","3rd Q","4th Q"))
+risk <- cut(tcgaRiskRFXOs[,1], quantile(tcgaRiskRFXOs[,1]), labels=c("1st Q","2nd Q","3rd Q","4th Q"))
 s <- survfit(tcgaSurvival ~ risk)
 plot(s, col=set1[c(3,2,4,1)], mark=NA, xlab="Years", ylab="Survival")
 legend("topright", bty="n", rownames(summary(s)$table), col=set1[c(3,2,4,1)], lty=1)
 
 #' Distribution of risk v cytogentic categories
 #+ riskTCGA, fig.width=3, fig.height=2.5
-risk <- tcgaRiskRFXOs - mean(tcgaRiskRFXOs)
+risk <- tcgaRiskRFXOs[,1] - mean(tcgaRiskRFXOs[,1])
 x <- seq(from=-4,to=4, l=512)
 r <- sapply(levels(tcgaClinical$C_Risk)[c(2,3,1)], function(r){
 			i <- tcgaClinical$C_Risk==r
@@ -1406,17 +1406,17 @@ legend("bottomright",
 #' 
 #' ### Nomenclature
 #' We use the following nomenclature: $f(T=t)=f(t)$ denotes a probability density, $F(T=t)=P(T<t)=F(t)$ the corresponding cumulative distribution function. $S(T=t)=1-F(t)$ is the survivor function, 
-#' the name being motiviated by the situtation that t is a death time. In cases where it is clear to which variable a (cumulative) density refers to, we may drop the stochastic variable and 
-#' simply use its value as the argument of the density, $f(t)=f(T=t)$. We use the convention of lower case variables $t$ to denote the values of the corresponding upper cases stochastic 
+#' the name being motiviated by the situtation that $t$ is a death time. In cases where it is clear to which variable a (cumulative) density refers to, we may drop the stochastic variable and 
+#' simply use its value as the argument, $f(t)=f(T=t)$. We use the convention of lower case variables $t$ to denote the values of the corresponding upper casea stochastic 
 #' variable $T=t$, $U=u$ and so on. For a categorical stochastic process $X_t$, $t\in \mathbb{R}^+$ we use the symbol $P(X_t)$ to denote the 
 #' probability distribution at time $t$. The symbol $Z$ denotes the covariates.
 #' 
 #' ### Transitions
 #' 
-#' We use a hierarachical multistage model to quantify the rates at which patients transist from one diseage stage to another (Figure 3a).
+#' We use a hierarachical multistage model to quantify the rates at which a patient progresses from one disease/treatment stage to another (Figure 3a).
 #' After learning the marginal time-dependent transition probabilities for each event, we can combine these into a time-dependent joint probability. 
 #' 
-#' In particular, we use the transitions:
+#' In particular, we model the following transition times:
 #' 
 #' * Time of complete remission (complete remission CR, $T_{CR}$)
 #' * Time of non-remission death (Non-complete remission death NCD, $T_{NCD}$)
