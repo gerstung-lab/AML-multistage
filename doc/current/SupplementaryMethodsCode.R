@@ -1296,8 +1296,8 @@ segments(b,tcgaConcordance[1,o]-tcgaConcordance[2,o],b,tcgaConcordance[1,o]+tcga
 rotatedLabel(b, rep(0.49,length(b)), colnames(tcgaConcordance)[o], srt=45)
 
 #+ aucTCGA, fig.width=3, fig.height=2.5
+library(survAUC)
 library(survivalROC)
-#aucCV <- sapply(predictedRiskCV, function(x) survivalROC(Stime=os[!is.na(os) & !trainIdx,1], status=os[!is.na(os) &  !trainIdx,2], marker = scale(x[!is.na(os[!trainIdx])]), predict.time = 278, method="KM", cut.values=seq(-5,5,0.1))$AUC)
 tcgaAUC <- sapply(tcgaRisk, function(x) AUC.uno(na.omit(os), tcgaSurvival[!is.na(x) & !is.na(tcgaSurvival)], scale(x)[!is.na(tcgaSurvival) &! is.na(x)], c(90,365,1000)/365)$auc)
 tcgaAUCi <- sapply(tcgaRisk, function(x) AUC.uno(na.omit(os), tcgaSurvival[!is.na(x) & !is.na(tcgaSurvival)], scale(x)[!is.na(tcgaSurvival) &! is.na(x)], sort(na.omit(tcgaSurvival[,1])))$iauc)
 o <- order(colMeans(tcgaAUC))
