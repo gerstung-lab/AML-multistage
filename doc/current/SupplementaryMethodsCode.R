@@ -1,5 +1,5 @@
 #' ---
-#' title: Supporting information accompanying _Personally tailored cancer management based on knowledge banks of genomic and clinical data_
+#' title: Supplementary Methods accompanying _Personally tailored cancer management based on knowledge banks of genomic and clinical data_
 #' output:
 #'   html_document:
 #'     toc: true
@@ -592,7 +592,6 @@ addDataFrame(waldOut,
 		colnamesStyle = CellStyle(wb) + Font(wb, isBold=TRUE) + Border(),
 		rownamesStyle = CellStyle(wb) + Font(wb, isBold=TRUE)
 )
-#saveWorkbook(wb, file="SupplementaryTable1.xlsx") #more added later
 
 #' #### Figure 1c
 #' Volcano plot
@@ -1782,8 +1781,7 @@ cr <- Surv(c, factor(pmin(2 * (!is.na(clinicalData$CR_date))+os[,2],2), levels=0
 coxRFXCrTD <- CoxRFX(osData[1:1540, names(crGroups)], Surv(cr[,1], cr[,2]==2), groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 coxRFXNcdTD <- CoxRFX(osData[1:1540, names(crGroups)], Surv(cr[,1], cr[,2]==1), groups=crGroups, which.mu = NULL)
 
-#save(coxRFXRelTD, coxRFXNrdTD, coxRFXPrdTD, coxRFXOsCR, coxRFXEsTD, nrmData, cirData, prsData, osData, crGroups, data, file="../../code/predict/predictGG.RData")
-#save(coxRFXRelTD, coxRFXNrdTD, coxRFXPrdTD, coxRFXOsCR, coxRFXEsTD, coxRFXCrTD, cr, nrmData, cirData, prsData, osData, crGroups, data, file="../../code/predict/predictTest.RData")
+#save(coxRFXRelTD, coxRFXNrdTD, coxRFXPrdTD, coxRFXOsCR, coxRFXNcdTD, coxRFXCrTD, cr, nrdData, relData, prdData, osData, crGroups, data, file="../../code/predict/predictTest.RData")
 
 #' ### Variance components
 #+ allVarComp, fig.width=6, fig.height=4
@@ -1847,7 +1845,7 @@ allStagesRisk <- as.data.frame(sapply(c("NcdTD","CrTD","NrdTD","RelTD","PrdTD"),
 f <- function(x,y,...) {points(x,y, col=densCols(x,y),...); lines(lowess(x,y), col='red')}
 pairs(allStagesRisk, panel=f, pch=19)
 
-#' #### Supplementary Table 1 (ctd) 
+#' #### Supplementary Tables 2-6 
 #' Non-complete remission deaths
 w <- WaldTest(coxRFXNcdTD)
 w$Q.BH <- p.adjust(w$p.value, "BH")
@@ -1912,7 +1910,7 @@ addDataFrame(w,
 )
 
 
-saveWorkbook(wb, file="SupplementaryTable1.xlsx") #more added later
+saveWorkbook(wb, file="SupplementaryTables.xlsx") 
 
 #' ### Predicting outcome after CR
 #' Function to convolute CIR and PRM
@@ -2213,7 +2211,6 @@ anova(c)
 #' #### Absolute survival probabilities
 #' This function computes the average accuracy of multiple absolute survival predictions at a given point in time by subdividing them
 #' into equally sized bins and computing the weighted average absolute difference of the KM estimated survival probability and predicted.
-#+ absError
 EvalAbsolutePred <- function(prediction, surv, time, bins=seq(0,1,0.05)){
 	c <- cut(prediction, bins)
 	f <- survfit(surv ~ c)
@@ -2226,6 +2223,8 @@ EvalAbsolutePred <- function(prediction, surv, time, bins=seq(0,1,0.05)){
 	return(list(mean.error=mean.error, std.err=std.err, survfit=e, x=x))
 }
 
+#' #### Supplementary Figure 4
+#+ absError
 absPredError <- EvalAbsolutePred(allPredict$os, Surv(allData$time1, allData$time2, allData$status), time=3*365)
 
 plot(absPredError$x, absPredError$survfit$surv, xlim=c(0,1), ylim=c(0,1), xlab="Predicted probability", ylab="Observed", main="Prediction tool")
@@ -2872,7 +2871,7 @@ fiveStageCV <- sapply(1:10, function(foo){ ## repeat 10 times, ie. 100 fits
 
 any(is.na(fiveStageCV))
 
-#' #### Supplementary Figure 6
+#' #### Supplementary Figure X
 #' Concordance
 cvFold <- 10
 cOs <- sapply(1:10, function(foo){
@@ -2968,7 +2967,7 @@ survConcordance(Surv(cr[,1], cr[,2]==2) ~ fiveStageCVeach[[4]][order(names(fiveS
 survConcordance(Surv(cr[,1], cr[,2]==1) ~ fiveStageCVeach[[5]][order(names(fiveStageCVeach[[5]]))])
 
 
-#' #### Figure 4b-e
+#' #### Figure 4b-e, Supplementary Figure 3
 #' With and wihout TPL
 #+ threePatientsAllo, fig.width=3, fig.height=2.5
 xmax=2000
@@ -3269,7 +3268,7 @@ files <- dir("../../code/simRFX", pattern="Farmulations\\[1-1000\\]*", full.name
 tmp <- new.env()
 load(files[1], envir = tmp)
 
-#' #### Supplementary Figure 4
+#' #### Supplementary Figure 6
 #' ##### P-values
 #' Plot the P-values as a function of Np\beta^2.
 #+ pVarSchoenfeld, fig.width=2, fig.height=2, cache=TRUE
