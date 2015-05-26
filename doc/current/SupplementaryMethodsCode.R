@@ -1,5 +1,5 @@
 #' ---
-#' title: Supplementary Methods accompanying _Personally tailored cancer management based on knowledge banks of genomic and clinical data_
+#' title: Supplementary Methods
 #' output:
 #'   html_document:
 #'     toc: true
@@ -19,9 +19,9 @@
 #' 
 #' ## Variables
 #' 
-#' We use the data from N=1,540 cases as described in our companion paper [@PapaemmanuilSM2015]. 
+#' We use the data from N=1,540 AML cases as described in our companion paper [@PapaemmanuilSM2015]. 
 #' 
-#' These can be summarised as followed
+#' These can be summarised as followes:
 #' 
 #' 
 #' |Group        |   p|Variables                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -42,7 +42,7 @@
 #' The following preprocessing steps were applied:
 #'  
 #' * Agnostic imputation of missing variables by mean.
-#' * Quantitative variables rescaled by a power of 10 to magnitude of 1.
+#' * Quantitative variables linearly rescaled by a power of 10 to a magnitude of 1. This is necessary, as we are working with a penalty on the coefficient size. 
 #' 
 #' ### Genomic variables
 #' Fusion genes, Copy number alterations, Genetics and Gene:Gene interactions were encoded as 0 (absent) and 1 (present) based on the same annotation as in [@PapaemmanuilSM2015]. 
@@ -224,53 +224,54 @@ rownames(dataFrame) <- clinicalData$PDID
 #' # Models for overall survival
 #' 
 #' 
-#' We generally overall survival, measured from date of diagnosis as an endpoint.
+#' We use overall survival, measured from date of diagnosis, as the endpoint.
 #' 
 #' ## Random effects modeling
 #' 
-#' We implemented sparse random effects models in the `CoxHD` R package available at (http://)
-#' Constant covariate and time-dependent models
+#' We implemented sparse random effects for the Cox proportional hazards model in the `CoxHD` R package available at [http://github.com/mg14/CoxHD].
+#' This implementation can handle constant covariate and time-dependent models. The latter is important to quantify the effects of allografts,
+#' which are typically administered well after diagnosis.
 #' `CoxHD::CoxRFX()`
 #' 
-#' Hazard:
-#' $$ \lambda = \lambda_0(t) \exp(\beta^T Z)$$
+#' Let the hazard be:
+#' $$ \lambda = \lambda_0(t) \exp(u^T Z)$$
 #' 
-#' Define $h=\beta^T Z$ as the log hazard. $\lambda_0(t)$ is the normal baseline hazard in a `coxph` model.
+#' Define $h=u^T Z$ as the log hazard. $\lambda_0(t)$ is the normal baseline hazard in a `coxph` model.
 #' 
 #' The random effects model used here is an example of a hierarchical model with an additional assumption about the
-#' distribution of the parameters $\beta$. We assume that these follow a normal distributions. This additional assumption
-#' leads to a ridge-type regularisation.
+#' distribution of the parameters $u$. We assume that these follow a normal distributions. This additional assumption
+#' leads to a ridge-type regularisation of the log-likelihood.
 #' 
 #' Let there be $p$ covariates and $\{g\}$ be a partitioning of the $p$ variables into $|g|$ groups. For each group assume
-#' that the parameters $\beta_j$ are iid Normally distributed in each group:
+#' that the parameters $u_j$ are iid Normally distributed in each group:
 #' 
-#' $$\forall j \in g: \beta_j \sim \operatorname{N}(\mu_g;\sigma^2_g) \qquad iid. $$
+#' $$\forall j \in g: u_j \sim \operatorname{N}(\mu_g;\sigma^2_g) \qquad iid. $$
 #' 
 #' The shared means $\mu_g$ are motivated by the observation that the effect of oncogenic lesions is, on average, deleterious.
 #' 
-#' We use the convention that variables without indeces refer to the set of variables. In particular $\beta = \{\beta_j: j=1,...,p\}$, $\beta_g=\{\beta_j: j\in g\}$.
+#' We use the convention that variables without indeces refer to the set of variables. In particular $u = \{u_j: j=1,...,p\}$, $u_g=\{u_j: j\in g\}$.
 #' 
-#' The full logarithmic likelihood reads
+#' The full logarithmic likelihood reads:
 #' 
-#' $$\begin{align} \ell(\beta,\sigma^2,\mu;Z) &= \ell_0(\beta;Z) - \sum_g \frac{\sum_{j\in g}(\beta_j-\mu_g)^2}{\sigma^2_g} \cr &=  \ell_0(\beta;Z) + \ell_2(\beta,\mu,\sigma^2) \end{align}$$
+#' $$\begin{align} \ell(u,\sigma^2,\mu;Z) &= \ell_0(u;Z) - \sum_g \frac{\sum_{j\in g}(u_j-\mu_g)^2}{\sigma^2_g} \cr &=  \ell_0(u;Z) + \ell_2(u,\mu,\sigma^2). \end{align}$$
 #' 
-#' The term $\ell_0(\beta)$ is the likelihood of an unpenalised coxph model. The second term is a sum of ridge penalties resulting
-#' from the constraints imposed by the normal distribution of $\beta$, which penalises large values of $\beta_j-\mu_g$ with strength $1/\sigma_g$.
+#' The term $\ell_0(u)$ is the likelihood of an unpenalised coxph model. The second term is a sum of ridge penalties resulting
+#' from the constraints imposed by the normal distribution of $u$, which penalises large values of $u_j-\mu_g$ with strength $1/\sigma_g$.
 #' 
 #' Note that the likelihood can be reparametrised by introducing the auxilliary variables $z_g = \sum_{j\in g} Z_{.j}$ and the centred
-#' effects $u_j = \beta_j - \mu_g$:
+#' effects $u_j = u_j - \mu_g$:
 #' 
-#' $$\ell(\beta,\sigma^2,\mu;Z) = \ell_0(u,\mu;Z,z) + \ell_2(u,\sigma^2) =: \ell(u, \mu,\sigma^2;Z)$$
+#' $$\ell(u,\sigma^2,\mu;Z) = \ell_0(u,\mu;Z,z) + \ell_2(u,\sigma^2) =: \ell(u, \mu,\sigma^2;Z)$$
 #' 
 #' ### Implementation
 #' All of the following steps are implemented in the `CoxHD` `R` package, available
 #' at [http://www.github.com/mg14/CoxHD]
 #' It can be installed using the `devtools::install_github("mg14/CoxHD/CoxHD")`. 
 #' The implementation makes heavy use of the `survival` package [@Therneau2014]. The implementation is about 100x faster
-#' than the `coxme` `R` package for mixed effects Cox models by @Therneau2012, as it exploits that $\beta$ are iid.
+#' than the `coxme` `R` package for mixed effects Cox models by @Therneau2012, as it exploits that $u$ are iid.
 #' 
 #' ### Parameter estimation
-#' EM algorithm as used by @PerperoglouSM2014 for Cox models, based on the work by @SchallB1991. 
+#' We use an EM algorithm as suggested by @PerperoglouSM2014 for Cox models, based on the work by @SchallB1991. 
 #' The algorithm iteratively estimates the following quantities:
 #' 
 #' 1.  Given $\hat\sigma^2$, jointly estimate 
@@ -287,19 +288,19 @@ rownames(dataFrame) <- clinicalData$PDID
 #' 
 #' Iterate until convergence of parameters and penalised likelihood.
 #' 
-#' The final parameters are given by uncentering $\hat\beta_j = \hat u_j + \hat \mu_g$.
+#' The final parameters are given by uncentering $\hatu_j = \hat u_j + \hat \mu_g$.
 #' 
-#' **Note**: There estimates $\hat\beta$ are maximum a posteriori (MAP) from a Bayesian interpretation with
+#' **Note**: There estimates $\hatu$ are maximum a posteriori (MAP) from a Bayesian interpretation with
 #'  $\hat\sigma^2$ and $\hat\mu$ being empirical Bayes estimates. 
 #' 
 #' 
 #' ### Semiparametric bootstrap
 #' 
-#' We use the following semi-parametric bootstrap approach:
+#' To assess the sampling distributions of our estimates, e.g., to assess the their variances, we use the following semi-parametric bootstrap approach:
 #' 
 #' For i=1:100 simulate $n$ semiparametric survial times `Y` (see [#survival]):
 #' 	
-#' * Using MAP estimates $\hat\beta$
+#' * Using MAP estimates $\hatu$
 #' * Using full covariate set $Z$
 #' 	
 #' This allows to assess the distribution of all estimates in a semi-parametric way.
@@ -314,9 +315,9 @@ rownames(dataFrame) <- clinicalData$PDID
 #' 
 #' The estimates $\hat V_\cdot$ have dimension $(p+|g|)\times(p+|g|)$.
 #' 
-#' The uncentered variance estimates of the parameter $\beta_j = u_j + \mu_g$ are given by 
+#' The uncentered variance estimates of the parameter $u_j = u_j + \mu_g$ are given by 
 #' 
-#' $$\hat V_\cdot[\beta_j] = \hat V_\cdot[u_j,u_j] + \hat V_\cdot[\mu_g,\mu_g] + 2 \hat V_\cdot[u_j,\mu_g],$$
+#' $$\hat V_\cdot[u_j] = \hat V_\cdot[u_j,u_j] + \hat V_\cdot[\mu_g,\mu_g] + 2 \hat V_\cdot[u_j,\mu_g],$$
 #' 
 #' thus accounting for the correlation of $u_j$ and $\mu_g$.
 #' 
@@ -327,7 +328,7 @@ rownames(dataFrame) <- clinicalData$PDID
 #' 
 #' $$
 #' \begin{align}
-#' z &= \hat\beta^2 / \hat V_2[\beta] \\\\
+#' z &= \hatu^2 / \hat V_2[u] \\\\
 #' Z &\sim \chi^2_1
 #' \end{align} 
 #' $$
@@ -349,7 +350,7 @@ rownames(dataFrame) <- clinicalData$PDID
 #' #### Partial log hazard
 #' In an additive model the linear predictor of the log hazard $h$ is given by:
 #' 
-#' $$h = \beta^T Z = \sum_g \sum_{j\in g} \beta_j^T Z_{.j} = \sum_g h_g$$
+#' $$h = u^T Z = \sum_g \sum_{j\in g} u_j^T Z_{.j} = \sum_g h_g$$
 #' 
 #' Where the set of ${g}$ is partitioning of all covariates. We define $h_g$ as the partial logarithmic hazard contributed by group $g$.
 #' 
@@ -377,17 +378,17 @@ rownames(dataFrame) <- clinicalData$PDID
 #' where $f(x,\mu,\sigma_2)$ is the density of normal distribution. There exists no analytical 
 #' solution to the above equation, but it may be computed numerically. For a variance of 1, the concordance is 72.5%.
 #' 
-#' **Note**: For a Cox proportional hazards model even perfect knowledge of the hazard does not guaratuee perfect concordance
-#' due to the sampling of the survival times. The limit $Var[h] \rightarrow \infty$, in which the hazard ratio between any two patients is infinite yields a 
+#' **Note**: For a Cox proportional hazards model even perfect knowledge of the hazard does not guaratuee perfect concordance (i.e. C=1)
+#' due to the sampling of the survival times. The limit $Var[h] \rightarrow \infty$, in which the hazard ratio between any two patients is infinite, yields a 
 #' deterministic behaviour with $C=1$.
 #' 
 #' ### Prediction error
 #' 
 #' The prediction error of a the log hazard for patient $i$ is given by
 #' 
-#' $$\hat V[h_i] = V[\hat\beta^T Z_{i\cdot}] = Z_{i\cdot}^T \hat V[\beta] Z_{i\cdot}$$
+#' $$\hat V[h_i] = V[\hatu^T Z_{i\cdot}] = Z_{i\cdot}^T \hat V[u] Z_{i\cdot}$$
 #' 
-#' where $V[\hat\beta]$ is the covariance matrix of the parameters defined in [Analytical confidence intervals](#analytical-confidence-intervals-of-individual-parameters).
+#' where $V[\hatu]$ is the covariance matrix of the parameters defined in [Analytical confidence intervals](#analytical-confidence-intervals-of-individual-parameters).
 #' 
 #' **Note**:  In a linear model, the lhs corresponds to the the residual $r_i$ of observation $i$ and
 #' the identity $\hat V = Z^T Z \times RSS/n$ holds. In our case $V$ is derived from the Fisher information,
@@ -410,14 +411,14 @@ rownames(dataFrame) <- clinicalData$PDID
 #' 
 #' The uncertainty in $Z_m$ adds another term to the prediction error:
 #' 
-#' $$\hat V[h_i] = Z_{io}^T \hat V[\beta]_{oo} Z_{io} + \beta_m^T V[Z_{im}] \beta_m$$ 
+#' $$\hat V[h_i] = Z_{io}^T \hat V[u]_{oo} Z_{io} + u_m^T V[Z_{im}] u_m$$ 
 #' 
 #' ## Other survival models
 #' 
 #' ### Stepwise variable selection
 #' 
 #' Coxph + AIC or BIC forward and backward selection beginning from empty model.
-#' Constant covariate and time-dependent models
+#' The implementation in the `survival` `R` package [@Therneau2014] handles constant covariate and time-dependent models.
 #' 
 #' 
 #' ### Complementary pairs stability selection
@@ -443,19 +444,19 @@ rownames(dataFrame) <- clinicalData$PDID
 #' ### Random survival forests
 #' 
 #' Random survival forests are an intrisically non-linear alternative to Cox proportional hazards based regression [@IshwaranTAAS2008]. The idea is to
-#' fit an ensembel of regression trees based on subsampling of patients and/or covariates. The resulting predictions are averaged across
+#' fit an ensemble of regression trees based on subsampling of patients and/or covariates. The resulting predictions are averaged across
 #' the forest of regression trees. We used version 1.6 of the `randomForestSRC` package and default options for `randomForestSRC::rfsrc()`. 
 #' Note that the model can only handle constant covariates.
 #' 
 #' ## Code
 #' ### Number of oncogenics
 
-#' Construct data.frame for OS
+#' Construct data.frame for OS, replicating patients (rows) before and after allograft.
 #+ dataFrameOsTD, cache=TRUE
 dataFrameOsTD <- dataFrame[tplSplitOs,]
 dataFrameOsTD[which(tplIndexOs), grep("TPL", colnames(dataFrameOsTD), value=TRUE)] <- 0 ## Set pre-tpl variables to zero 
 
-#' Some indeces
+#' Define some indeces relating to subsets of variables used by the random effects model.
 #+ indeces, cache=TRUE
 mainGroups <- grep("[A-Z][a-z]+[A-Z]",levels(groups), invert=TRUE, value=TRUE)
 mainGroups
@@ -468,7 +469,7 @@ whichRFXOsTD <- which((colSums(dataFrame)>=8 | mainIdx) & osTDIdx) # ie, > 0.5%
 mainIdxOsTD <- mainIdx & osTDIdx
 whichRFXOsGG <- which((colSums(dataFrame)>=8 | mainIdxOs) & osIdx & groups %in% c(mainGroups,"GeneGene")) # ie, > 0.5%
 
-#' And the number of oncogenics
+#' Compute the number of oncogenics, excluding complex karyotype.
 NONC <- rowSums(cbind(dataList$Cytogenetics[names(dataList$Cytogenetics)!="complex"], dataList$Genetics), na.rm=TRUE)
 
 #' #### Figure 1a
@@ -502,20 +503,26 @@ summary(coxph(os ~ ., data=dataFrame[groups %in% c("Clinical","Demographics")]),
 #' No measurable improvement over (scaled) linear terms thus. 
 #' 
 #' ### Random effects models
+#' Here we fit the random effects model using our implementation in the `CoxHD` package. First for main effects only.
  
 #+ coxRFXFitOsTDMain, cache=TRUE
 coxRFXFitOsTDMain <- CoxRFX(dataFrameOsTD[,mainIdxOsTD], osTD, groups[mainIdxOsTD])
 
+#' Now including gene:gene interaction terms (min. recurrence = 8)
+ 
 #+ coxRFXFitOsTDGG, cache=TRUE
 whichRFXOsTDGG <- which((colSums(dataFrame)>=8 | mainIdxOsTD) & osTDIdx & groups %in% c(mainGroups,"GeneGene")) # ie, > 0.5%
 coxRFXFitOsTDGGc <- CoxRFX(dataFrameOsTD[,whichRFXOsTDGG], osTD, groups[whichRFXOsTDGG], which.mu=mainGroups) ## allow only the main groups to have mean different from zero.. 
 
+#' Compute Harrel's concordamce
+survConcordance(osTD~coxRFXFitOsTDGGc$linear.predictors)
+
+#' #### Figure 1d
+#' Here we compute the variance components.
+#+ varianceComponents
 colGroups <- c(brewer.pal(12, "Paired")[c(10)],brewer.pal(12, "Paired")[c(6,4,3,5,12,9,1,2,7)],"#999999", brewer.pal(12, "Paired")[c(8)])
 colGroups <- colGroups[c(2:6,1,7:14)]
 names(colGroups) <- levels(groups)[order(toupper(levels(groups)))]
-
-#' #### Figure 1d
-#+ varianceComponents
 PlotVarianceComponents(coxRFXFitOsTDGGc, col=colGroups)
 title("Risk contributions OS (time-dep)")
 
@@ -536,7 +543,7 @@ parBoot <- mclapply(1:100, function(i) {
 			return(c)
 		}, mc.cores=10)
 
-#' Plots of mean, sigma and df
+#' Distributions of mean, sigma and df
 #+ parBootPlots, fig.width=3, fig.height=2,  eval=TRUE
 boxplot(t(sapply(parBoot, `[[`, "sigma2")), border=colGroups[names(parBoot[[1]]$sigma2)], lty=1, pch=16, staplewex=0, ylab="sigma2", las=2, log="y", ylim=c(1e-3,1))
 abline(h=0, lty=3)
@@ -562,6 +569,8 @@ points(c^2/v, c^2/w2, pch=16, cex=.7)
 arrows(c^2/v, c^2/w, c^2/v,c^2/w2, length=0.05)
 abline(0,1)
 abline(h=qchisq(c(0.95,0.99,0.999), 1, lower.tail=TRUE), lty=c(1,2,3))
+#' The plot indicates a good agreement of the variance estimate `var2`, see [section 2.1.4.](#Analytical-confidence-intervals-of-individual-parameters). Knowing the distribution
+#' of the variance allows us to compute a Wald test of the coefficients.
 
 #' #### Supplementary Table 1
 #' Table with significance
@@ -627,7 +636,7 @@ abline(0,1)
 points(seq(0,1,l=length(p)+1)[-1],sort(p), pch=16)
 legend("topleft",bty="n", c("observed","randomised"), pch=16, col=c("black","grey"))
 
-
+#' Distribution of the variance components
 #+ parBootVarianceComp, fig.width=3, fig.height=2, cache=TRUE, eval=TRUE
 v <- t(sapply(parBoot, function(x) {t <- try(VarianceComponents(x, newZ=dataFrame[whichRFXOsTDGG])); if(class(t)=="try-error") rep(NA, nlevels(x$groups)+1) else t}))
 boxplot(v, border=colGroups[colnames(v)], lty=1, pch=16, staplewex=0, ylab="variance comp.", las=2)
@@ -656,7 +665,7 @@ axis(side=3, at=pretty(q/365)/max(q)*365*500, labels=pretty(q/365))
 lines(ksmooth(seq_along(o),t[o,2]==0, bandwidth=50))
 
 #' #### Figure 2c
-#' Risk constellation plots using the stars() function
+#' Risk constellation plots using the `stars()` function
 #+ stars, fig.width=12, fig.height=12
 set.seed(42)
 library(HilbertVis)
@@ -708,14 +717,10 @@ text(locations[,1], locations[,2]+1,labels=paste(gsub(";","\n",genotype[patients
 
 
 
-#' Compute Harrel's C
-#' OS
-survConcordance(osTD~coxRFXFitOsTDGGc$linear.predictors)
-
 #' # Cross-validation
 #' 
 #' We used cross-validation to evaluate the performance of different modeling strategies. The idea is to split the data
-#' into a training and a test set. The model is fitted on the training part and it's prognostic accuracy evaluated on the test set.
+#' into a training and a test set; the model is fitted on the training part and its prognostic accuracy evaluated on the test set.
 #' 
 #' 
 #' ## Random cross validation
@@ -729,6 +734,8 @@ survConcordance(osTD~coxRFXFitOsTDGGc$linear.predictors)
 #' * Brier score, an absolute measure of the prediction error [@GerdsBJ2006], implemented in `survAUC::predErr()`.
 #' * A generalised coefficient of explained variation $R^2$  [@NagelkerkeB1991,@OQuigleySM2005] , implemented as `survAUC::OXS()`.
 #' 
+#'  The latter three algorithms are implemented in the `survAUC` `R` package [@Potapov2012].
+#' 
 #' ## Inter-trial
 #' 
 #' The data comprised patients from three different trials - AMLSG07/04 (n=740), AMLHD98A (n=627), and AMLHD98B (n=173).
@@ -741,8 +748,8 @@ survConcordance(osTD~coxRFXFitOsTDGGc$linear.predictors)
 #' 
 #' As an additional and independent evaluation cohort, we downloaded data from the cancer genome atlas (TCGA) [@TCGANEJM2013]. 
 #' We downloaded variant calls from exome sequencing and cytogenetic data for n=200 and annotated oncogenic mutations as described in our companion paper.
-#' Overall survival was available for n=186 patients. For missing variables, we use a [covariance-based imputation](#covariance-based-imputation), with
-#' a covariance matrix derived from our original data set. We note that there was no data available for allografts.
+#' Overall survival was available for n=186 patients. For missing prognostic variables, we use a [covariance-based imputation](#covariance-based-imputation), with
+#' a covariance matrix derived from our original data set (n=1,540). We note that there was no data available for allografts.
 #' 
 #' ## Code
 
@@ -778,8 +785,8 @@ allModelsCV <- mclapply(1:replicates, function(foo){
 					))
 		}, mc.cores=10)
 
-#' Predictions
-#' All predictions
+#' Compute predictions for all model fits
+#' 
 #+ allModelsCvPredictions, cache=TRUE
 predictAllModels <- function(x, newdata){
 	if("rfsrc" %in% class(x)){
@@ -1130,7 +1137,7 @@ allModelsTrialTdC
 #' ### TCGA validation
 #' 
 #' #### Fit models
-#' Tree
+#' Fit a single tree [@Therneau2014A] and a random forest model [@IshwaranTAAS2008].
 #+ tree, fig.width=3, fig.height=3
 library(rpart)
 library(randomForestSRC)
@@ -1167,7 +1174,7 @@ summary(coxBICOs)
 coxAICOs <- step(c, scope= scopeStep, k = 2, trace=0)
 summary(coxAICOs)
 
-#' Time-dep AIC and BIC
+#' Time-dep AIC and BIC, including allografts
 #+ coxBICosTD, cache=TRUE, warning=FALSE
 c <- coxph(osTD ~ 1, data=dataFrameOsTD[mainIdxOsTD])
 scopeStep <- as.formula(paste("osTD ~", paste(colnames(dataFrameOsTD)[mainIdxOsTD], collapse="+")))
@@ -1211,11 +1218,11 @@ cor(colMeans(dataFrame[groups=="Genetics"])[colnames(tcgaMutation)], colMeans(tc
 
 #' NPM1 survival
 plot(survfit(tcgaSurvival ~ NPM1, data=tcgaData), col=set1[1:2])
-lines(survfit(os ~ NPM1, data=dataFrame), col=set1, lty=3,mark=NA)
+lines(survfit(osYr ~ NPM1, data=dataFrame), col=set1, lty=3,mark=NA)
 legend("topright", col=c(set1[1:2],"black","black"), c("NPM1 wt", "NPM1 mut","TCGA","AML"), lty=c(1,1,1,3), bty='n')
 
 #' #### Analyse risk
-#' CoxRFX model and covariance based imputation
+#' CoxRFX model and covariance-based imputation
 tcgaRiskRFXOs <- PredictRiskMissing(coxRFXFitOsTDGGc, tcgaData[whichRFXOsTDGG])
 survConcordance(tcgaSurvival ~ tcgaRiskRFXOs[,1])
 
@@ -1231,7 +1238,7 @@ survConcordance(tcgaSurvival ~ predict(coxCPSSIntOs, newdata=as.data.frame(f(tcg
 #' Cytogenetic risk
 survConcordance(tcgaSurvival ~ c(3,1,2)[tcgaClinical$C_Risk])
 
-#' PINA score
+#' PINA score [@PastoreJCO2014] for NK AML.
 PINAOs <- function(X){
 	coef <- c( NPM1=-1.2,
 			FLT3_ITD=-.26,
@@ -1262,7 +1269,7 @@ survConcordance(tcgaSurvival[tcgaNkIdx] ~ tcgaPinaOs[tcgaNkIdx,1])
 survConcordance(tcgaSurvival[tcgaNkIdx] ~ tcgaRiskCPSSOs[tcgaNkIdx])
 
 
-#' ELN score
+#' ELN score [@DohnerB2010]
 ELN <- function(X, nkIdx){
 	factor(ifelse(X$inv3_t3_3==1 | X$t_6_9==1 | X$minus5_5q==1 | X$mono17_17p_abn17p==1 | X$minus7==1 | X$complex==1 | X$t_v_11==1,
 					"Adverse",
@@ -1287,6 +1294,7 @@ tcgaRisk <- data.frame(
 		coxCPSS = tcgaRiskCPSSOs
 )
 
+#' Concordance of all models
 #+ concordanceTCGA, fig.width=3, fig.height=2.5
 tcgaConcordance <- sapply(tcgaRisk, function(x) {c <- survConcordance(tcgaSurvival ~ x); c(c$concordance, c$std.err)})
 tcgaConcordance
@@ -1295,6 +1303,7 @@ barplot(tcgaConcordance[1,o], border=NA, col= set1[-6], las=2, xaxt="n", ylab="C
 segments(b,tcgaConcordance[1,o]-tcgaConcordance[2,o],b,tcgaConcordance[1,o]+tcgaConcordance[2,o])
 rotatedLabel(b, rep(0.49,length(b)), colnames(tcgaConcordance)[o], srt=45)
 
+#' AUC of all models
 #+ aucTCGA, fig.width=3, fig.height=2.5
 library(survAUC)
 library(survivalROC)
@@ -1305,15 +1314,16 @@ barplot(tcgaAUC[,o], border=1, col= rep(c("grey",set1[-6]),each=3), las=2, xaxt=
 legend("topleft", bty="n", c("3mo","1yr","3yr"), fill='black', density=c(NA, 48,24))
 rotatedLabel(b[seq(3, length(b), 3)], rep(0.49,length(tcgaRisk)), names(tcgaRisk)[o], srt=45)
 
-
+#' KM curves for four risk categories (quartiles)
 #+ kmTCGA, fig.width=3, fig.height=2.5
-risk <- cut(tcgaRiskCPSSOs, quantile(tcgaRiskCPSSOs), labels=c("1st Q","2nd Q","3rd Q","4th Q"))
+risk <- cut(tcgaRiskRFXOs, quantile(tcgaRiskRFXOs), labels=c("1st Q","2nd Q","3rd Q","4th Q"))
 s <- survfit(tcgaSurvival ~ risk)
 plot(s, col=set1[c(3,2,4,1)], mark=NA, xlab="Years", ylab="Survival")
 legend("topright", bty="n", rownames(summary(s)$table), col=set1[c(3,2,4,1)], lty=1)
 
+#' Distribution of risk v cytogentic categories
 #+ riskTCGA, fig.width=3, fig.height=2.5
-risk <- tcgaRiskCPSSOs - mean(tcgaRiskCPSSOs)
+risk <- tcgaRiskRFXOs - mean(tcgaRiskRFXOs)
 x <- seq(from=-4,to=4, l=512)
 r <- sapply(levels(tcgaClinical$C_Risk)[c(2,3,1)], function(r){
 			i <- tcgaClinical$C_Risk==r
@@ -1471,15 +1481,15 @@ legend("bottomright",
 #' 
 #' ### Unconditional densities
 #' The estimation of the unconditional densities $f(T=t\mid Z)$ is straightforward.
-#' The random effects model yield the marginal survivor function $S(t \mid  Z) = S_0(t) ^{\exp(\beta Z)}$, quantifying 
+#' The random effects model yield the marginal survivor function $S(t \mid  Z) = S_0(t) ^{\exp(u Z)}$, quantifying 
 #' the hypothetical scenario that there were no competing events $T'$. From $S(t\mid Z)$ we can derive
-#' the marginal densities $f(t \mid  Z) = -dS(t)/dt = -\exp(\beta Z) S_0(t)^{\exp(\beta Z) -1} dS_0(t)/dt$ for each transition $T$ given the covariates $Z$. 
+#' the marginal densities $f(t \mid  Z) = -dS(t)/dt = -\exp(u Z) S_0(t)^{\exp(u Z) -1} dS_0(t)/dt$ for each transition $T$ given the covariates $Z$. 
 #' The Kaplan-Meier estimate of $S_0(t)$ is a step function, so we may compute $f(t\mid Z)$ via a numerical differentiation.
 #' 
 #' ### Conditional densities
 #' To estimate the conditional densities of the type $f(U=u\mid Z, T)$, we use the following approach: 
 #' 
-#' $$S(u \mid  Z, T=t) =  S_0(u-t \mid  Z) ^{\exp(g(t))} = S_0(u-t) ^{\exp(\beta Z + g(t))}. \label{eq:cond-dens}$$
+#' $$S(u \mid  Z, T=t) =  S_0(u-t \mid  Z) ^{\exp(g(t))} = S_0(u-t) ^{\exp(u Z + g(t))}. \label{eq:cond-dens}$$
 #' 
 #' This allows us to estimate the incidence of each event from the beginning of each stage $S_0(u-t \mid  Z)$ and express the time-dependence as
 #' a smooth function $g(t)$. For example, the duration of CR1 is a prognostic factor for post-relapse mortality, e.g. [@BurnettJCO2013].
@@ -1487,7 +1497,7 @@ legend("bottomright",
 #' The above corresoponds to a Cox proportional hazards model with a time-dependent smooth covariate g(t). 
 #' 
 #' Here we estimate $g(t)$ with a spline term with 10 degrees of freedom. We 
-#' estimate $S_0(u-t)$ and $\beta$ using a random effects model and subsequently estimate $g(t)$ using $\beta Z$ as an
+#' estimate $S_0(u-t)$ and $u$ using a random effects model and subsequently estimate $g(t)$ using $u Z$ as an
 #' intercept: 
 #' 
 #' ```{r, eval=FALSE}
@@ -1496,8 +1506,8 @@ legend("bottomright",
 #' fit_u_given_Z_t <- coxph(Surv(U-T, event) ~ I(beta %*% Z) + spline(T, df=10))
 #' ```
 #' 
-#' We may thus obtain $S(u\mid T=t, Z) = \left(S_0(u-t)^{\exp(\beta Z)}\right)^{\exp(g(t))}$ by offsetting the baseline hazard $S_0(u-t)$ and exponentiating
-#' for the effect of covariates $\beta Z$ and exponentiating for the effect of time-dependence.
+#' We may thus obtain $S(u\mid T=t, Z) = \left(S_0(u-t)^{\exp(u Z)}\right)^{\exp(g(t))}$ by offsetting the baseline hazard $S_0(u-t)$ and exponentiating
+#' for the effect of covariates $u Z$ and exponentiating for the effect of time-dependence.
 #' 
 #' The absolute probability to be in state $U$ is given by integrating over the conditional probabilities $S(u\mid T=t, Z)$, weighted by the probability of 
 #' the precedeing event probabilities $f(T=t\mid Z)$:
@@ -1522,7 +1532,7 @@ legend("bottomright",
 #' In cases of competing events (CR and NCD; NCD and CIR), we use a competing risk adjustment between two event times $T$, $U$, to obtain 
 #' $$S(T=t \mid  Z, T < U) = \int_t^v \int_v^\infty f(T=t'\mid  Z) f(U=u' \mid  Z) dt' du' = \int_0^t f(T=t' \mid  Z) S(U=t'\mid Z) dv.$$
 #' 
-#' In practical terms, $S(t\mid Z) = S_0(t) ^{\exp(\beta Z)}$ denotes the survivor function estimated by the Kaplan-Meyer estimate $S_0(t)$, exponentiated by the hazard $\exp(\beta Z)$. The differential $f(t\mid Z)$ is
+#' In practical terms, $S(t\mid Z) = S_0(t) ^{\exp(u Z)}$ denotes the survivor function estimated by the Kaplan-Meyer estimate $S_0(t)$, exponentiated by the hazard $\exp(u Z)$. The differential $f(t\mid Z)$ is
 #' obtained by evaluating the difference of $S(t+1\mid Z) - S(t\mid Z)$ at intervals of length 1 day, pseudo code
 #' 
 #' `S_t_cr <- cumsum(diff(S_t) * S_u)`
@@ -2078,7 +2088,7 @@ concordanceCIRcv <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), f
 apply(apply(-sapply(concordanceCIRcv[[1]], `[[` , "C")[4:6,],2,rank),1,function(x) table(factor(x, levels=1:3)))
 apply(apply(-sapply(concordanceCIRcv[[2]], `[[` , "C")[4:6,],2,rank),1,function(x) table(factor(x, levels=1:3)))
 
-#' Further diagnostics -- get test and train errors
+#' Test and train errors
 i <- 0
 concordanceCIRcvTrain <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), function(g){ 
 			i <- i+1
@@ -2121,7 +2131,7 @@ plot(r[,3], coef(coxRFXNrdTD)); abline(0,1)
 plot(r[,4], coef(coxRFXOsCR)); abline(0,1)
 
 
-#' #### Get variance-based estimate of concordance
+#' Variance-based concordance estimate
 #+ concordanceCIRcvVar, cache=TRUE
 i <- 0
 concordanceCIRcvVar <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), function(g){ 
@@ -2223,7 +2233,7 @@ EvalAbsolutePred <- function(prediction, surv, time, bins=seq(0,1,0.05)){
 	return(list(mean.error=mean.error, std.err=std.err, survfit=e, x=x))
 }
 
-#' #### Supplementary Figure 4
+#' #### Supplementary Figure 5
 #+ absError
 absPredError <- EvalAbsolutePred(allPredict$os, Surv(allData$time1, allData$time2, allData$status), time=3*365)
 
@@ -2871,7 +2881,7 @@ fiveStageCV <- sapply(1:10, function(foo){ ## repeat 10 times, ie. 100 fits
 
 any(is.na(fiveStageCV))
 
-#' #### Supplementary Figure X
+#' #### Supplementary Figure 3
 #' Concordance
 cvFold <- 10
 cOs <- sapply(1:10, function(foo){
@@ -2967,7 +2977,7 @@ survConcordance(Surv(cr[,1], cr[,2]==2) ~ fiveStageCVeach[[4]][order(names(fiveS
 survConcordance(Surv(cr[,1], cr[,2]==1) ~ fiveStageCVeach[[5]][order(names(fiveStageCVeach[[5]]))])
 
 
-#' #### Figure 4b-e, Supplementary Figure 3
+#' #### Figure 4b-e, Supplementary Figure 4
 #' With and wihout TPL
 #+ threePatientsAllo, fig.width=3, fig.height=2.5
 xmax=2000
@@ -3003,12 +3013,12 @@ for(i in c(2,3,5,6,8,9)){
 #' 
 #' In the Cox proportional hazards model, the hazard is given by:
 #' 
-#' $$ \lambda(t) = \lambda_0(t) \exp(\beta Z) = -\frac{dS(t)}{dt}\frac{1}{S(t)}.$$
+#' $$ \lambda(t) = \lambda_0(t) \exp(u Z) = -\frac{dS(t)}{dt}\frac{1}{S(t)}.$$
 #' 
 #' On transformed time-scale $\tau(t) = \int_0^t \lambda_0(t') dt'$, the 
 #' hazard is constant and survival times are distributed exponentially. 
 #' A strategy to model survival times according to the Cox proportional
-#' hazards model is therefore to draw unit survival times $\tau ~ \operatorname{Exp}(\beta Z)$ and 
+#' hazards model is therefore to draw unit survival times $\tau ~ \operatorname{Exp}(u Z)$ and 
 #' to scale those according to $\tau^{-1}$. 
 #' 
 #' The observed survival times $T_o$ are subject to censoring. The generative process can
@@ -3085,12 +3095,12 @@ for(i in c(2,3,5,6,8,9)){
 #' was a linear function of the average number of drivers/patient. Here we derive the theoretical groundwork supporting 
 #' this observation.
 #' 
-#' Let $Z$ be the set of genetic predictors and $\beta \sim N(\mu;\sigma)$ the distribution of effect sizes. Then the 
+#' Let $Z$ be the set of genetic predictors and $u \sim N(\mu;\sigma)$ the distribution of effect sizes. Then the 
 #' variation in log hazard is given by
 #' 
 #' $$
-#' \begin{align} Var[h] = Var[\beta^T Z] &= E[Var[\beta^T Z|Z]] + Var[E[\beta^T Z | Z]] \cr
-#' &= E[ Z^T Var[\beta] Z ] + \mu^2 Var[\textstyle\sum_i Z_i]  \cr
+#' \begin{align} Var[h] = Var[u^T Z] &= E[Var[u^T Z|Z]] + Var[E[u^T Z | Z]] \cr
+#' &= E[ Z^T Var[u] Z ] + \mu^2 Var[\textstyle\sum_i Z_i]  \cr
 #' &= \sigma^2 E[ \textstyle\sum_i Z^2_i] + \mu^2 Var[\textstyle\sum_i Z_i] \cr 
 #' &= \sigma^2 E[ \textstyle\sum_i Z_i] + \mu^2 Var[\textstyle\sum_i Z_i] \qquad Z_i^2 = Z_i \in \{0,1\} \cr
 #' &= \sigma^2 E[D] + \mu^2 Var[D]
@@ -3268,9 +3278,9 @@ files <- dir("../../code/simRFX", pattern="Farmulations\\[1-1000\\]*", full.name
 tmp <- new.env()
 load(files[1], envir = tmp)
 
-#' #### Supplementary Figure 6
+#' #### Supplementary Figure 7
 #' ##### P-values
-#' Plot the P-values as a function of Np\beta^2.
+#' Plot the P-values as a function of Npu^2.
 #+ pVarSchoenfeld, fig.width=2, fig.height=2, cache=TRUE
 w <- groups[whichRFXOsTDGG] %in% c("Genetics","Fusions","CNA", "GeneGene") ## Which groups
 psi <- mean(os[,2]) ## Fraction of uncensored observations
@@ -3288,7 +3298,7 @@ lines(x, pnorm(sqrt(x), lower.tail = FALSE))
 
 
 #' ##### Power
-#' The theoretical power (according to Schoenfeld/Schmoor is)
+#' The theoretical power according to Schoenfeld/Schmoor is given by [@SchmoorSM2000]:
 power <- function(beta, N, p, psi=0.5, alpha=0.05){
 	pnorm(sqrt(N*psi*beta^2*p*(1-p))-qnorm(1-alpha/2))
 }
