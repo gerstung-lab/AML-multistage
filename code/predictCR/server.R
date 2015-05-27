@@ -199,10 +199,11 @@ shinyServer(function(input, output) {
 						t <- sapply(c("Ncd","Cr","Nrd","Rel","Prd"), function(m){
 									r <- riskMissing()[[m]]
 									x <- get(paste("coxRFX",m,"TD", sep=""))
+									Z <- if(!is.null(x$na.action)) x$Z[-x$na.action,] else x$Z 
 									p <- PartialRisk(x, newZ= rbind(dataImputed(),colMeans(data[1:1540,])))
 									p <- p[1,]-p[2,]
 									#p <- p[-length(p)]
-									c(round(p,3), `total`=round(r[1,1] - mean(x$Z %*% coef(x)),3),
+									c(round(p,3), `total`=round(r[1,1] - mean(Z %*% coef(x)),3),
 											`sd`=round(sqrt(r[1,2]),3))
 								})
 						colnames(t) <- c("Death without CR (NCD)", "Complete remission (CR)", "Death without relapse (NRD)", "Relapse","Death after relapse (PRD)")
