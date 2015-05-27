@@ -12,14 +12,15 @@ load("predictTest.RData", envir=globalenv())
 cr <<- cr
 set1 <- brewer.pal(8, "Set1")
 pastel1 <- brewer.pal(8, "Pastel1")
-VARIABLES <- names(crGroups)[!crGroups %in% c("Nuisance","GeneGene")] 
+s <- !crGroups %in% c("Nuisance","GeneGene")  & ! names(crGroups) %in% c("oAML","ATRA","VPA")
+VARIABLES <- names(crGroups)[s] 
 rg <- c("Fusions"=8, "CNA"=7,"Genetics"=6, "Clinical"=5, "Demographics"=4, "Treatment"=3)
-o <- order(rg[crGroups[!crGroups %in% c("Nuisance","GeneGene")]],(coef(coxRFXPrdTD)^2/diag(coxRFXPrdTD$var2))[VARIABLES], decreasing=TRUE)
+o <- order(rg[crGroups[s]],(coef(coxRFXPrdTD)^2/diag(coxRFXPrdTD$var2))[VARIABLES], decreasing=TRUE)
 VARIABLES <- VARIABLES[o]
-NEWGRP <- c(1,diff(as.numeric(as.factor(crGroups))[!crGroups %in% c("Nuisance","GeneGene")][o])) != 0
+NEWGRP <- c(1,diff(as.numeric(as.factor(crGroups))[s][o])) != 0
 names(NEWGRP) <- VARIABLES
 INTERACTIONS <- names(crGroups)[crGroups %in% "GeneGene"] 
-NUISANCE <- names(crGroups)[crGroups %in% "Nuisance"] 
+NUISANCE <- names(crGroups)[crGroups %in% "Nuisance" | names(crGroups) %in%  c("oAML","ATRA","VPA")] 
 
 SCALEFACTORS<- rep(1, length(VARIABLES))
 names(SCALEFACTORS) <- VARIABLES
@@ -28,7 +29,7 @@ r <- regexpr("(?<=_)[0-9]+$", VARIABLES[w], perl=TRUE)
 SCALEFACTORS[w][r!=-1] <- as.numeric(regmatches(VARIABLES[w],r))
 
 LABELS <- sapply(VARIABLES, function(x){
-			r <- range(data[,x]*SCALEFACTORS[x], na.rm=TRUE)
+			r <- round(range(data[,x]*SCALEFACTORS[x], na.rm=TRUE),1)
 			i <- paste0(" [",r[1],"-",r[2],"]")
 			paste0(sub(paste0("_",SCALEFACTORS[x],"$"),"",x), ifelse(crGroups[x] %in% c("Genetics","Fusions","CNA","Treatment"),"",i))
 		})
@@ -111,6 +112,10 @@ shinyServer(function(input, output) {
 							defaults <- data[pdid,]
 						
 						defaults <- as.numeric(defaults)
+						
+						## Obfuscation
+						defaults <- round(defaults * 5)/5
+						
 						names(defaults) <- colnames(data)
 						defaults[VARIABLES] <- defaults[VARIABLES] * SCALEFACTORS
 						#cat(defaults,"\n")
@@ -123,8 +128,8 @@ shinyServer(function(input, output) {
 												d <- paste(d)
 												radioButtons(x, label=if(crGroups[x]=="Genetics") tags$em(LABELS[x]) else LABELS[x], choices=c("present"= "1", "absent"="0", "NA"="NA"), selected=d)
 											}else{
-												r <- range(data[,x]*SCALEFACTORS[x], na.rm=TRUE)
-												numericInput(inputId=x, label=LABELS[x], value=d, min=r[1], max=r[2] )
+												r <- quantile(data[,x]*SCALEFACTORS[x], c(0.05,0.95), na.rm=TRUE)
+												numericInput(inputId=x, label=LABELS[x], value=d, min=r[1], max=r[2], step = if(round(min(data[,x]*SCALEFACTORS[x], na.rm=TRUE),1) %% 1 ==0) 1 else 0.1)
 											}
 									h <- if(NEWGRP[x]) list(tags$hr(), tags$em(tags$b(crGroups[x]))) else NULL
 									list(h,f)}
