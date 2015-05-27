@@ -13,7 +13,11 @@ cr <<- cr
 set1 <- brewer.pal(8, "Set1")
 pastel1 <- brewer.pal(8, "Pastel1")
 VARIABLES <- names(crGroups)[!crGroups %in% c("Nuisance","GeneGene")] 
-VARIABLES <- VARIABLES[order(apply(data[VARIABLES],2,var)*c(coef(coxRFXRelTD)[VARIABLES]^2+coef(coxRFXPrdTD)[VARIABLES]^2+coef(coxRFXNrdTD)[VARIABLES]^2), decreasing=TRUE)]
+rg <- c("Fusions"=8, "CNA"=7,"Genetics"=6, "Clinical"=5, "Demographics"=4, "Treatment"=3)
+o <- order(rg[crGroups[!crGroups %in% c("Nuisance","GeneGene")]],(coef(coxRFXPrdTD)^2/diag(coxRFXPrdTD$var2))[VARIABLES], decreasing=TRUE)
+VARIABLES <- VARIABLES[o]
+NEWGRP <- c(1,diff(as.numeric(as.factor(crGroups))[!crGroups %in% c("Nuisance","GeneGene")][o])) != 0
+names(NEWGRP) <- VARIABLES
 INTERACTIONS <- names(crGroups)[crGroups %in% "GeneGene"] 
 NUISANCE <- names(crGroups)[crGroups %in% "Nuisance"] 
 
@@ -41,6 +45,12 @@ LABELS["transplantCR1"] <- "Allograft in CR1"
 LABELS["transplantRel"] <- "Allograft after Relapse"
 LABELS["gender"] <- "Gender: 1=male, 2=female"
 LABELS <- sub("t_*([a-z,0-9]+)_([a-z,0-9]+)", "t(\\1;\\2)", LABELS)
+LABELS[crGroups[VARIABLES] %in% c("Fusions","CNA")] <- gsub("_","/",LABELS[crGroups[VARIABLES] %in% c("Fusions","CNA")])
+LABELS <- sub("plus","+",LABELS)
+LABELS <- sub("minus|^mono","-",LABELS)
+LABELS <- sub("(_|/)*other"," (other)", LABELS)
+LABELS <- sub("_([0-9a-zA-Z]+)"," (\\1)", LABELS)
+
 
 #* AOD: Age on diagnosis 
 #* LDH: Lactic Acid Dehydrogenase (units/l)
@@ -108,14 +118,16 @@ shinyServer(function(input, output) {
 						lapply(VARIABLES, 
 								function(x) {
 									d <- defaults[x]
-									if(crGroups[x] %in% c("Genetics","CNA","Fusions","Treatment")){
-										if(!d %in% c(0,1)) d <- NA
-										d <- paste(d)
-										radioButtons(x, label=if(crGroups[x]=="Genetics") tags$em(LABELS[x]) else LABELS[x], choices=c("present"= "1", "absent"="0", "NA"="NA"), selected=d)
-									}else{
-										r <- range(data[,x]*SCALEFACTORS[x], na.rm=TRUE)
-										numericInput(inputId=x, label=LABELS[x], value=d, min=r[1], max=r[2] )
-									}}
+									f <- if(crGroups[x] %in% c("Genetics","CNA","Fusions","Treatment")){
+												if(!d %in% c(0,1)) d <- NA
+												d <- paste(d)
+												radioButtons(x, label=if(crGroups[x]=="Genetics") tags$em(LABELS[x]) else LABELS[x], choices=c("present"= "1", "absent"="0", "NA"="NA"), selected=d)
+											}else{
+												r <- range(data[,x]*SCALEFACTORS[x], na.rm=TRUE)
+												numericInput(inputId=x, label=LABELS[x], value=d, min=r[1], max=r[2] )
+											}
+									h <- if(NEWGRP[x]) list(tags$hr(), tags$em(tags$b(crGroups[x]))) else NULL
+									list(h,f)}
 						
 						)
 					})
