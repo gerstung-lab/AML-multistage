@@ -128,7 +128,7 @@ shinyServer(function(input, output) {
 												d <- paste(d)
 												radioButtons(x, label=if(crGroups[x]=="Genetics") tags$em(LABELS[x]) else LABELS[x], choices=c("present"= "1", "absent"="0", "NA"="NA"), selected=d)
 											}else{
-												r <- quantile(data[,x]*SCALEFACTORS[x], c(0.05,0.95), na.rm=TRUE)
+												r <- round(quantile(data[,x]*SCALEFACTORS[x], c(0.05,0.95), na.rm=TRUE),1)
 												numericInput(inputId=x, label=LABELS[x], value=d, min=r[1], max=r[2], step = if(round(min(data[,x]*SCALEFACTORS[x], na.rm=TRUE),1) %% 1 ==0) 1 else 0.1)
 											}
 									h <- if(NEWGRP[x]) list(tags$hr(), tags$em(tags$b(crGroups[x]))) else NULL
