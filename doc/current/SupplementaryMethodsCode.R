@@ -21,7 +21,7 @@
 #' 
 #' We use the data from N=1,540 AML cases as described in our companion paper [@PapaemmanuilSM2015]. 
 #' 
-#' These can be summarised as followes:
+#' These can be summarised as follows:
 #' 
 #' 
 #' |Group        |   p|Variables                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -80,7 +80,7 @@
 #' In addition to the aforementioned explanatory variables we used the following multiplicative strata to
 #' account for potential confounding factors:
 #' 
-#' 1.	Missing cyto (0/1). We observed that cytogenetic data was missing more frequently for patients having died early. To avoid a negative
+#' 1.	Missing cytogenetic information (0/1). We observed that cytogenetic data was missing more frequently for patients having died early. To avoid a negative
 #' bias we included this as an additional factor 
 #' 2.	Trial (2/3), AMLSG07/04, AMLHD98A, AMLHD98B. A factor was included to account for systematic differences between trials.
 #' 3.	Date. The date of diagnosis was included to account for and improvement of patient care over time.
@@ -107,7 +107,7 @@ library(CoxHD)
 library(mg14)
 set1 <- brewer.pal(8, "Set1")
 
-#' ### Rawl data
+#' ### Raw data
 #' Load clinical data
 #+ clinicalData, cache=TRUE
 clinicalData <- read.table("../../data/Ulm1.17_MG_Clinical.txt", sep="\t", header=TRUE, na.strings = "na", comment.char = "", quote="\"")
@@ -226,7 +226,7 @@ rownames(dataFrame) <- clinicalData$PDID
 #' 
 #' We use overall survival, measured from date of diagnosis, as the endpoint.
 #' 
-#' ## Random effects modeling
+#' ## Random effects modelling
 #' 
 #' We implemented sparse random effects for the Cox proportional hazards model in the `CoxHD` R package available at [http://github.com/mg14/CoxHD].
 #' This implementation can handle constant covariate and time-dependent models. The latter is important to quantify the effects of allografts,
@@ -249,7 +249,7 @@ rownames(dataFrame) <- clinicalData$PDID
 #' 
 #' The shared means $\mu_g$ are motivated by the observation that the effect of oncogenic lesions is, on average, deleterious.
 #' 
-#' We use the convention that variables without indeces refer to the set of variables. In particular $u = \{u_j: j=1,...,p\}$, $u_g=\{u_j: j\in g\}$.
+#' We use the convention that variables without indexes refer to the set of variables. In particular $u = \{u_j: j=1,...,p\}$, $u_g=\{u_j: j\in g\}$.
 #' 
 #' The full logarithmic likelihood reads:
 #' 
@@ -258,7 +258,7 @@ rownames(dataFrame) <- clinicalData$PDID
 #' The term $\ell_0(u)$ is the likelihood of an unpenalised coxph model. The second term is a sum of ridge penalties resulting
 #' from the constraints imposed by the normal distribution of $u$, which penalises large values of $u_j-\mu_g$ with strength $1/\sigma_g$.
 #' 
-#' Note that the likelihood can be reparametrised by introducing the auxilliary variables $z_g = \sum_{j\in g} Z_{.j}$ and the centred
+#' Note that the likelihood can be reparametrised by introducing the auxiliary variables $z_g = \sum_{j\in g} Z_{.j}$ and the centred
 #' effects $u_j = u_j - \mu_g$:
 #' 
 #' $$\ell(u,\sigma^2,\mu;Z) = \ell_0(u,\mu;Z,z) + \ell_2(u,\sigma^2) =: \ell(u, \mu,\sigma^2;Z)$$
@@ -276,7 +276,7 @@ rownames(dataFrame) <- clinicalData$PDID
 #' 
 #' 1.  Given $\hat\sigma^2$, jointly estimate 
 #' 
-#' 	1.1. the **shared means** $\hat\mu_g$ as the effect of the auxilliary variables $z_g$.
+#' 	1.1. the **shared means** $\hat\mu_g$ as the effect of the auxiliary variables $z_g$.
 #' 	
 #' 	1.2. the **centred variables** $\hat u$ as a ridge estimate,
 #' 	$$\hat\mu, \hat u = \arg \max \ell(u, \mu,\hat\sigma^2;Z)$$
@@ -424,7 +424,7 @@ rownames(dataFrame) <- clinicalData$PDID
 #' ### Complementary pairs stability selection
 #' 
 #' Complementary pairs stability selection (CPSS) is an extension of the stability selection protocol, which combines
-#' subsampling and LASSO-regularised regression to obtain a robus subset of predictor variables [@MeinshausenJOTRSSSBSM2010]. 
+#' subsampling and LASSO-regularised regression to obtain a robust subset of predictor variables [@MeinshausenJOTRSSSBSM2010]. 
 #' Using complimentary pairs subsamples @ShahJTRSSSSM2013 derived 
 #' a tighter bound for error control.
 #' 
@@ -443,20 +443,20 @@ rownames(dataFrame) <- clinicalData$PDID
 #' 
 #' ### Random survival forests
 #' 
-#' Random survival forests are an intrisically non-linear alternative to Cox proportional hazards based regression [@IshwaranTAAS2008]. The idea is to
+#' Random survival forests are an intrinsically non-linear alternative to Cox proportional hazards based regression [@IshwaranTAAS2008]. The idea is to
 #' fit an ensemble of regression trees based on subsampling of patients and/or covariates. The resulting predictions are averaged across
 #' the forest of regression trees. We used version 1.6 of the `randomForestSRC` package and default options for `randomForestSRC::rfsrc()`. 
 #' Note that the model can only handle constant covariates.
 #' 
 #' ## Code
-#' ### Number of oncogenics
+#' ### Number of oncogenic mutations
 
 #' Construct data.frame for OS, replicating patients (rows) before and after allograft.
 #+ dataFrameOsTD, cache=TRUE
 dataFrameOsTD <- dataFrame[tplSplitOs,]
 dataFrameOsTD[which(tplIndexOs), grep("TPL", colnames(dataFrameOsTD), value=TRUE)] <- 0 ## Set pre-tpl variables to zero 
 
-#' Define some indeces relating to subsets of variables used by the random effects model.
+#' Define some indexes relating to subsets of variables used by the random effects model.
 #+ indeces, cache=TRUE
 mainGroups <- grep("[A-Z][a-z]+[A-Z]",levels(groups), invert=TRUE, value=TRUE)
 mainGroups
@@ -514,7 +514,7 @@ coxRFXFitOsTDMain <- CoxRFX(dataFrameOsTD[,mainIdxOsTD], osTD, groups[mainIdxOsT
 whichRFXOsTDGG <- which((colSums(dataFrame)>=8 | mainIdxOsTD) & osTDIdx & groups %in% c(mainGroups,"GeneGene")) # ie, > 0.5%
 coxRFXFitOsTDGGc <- CoxRFX(dataFrameOsTD[,whichRFXOsTDGG], osTD, groups[whichRFXOsTDGG], which.mu=mainGroups) ## allow only the main groups to have mean different from zero.. 
 
-#' Compute Harrel's concordamce
+#' Compute Harrel's concordance index
 survConcordance(osTD~coxRFXFitOsTDGGc$linear.predictors)
 
 #' #### Figure 1d
@@ -719,7 +719,7 @@ text(locations[,1], locations[,2]+1,labels=paste(gsub(";","\n",genotype[patients
 
 #' # Cross-validation
 #' 
-#' We used cross-validation to evaluate the performance of different modeling strategies. The idea is to split the data
+#' We used cross-validation to evaluate the performance of different modelling strategies. The idea is to split the data
 #' into a training and a test set; the model is fitted on the training part and its prognostic accuracy evaluated on the test set.
 #' 
 #' 
@@ -740,7 +740,7 @@ text(locations[,1], locations[,2]+1,labels=paste(gsub(";","\n",genotype[patients
 #' 
 #' The data comprised patients from three different trials - AMLSG07/04 (n=740), AMLHD98A (n=627), and AMLHD98B (n=173).
 #' In addition to randomly splitting the data into training and test partitions, we trained the model on all three combinations of 2 trials and
-#' evaluated the prognostic accuracy on the third trial. This situtation is more challeging as there may 
+#' evaluated the prognostic accuracy on the third trial. This situation is more challenging as there may 
 #' be some systematic differences between the trials, but it can also be expected to more closely mimic the situation of predicting a novel cohort.
 #' 
 #' 
@@ -1321,7 +1321,7 @@ s <- survfit(tcgaSurvival ~ risk)
 plot(s, col=set1[c(3,2,4,1)], mark=NA, xlab="Years", ylab="Survival")
 legend("topright", bty="n", rownames(summary(s)$table), col=set1[c(3,2,4,1)], lty=1)
 
-#' Distribution of risk v cytogentic categories
+#' Distribution of risk v cytogenic categories
 #+ riskTCGA, fig.width=3, fig.height=2.5
 risk <- tcgaRiskRFXOs[,1] - mean(tcgaRiskRFXOs[,1])
 x <- seq(from=-4,to=4, l=512)
@@ -1400,20 +1400,20 @@ legend("bottomright",
 		lty=c(1,1), bg="white", col=c("grey",col[1:4], "black"), pch=c(15,16,16,16,16,16,NA))
 
  
-#' # Multistage modeling
+#' # Multistage modelling
 #' 
 #' ## Definitions
 #' 
 #' ### Nomenclature
 #' We use the following nomenclature: $f(T=t)=f(t)$ denotes a probability density, $F(T=t)=P(T<t)=F(t)$ the corresponding cumulative distribution function. $S(T=t)=1-F(t)$ is the survivor function, 
-#' the name being motiviated by the situtation that $t$ is a death time. In cases where it is clear to which variable a (cumulative) density refers to, we may drop the stochastic variable and 
-#' simply use its value as the argument, $f(t)=f(T=t)$. We use the convention of lower case variables $t$ to denote the values of the corresponding upper casea stochastic 
+#' the name being motivated by the situation that $t$ is a death time. In cases where it is clear to which variable a (cumulative) density refers to, we may drop the stochastic variable and 
+#' simply use its value as the argument, $f(t)=f(T=t)$. We use the convention of lower case variables $t$ to denote the values of the corresponding upper case stochastic 
 #' variable $T=t$, $U=u$ and so on. For a categorical stochastic process $X_t$, $t\in \mathbb{R}^+$ we use the symbol $P(X_t)$ to denote the 
 #' probability distribution at time $t$. The symbol $Z$ denotes the covariates.
 #' 
 #' ### Transitions
 #' 
-#' We use a hierarachical multistage model to quantify the rates at which a patient progresses from one disease/treatment stage to another (Figure 3a).
+#' We use a hierarchical multistage model to quantify the rates at which a patient progresses from one disease/treatment stage to another (Figure 3a).
 #' After learning the marginal time-dependent transition probabilities for each event, we can combine these into a time-dependent joint probability. 
 #' 
 #' In particular, we model the following transition times:
@@ -1433,10 +1433,10 @@ legend("bottomright",
 #' event times, such that 
 #' 
 #' * the transition to a given stage has happened before the other competing transitions
-#' * no subsequent transition has occured yet
+#' * no subsequent transition has occurred yet
 #' * no other endpoint has been reached yet
 #'  
-#' To be alive in CR at time t, for example, requires that CR occurred before t, CR was achieved before NCD, and neither Relaps nor NCD have occurred yet.
+#' To be alive in CR at time t, for example, requires that CR occurred before t, CR was achieved before NCD, and neither relapse nor NCD have occurred yet.
 #' Overall, a patient can only be in one of the following six states at time t, each corresponding to
 #' a particular ordering of event times:
 #' 
@@ -1470,10 +1470,10 @@ legend("bottomright",
 #' 
 #' ## Static multistage models
 #' 
-#' To estimate the population average transition probabilities and absoulte incidence of each each individual stage we use the `msSurv` R package [@FergusonJOSS2012]. 
+#' To estimate the population average transition probabilities and absolute incidence of each each individual stage we use the `msSurv` R package [@FergusonJOSS2012]. 
 #' The resulting time-dependent joint distribution $P(X_t)$ is shown in Figure 3b.
 #' 
-#' ## Multistage random effects modeling
+#' ## Multistage random effects modelling
 #' 
 #' To estimate how each transition $T$ depends on the set of variables $Z$ introduced in section [variables](transitions), we use a random effects model for each transition to
 #' obtain $f(T\mid Z)$. Competing events are considered to be censored. We apply a separate random effects model to estimate all five terms in Eq.$\eqref{eq:joint-density}$.
@@ -1493,7 +1493,7 @@ legend("bottomright",
 #' This allows us to estimate the incidence of each event from the beginning of each stage $S_0(u-t \mid  Z)$ and express the time-dependence as
 #' a smooth function $g(t)$. For example, the duration of CR1 is a prognostic factor for post-relapse mortality, e.g. [@BurnettJCO2013].
 #' 
-#' The above corresoponds to a Cox proportional hazards model with a time-dependent smooth covariate g(t). 
+#' The above corresponds to a Cox proportional hazards model with a time-dependent smooth covariate g(t). 
 #' 
 #' Here we estimate $g(t)$ with a spline term with 10 degrees of freedom. We 
 #' estimate $S_0(u-t)$ and $u$ using a random effects model and subsequently estimate $g(t)$ using $u Z$ as an
@@ -1509,7 +1509,7 @@ legend("bottomright",
 #' for the effect of covariates $u Z$ and exponentiating for the effect of time-dependence.
 #' 
 #' The absolute probability to be in state $U$ is given by integrating over the conditional probabilities $S(u\mid T=t, Z)$, weighted by the probability of 
-#' the precedeing event probabilities $f(T=t\mid Z)$:
+#' the preceding event probabilities $f(T=t\mid Z)$:
 #' 
 #' $$P(U < u \mid  Z) = \int_0^t f(T=t \mid  Z) \int_t^u f(U=v \mid  T=t, Z) dt dv = \int_0^u f(T=t \mid  Z) F(u \mid  T=t, Z) dt \label{eq:cond-prob}$$ 
 #' 
@@ -1602,11 +1602,11 @@ legend("bottomright",
 #' 
 #' ### Comments
 #' In the absence of an established estimator of the joint density Eq.$\eqref{eq:joint-density}$, we assumed that each factor of
-#' the density may be separately estimated using a random effects model. We note that the interdepence of obeserved events
+#' the density may be separately estimated using a random effects model. We note that the interdependence of observed events
 #' could in general introduce a bias as the censoring is not independent. The precise magnitude of this effect still needs to be investigated.
 #' 
 #' We observed, however, a good consistency of the average
-#' predictions and static multistage probablities, indicating that those biases, on average, tend to cancel. Moreover cross-validation of our methodology ascertained 
+#' predictions and static multistage probabilities, indicating that those biases, on average, tend to cancel. Moreover cross-validation of our methodology ascertained 
 #' a very good predictive performance despite all potential shortcomings.
 #' 
 #'     
@@ -1625,7 +1625,7 @@ legend("bottomright",
 #' 
 #' ### Survival after remission
 #' 
-#' Let the symbol PCS denot post remission survival. In the following sections all quantities are conditional on the data $Z$.
+#' Let the symbol PCS denote post remission survival. In the following sections all quantities are conditional on the data $Z$.
 #' 
 #' #### Analytical confidence intervals
 #' 	
@@ -1658,7 +1658,7 @@ legend("bottomright",
 #' This translates to an overall survival:
 #' $$P_{PCS}^{0.975} = \exp \exp(h_{PCS}^{0.975}) = \exp (\exp(h_{PCS}) \exp( 2V[h_{PCS}]) ) = P_{PCS} ^{\exp(2 V[h_{PCS}])}$$
 #' 
-#' Note that in the last step uses the copeting risk and time-adjusted estimate $P_{PCS}$ again
+#' Note that in the last step uses the competing risk and time-adjusted estimate $P_{PCS}$ again
 #' 
 #' #### Simulated
 #' A more accurate account comes from simulations of errors in the predicted log hazard. The cumulative
@@ -1667,7 +1667,7 @@ legend("bottomright",
 #' So drawing 
 #' $$\epsilon_\cdot \sim N(0,\hat V[h_\cdot])$$ 
 #' for each event type and repeating the computations outlined in [combined-os] yields
-#' an empirical distribution of the surival distribution of $S_{PCS}(t)$.
+#' an empirical distribution of the survival distribution of $S_{PCS}(t)$.
 #' 
 #' We use `i=200` simulations to compute the empirical confidence intervals.
 #' 
@@ -1679,9 +1679,9 @@ legend("bottomright",
 #' arises as the errors are correlated. We hence sample errors for all common variables and then sample those variable that differ. This approach
 #' allows to assess the uncertainty resulting from a subset of variables, and on the background of the joint variation in the set of common features.
 #' 
-#' ### Overall survial from diagnosis
+#' ### Overall survival from diagnosis
 #' 
-#' We use a numerical approach similar to the one outlined above to compute the confidence intervals for overall survial measured from diagnosis.
+#' We use a numerical approach similar to the one outlined above to compute the confidence intervals for overall survival measured from diagnosis.
 #' Note that it is in principle also possible to derive analytical confidence intervals analogous to [section 5.4.2.1](#analytical-confidence-intervals).
 #' 
 
@@ -2685,13 +2685,14 @@ boxplot(allPredictTpl$Relapse - allPredictTpl$None ~ quantileRiskOsCR[1:1540]  +
 boxplot(allPredictTpl$CR1 - allPredictTpl$Relapse ~ quantileRiskOsCR[1:1540] + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL in CR1 over salvage at 3yr")
 abline(h=0)
 
-#' Mortality rediction v age
+#' Mortality reduction v age
 par(c(3,3,1,1))
 y <- allPredictTpl$CR1 - allPredictTpl$None
 x <- dataFrame$AOD_10*10
 plot(y ~ x)
 lines(lowess(x[x<60], y[x<60]), col="green")
-#' Note: The jump after 60 ariese from patients after 60 in AMLHD98B not having received allografts and hence (incorrectly) predicted to have v low non-relapse mortality upon allograft.
+#' Note: The jump after 60 arises from patients after 60 in AMLHD98B not having received allografts. Based on the trial stratum they are hence (incorrectly) predicted to have very low non-relapse mortality upon allograft. However,
+#' this doesn't affect novel patients.
 
 plot(allPredictTpl$CR1 - allPredictTpl$None ~ predict(coxRFXOsCR, newdata=osData[1:1540,]), xlab="Risk", ylab="Survival gain TPL CR1 at 1000d")
 lines(lowess(predict(coxRFXOsCR, newdata=osData[1:1540,]), allPredictTpl$CR1 - allPredictTpl$None), col='green')
@@ -2993,7 +2994,7 @@ survConcordance(Surv(cr[,1], cr[,2]==1) ~ fiveStageCVeach[[5]][order(names(fiveS
 
 
 #' #### Figure 4b-e, Supplementary Figure 4
-#' With and wihout TPL
+#' With and without TPL
 #+ threePatientsAllo, fig.width=3, fig.height=2.5
 xmax=2000
 fiveStagePredictedTpl <- PredictOS5(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, allDataTpl[grep("PD11104a|PD8314a|PD11080a", rownames(allDataTpl)),], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=xmax)
@@ -3019,7 +3020,7 @@ for(i in c(2,3,5,6,8,9)){
 
 #' # Simulations
 #' 
-#' We use simulations to assess different properties of our risk modeling approach.
+#' We use simulations to assess different properties of our risk modelling approach.
 #' 
 #' ## Survival
 #' 
@@ -3050,7 +3051,7 @@ for(i in c(2,3,5,6,8,9)){
 #' 2. Monotonous spline interpolation and inversion `Linv_0(x)`
 #' 3. KM estimate of cumulative censoring distribution `Fcens(t)`
 #' 4. Monotonous spline interpolation of inverse `Finv`
-#' 5. Sample standardized exponential survival times with linear predictor `h`, transform using `T=Linv_0(rexp(h))`
+#' 5. Sample standardised exponential survival times with linear predictor `h`, transform using `T=Linv_0(rexp(h))`
 #' 6. Sample follow-up times  `T_c=Finv(runif())`
 #' 7. Times: `pmin(T_c,T)`. 
 #' 8. Status: `T < S`
@@ -3087,7 +3088,7 @@ for(i in c(2,3,5,6,8,9)){
 #' ## Extrapolations
 #' 
 #' Here we use a non-parametric approach to simulate data sets of larger cohorts to extrapolate influence of cohort size on prognostic accuracy.
-#' We also use a parametric approach to quantify the relation between the number of genes sequenced and model performace.
+#' We also use a parametric approach to quantify the relation between the number of genes sequenced and model performance.
 #' 
 #' ### Patients 
 #' To extrapolate to larger cohort size we need to simulate new patients, distributed according to the empirical distribution. 
@@ -3125,7 +3126,7 @@ for(i in c(2,3,5,6,8,9)){
 #' Where $D=\sum_i Z_i$ denotes the total number of drivers per patient. The latter term $\mu^2 Var[D]$ can be ignored as long as $D \approx 1$ and $|\mu| < 1$.
 #' Hence the variation in the log hazard increases proportionally to the mean number of drivers.
 #' 
-#' **Note**: These derviations hold for an additive model. 
+#' **Note**: These derivations hold for an additive model. 
 #' 
 #' For interactions
 #' $$E[Var[Z^T B Z | Z]] = \sigma^2 E[\sum Z Z^T] =\sigma^2 E[I]$$ 
