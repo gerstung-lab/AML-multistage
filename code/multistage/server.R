@@ -14,7 +14,7 @@ set1 <- brewer.pal(8, "Set1")
 pastel1 <- brewer.pal(8, "Pastel1")
 s <- !crGroups %in% c("Nuisance","GeneGene")  & ! names(crGroups) %in% c("oAML","ATRA","VPA")
 VARIABLES <- names(crGroups)[s] 
-rg <- c("Fusions"=8, "CNA"=7,"Genetics"=6, "Clinical"=5, "Demographics"=4, "Treatment"=3)
+rg <- c("Fusions"=5, "CNA"=4,"Genetics"=3, "Clinical"=7, "Demographics"=8, "Treatment"=6)
 o <- order(rg[crGroups[s]],(coef(coxRFXPrdTD)^2/diag(coxRFXPrdTD$var2))[VARIABLES], decreasing=TRUE)
 VARIABLES <- VARIABLES[o]
 NEWGRP <- c(1,diff(as.numeric(as.factor(crGroups))[s][o])) != 0
