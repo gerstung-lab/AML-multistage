@@ -2119,4 +2119,47 @@ legend("bottomleft", legend=c("early","non-rel.","relapse"), border=NA, fill=bre
 
 
 
+#' #### 10x10-fold cross-validation of the three state model
+#+ allPredictCV, cache=TRUE
+cvFold <- 10
+allPredictCV <- sapply(1:10, function(foo){ ## repeat 10 times, ie. 100 fits
+			set.seed(foo)
+			cvIdx <- sample(1:nrow(dataFrame)%% 10 +1 ) ## sample 1/10
+			allPrd <- Reduce("rbind", mclapply(1:cvFold, function(i){
+								whichTrain <- which(cvIdx != i)
+								rfxNrm <- CoxRFX(nrdData[nrdData$index %in% whichTrain, names(crGroups)], Surv(nrdData$time1, nrdData$time2, nrdData$status)[nrdData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+								rfxNrm$coefficients["transplantRel"] <- 0
+#prsData$time1[!is.na(prsData$time1)] <- 0
+								rfxPrs <-  CoxRFX(prdData[prdData$index %in% whichTrain, names(crGroups)], Surv(prdData$time2 - prdData$time1, prdData$status)[prdData$index %in% whichTrain], groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
+								rfxCir <-  CoxRFX(relData[relData$index %in% whichTrain, names(crGroups)], Surv(relData$time1, relData$time2, relData$status)[relData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+								rfxCir$coefficients["transplantRel"] <- 0
+								allPrd <- PredictOS(rfxNrm, rfxCir, rfxPrs, allDataTpl[rep(cvIdx, each=3) == i,], x=3*365)
+								allPrd <- matrix(allPrd$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse")))
+							}, mc.cores=cvFold))
+			
+			m <- sapply(1:cvFold, function(i) which(cvIdx==i))
+			o <- order(m)
+			return(allPrd[o,])
+		}, simplify="array")
 
+any(is.na(fiveStageCV))
+
+
+#' #### Leave one out cross-validation of the three state model
+#+ allPredictLOO, cache=TRUE
+cvFold <- nrow(dataFrame)
+cvIdx <- 1:nrow(dataFrame)
+allPredictLOO <- Reduce("rbind", mclapply(1:nrow(data), function(i){
+								whichTrain <- which(cvIdx != i)
+								rfxNrm <- CoxRFX(nrdData[nrdData$index %in% whichTrain, names(crGroups)], Surv(nrdData$time1, nrdData$time2, nrdData$status)[nrdData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+								rfxNrm$coefficients["transplantRel"] <- 0
+#prsData$time1[!is.na(prsData$time1)] <- 0
+								rfxPrs <-  CoxRFX(prdData[prdData$index %in% whichTrain, names(crGroups)], Surv(prdData$time2 - prdData$time1, prdData$status)[prdData$index %in% whichTrain], groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
+								rfxCir <-  CoxRFX(relData[relData$index %in% whichTrain, names(crGroups)], Surv(relData$time1, relData$time2, relData$status)[relData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+								rfxCir$coefficients["transplantRel"] <- 0
+								allPrd <- PredictOS(rfxNrm, rfxCir, rfxPrs, allDataTpl[rep(cvIdx, each=3) == i,], x=3*365)
+								allPrd <- matrix(allPrd$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse")))
+							}, mc.cores=10))
+
+
+any(is.na(fiveStageCV))

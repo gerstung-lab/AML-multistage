@@ -2721,6 +2721,23 @@ mean(sapply(1:nrow(data), function(i) allPredictTpl[i,3 - data[i,"transplantCR1"
 #' Best possible - everyone had received the optimum 
 mean(apply(allPredictTpl,1,max))
 
+#' #### Leave one out cross-validation of the three state model
+#+ allPredictLOO, cache=TRUE
+cvFold <- nrow(dataFrame)
+cvIdx <- 1:nrow(dataFrame)
+allPredictLOO <- Reduce("rbind", mclapply(1:nrow(data), function(i){
+					whichTrain <- which(cvIdx != i)
+					rfxNrm <- CoxRFX(nrdData[nrdData$index %in% whichTrain, names(crGroups)], Surv(nrdData$time1, nrdData$time2, nrdData$status)[nrdData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+					rfxNrm$coefficients["transplantRel"] <- 0
+					rfxPrs <-  CoxRFX(prdData[prdData$index %in% whichTrain, names(crGroups)], Surv(prdData$time2 - prdData$time1, prdData$status)[prdData$index %in% whichTrain], groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
+					rfxCir <-  CoxRFX(relData[relData$index %in% whichTrain, names(crGroups)], Surv(relData$time1, relData$time2, relData$status)[relData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+					rfxCir$coefficients["transplantRel"] <- 0
+					allPrd <- PredictOS(rfxNrm, rfxCir, rfxPrs, allDataTpl[rep(cvIdx, each=3) == i,], x=3*365)
+					allPrd <- matrix(allPrd$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse")))
+				}, mc.cores=10))
+
+plot(allPredictLOO[,2]-allPredictLOO[,3],allPredictTplCi["dCr1Rel","hat","os",] )
+cor(allPredictLOO[,2]-allPredictLOO[,3],allPredictTplCi["dCr1Rel","hat","os",] )
 
 
 #' ### Predicting outcome from diagnosis
