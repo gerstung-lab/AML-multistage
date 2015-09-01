@@ -2722,6 +2722,8 @@ mean(sapply(1:nrow(data), function(i) allPredictTpl[i,3 - data[i,"transplantCR1"
 mean(apply(allPredictTpl,1,max))
 
 #' #### Leave one out cross-validation of the three state model
+#' We compute LOO out-of-sample predictions for the survival gain by allograft in CR1 v relapse by training 1540 models on 1539 patients each. 
+#' This we compare to in-sample predictions of the model trained on all 1540 patients.
 #+ allPredictLOO, cache=TRUE
 cvFold <- nrow(dataFrame)
 cvIdx <- 1:nrow(dataFrame)
@@ -2739,6 +2741,56 @@ allPredictLOO <- Reduce("rbind", mclapply(1:nrow(data), function(i){
 plot(allPredictLOO[,2]-allPredictLOO[,3],allPredictTplCi["dCr1Rel","hat","os",] )
 cor(allPredictLOO[,2]-allPredictLOO[,3],allPredictTplCi["dCr1Rel","hat","os",] )
 
+#' The correlation of in-sample and out-of-sample predictions is very high, but there are some differences.
+#' We now assess the accuracy of our predictions by comparing the observed survival with the out-of-sample prediction. To this end,
+#' we split out the quarter of patients predicted to benefit the most. In both subsets we compare the observed 3yr survial between patients with
+#' and without allograft in CR1 and compute the difference. CIs by boostrapping.
+# allPredictLOOkM
+d <- allPredictLOO[,2]-allPredictLOO[,3]
+q <- quantile(d, c(0,0.75,1))
+c <- cut(d, breaks=q, paste0("[",names(q)[-length(q)],",",names(q)[-1],")"))
+e <- sapply(levels(c), 
+		function(cc) {
+			t <- try(survfit(Surv(time2- time1, status) ~ transplantCR1, data=osData, subset=c[osData$index]==cc)); 
+			if(class(t)=="try-error") 
+				rep(NA,2)
+			else {
+				s <- summary(t, time=3*365)
+				if(length(s$surv)==2) {
+					ci <- sapply(1:200, function(foo){
+								set.seed(foo)
+								w <- sample(1:nrow(dataFrame), replace=TRUE)
+								diff(summary(survfit(Surv(time2- time1, status) ~ transplantCR1, data=osData[osData$index %in% w,], subset=c[osData$index[osData$index %in% w]]==cc), time=3*365)$surv)
+							})
+					r <- c(diff(s$surv), quantile(ci, c(0.025, 0.975)))
+					names(r) <- c("delta", "lower",'upper')
+					r
+				}
+				else rep(NA,3)
+			}})
+x <- sapply(split(d,c),median)
+par(xpd=NA, bty="L")
+plot(x,e[1,], pch=19, xlim=c(-.05,.2), ylim=c(-.05,.2), xlab = "Predicted survival benefit", ylab="Observed survival benefit (leave-one-out CV)")
+h <- density(d) 
+y <- h$y/diff(range(h$y))*.05 + par("usr")[3]
+w <- h$x <= q[2] 
+par(xpd=FALSE)
+polygon(c(h$x[w], h$x[which(w)[length(which(w))]]), c(y[w],par("usr")[3]), border=NA, col=set1[1])
+polygon(c(h$x[which(!w)[1]], h$x[!w]), c(par("usr")[3],y[!w]), border=NA, col=set1[3])
+lines(h$x, y)
+segments(x,e[2,],x,e[3,])
+#rug(d, col="#00000022")
+abline(0,1, lty=3)
+
+#' The model predictions appear consistent, but there is still a substantial uncertainty. We are unable to further tease apart the accuracy in the lower quartiles, as
+#' the predicted effect size is too small. The following is a barplot of the predicted and observed survival benefit.
+# allPredictLOOkMbar, fig.width=1.5
+barplot(rbind(x,e[1,]), beside=TRUE, names.arg=colnames(e), args.legend=list(x="topleft",bty="n",legend=c("predicted","observed")), legend=TRUE, xlab = "Predicted survival benefit", ylab="Three-year survival benefit", ylim=c(-0.05,.2)) -> b
+segments(b[2,],e[2,],b[2,],e[3,])
+
+#' The bottom line is that we are able to confidently isolate a quarte of patients with high benefit of allografts (about 12% absolute benefit). The breakdown across 
+#' ELN risk groups is:
+table(c, clinicalData$M_Risk)
 
 #' ### Predicting outcome from diagnosis
 #' The following function fits a 5-stage model. Note that we use a single smooth function g(t) to model the association between time of CR and all subsequent events.
