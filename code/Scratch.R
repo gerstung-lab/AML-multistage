@@ -2163,3 +2163,38 @@ allPredictLOO <- Reduce("rbind", mclapply(1:nrow(data), function(i){
 
 
 any(is.na(fiveStageCV))
+
+
+t <- clinicalData$Time_Diag_TPL
+r <- prdData$index[prdData$transplantRel==1]
+c <- relData$index[relData$transplantCR1==1]
+prdData <- MakeTimeDependent(dataFrame[,1], timeEvent=alloTimeCR1[i], timeStop=as.numeric(clinicalData$Date_LF- clinicalData$CR_date)[i], timeStart = as.numeric(clinicalData$Recurrence_date- clinicalData$CR_date)[i], status=clinicalData$Status[i])
+
+
+t <- clinicalData$Time_Diag_TPL
+t[is.na(t) | !clinicalData$TPL_Phase %in% "CR1" | !clinicalData$TPL_type %in% c("ALLO","FREMD") ] <- Inf ## Only allografts in CR1
+o <- clinicalData$OS
+tplIndexOs <-  t < o
+osAll <-  Surv(time = rep(0, nrow(clinicalData)), time2=pmin(o, t), event=ifelse(tplIndexOs, 0, clinicalData$Status) )
+osAll <- rbind(osAll, 
+		Surv(time=t[which(tplIndexOs)],
+				time2=o[which(tplIndexOs)], 
+				event=clinicalData$Status[which(tplIndexOs)])
+)
+osAll = Surv(osAll[,1],osAll[,2],osAll[,3])
+rm(o,t)
+tplSplitOs <- c(1:nrow(clinicalData), which(tplIndexOs))
+
+r <- numeric(length(os[,1]))
+r[os[,2]==0] <- rank(os[os[,2]==0,1])/sum(os[,2]==0)
+r[os[,2]==1] <- rank(os[os[,2]==1,1])/sum(os[,2]==1)
+r <- rank(r)/length(r)
+
+.5+cor(-r, allPredictLOO[,1])/2
+p <- -allPredictLOO[,1]
+
+
+
+
+
+
