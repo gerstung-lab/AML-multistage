@@ -2745,7 +2745,7 @@ cor(allPredictLOO[,2]-allPredictLOO[,3],allPredictTplCi["dCr1Rel","hat","os",] )
 #' We now assess the accuracy of our predictions by comparing the observed survival with the out-of-sample prediction. To this end,
 #' we split out the quarter of patients predicted to benefit the most. In both subsets we compare the observed 3yr survial between patients with
 #' and without allograft in CR1 and compute the difference. CIs by boostrapping.
-# allPredictLOOkM
+#+ allPredictLOOkM
 d <- allPredictLOO[,2]-allPredictLOO[,3]
 q <- quantile(d, c(0,0.75,1))
 c <- cut(d, breaks=q, paste0("[",names(q)[-length(q)],",",names(q)[-1],")"))
@@ -2784,7 +2784,7 @@ abline(0,1, lty=3)
 
 #' The model predictions appear consistent, but there is still a substantial uncertainty. We are unable to further tease apart the accuracy in the lower quartiles, as
 #' the predicted effect size is too small. The following is a barplot of the predicted and observed survival benefit.
-# allPredictLOOkMbar, fig.width=1.5
+#+ allPredictLOOkMbar, fig.width=1.5
 barplot(rbind(x,e[1,]), beside=TRUE, names.arg=colnames(e), args.legend=list(x="topleft",bty="n",legend=c("predicted","observed")), legend=TRUE, xlab = "Predicted survival benefit", ylab="Three-year survival benefit", ylim=c(-0.05,.2)) -> b
 segments(b[2,],e[2,],b[2,],e[3,])
 
