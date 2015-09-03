@@ -176,7 +176,7 @@ d <- cbind(dataFrameOsTD[,whichRFXOsTDGG],DP=t(posteriorProbability)[tplSplitOs,
 coxRFXFitOsTDGGcDP <- CoxRFX(d, osTD, c(as.character(groups[whichRFXOsTDGG]),rep("DP", nlevels(dpClass)-1)), which.mu=mainGroups) ## allow only the main groups to have mean different from zero.. 
 coxRFXFitOsTDGGcDP
 
-PlotVarianceComponents(coxRFXFitOsTDGGcDP, col=set1)
+PlotVarianceComponents(coxRFXFitOsTDGGcDP, col=col)
 round(cov(PartialRisk(coxRFXFitOsTDGGcDP)),2)
 
 #' ### Phylogeny
