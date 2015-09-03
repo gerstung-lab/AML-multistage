@@ -40,7 +40,7 @@ load("AML-2015-09-03.RData")
 #' #### Preparation of data
 #set.seed(42)
 #binomialImpute <- function(x) {x[is.na(x)] <- rbinom(sum(is.na(x)), 1, mean(x, na.rm=TRUE)); return(x)}
-d <- as.matrix(dataFrame[groups %in% c("Genetics","BT","CNA")])
+d <- as.matrix(dataFrame[groups %in% c("Genetics","Fusions","CNA")])
 d[!d %in% c(0,1)] <- NA
 #genotypesImputed <- Matrix(apply(d,2, binomialImpute))
 genotypesImputed <- Matrix(round(ImputeMissing(d)))
