@@ -386,6 +386,7 @@ barplot((v-c(subtypes=mse0, `subtypes+genomics`=mse1))/v*100, ylab="Explained va
 
 #' #### Splenomegaly
 #+ Splenomegaly
+library(ROCR)
 set.seed(42)
 y <- clinicalData$Splenomegaly
 table(Splenomegaly=y,factor(curatedClass))
