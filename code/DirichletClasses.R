@@ -292,13 +292,9 @@ table(dpClass, curatedClass)
 
 #' ### Associations
 
-#' #### Age
-boxplot(clinicalData$AOD ~ factor(curatedClass))
-summary(lm(clinicalData$AOD ~ factor(curatedClass)))
-
 X <- as.matrix(MakeInteger(curatedClass))
 Z <- as.matrix(genotypesImputed)
-Y <- as.matrix(dataFrame[groups %in% c("Clinical","Dempgraphics")])
+Y <- as.matrix(dataFrame[groups %in% c("Clinical","Demographics")])
 
 cv.glm <- function(x,y, fold=5, family="gaussian"){
 	cvIdx <- sample(1:nrow(x)%% fold +1 )
@@ -394,7 +390,7 @@ barplot((v-c(subtypes=mse0, `subtypes+genomics`=mse1))/v*100, ylab="Explained va
 #' #### Splenomegaly
 #+ Splenomegaly_bar, fig.width=1.5
 library(ROCR)
-set.seed(42)
+set.seed(43)
 y <- clinicalData$Splenomegaly
 table(Splenomegaly=y,factor(curatedClass))
 auc0 <- cv.glm(as.data.frame(X[!is.na(y),-1]), y[!is.na(y)], family="binomial")
