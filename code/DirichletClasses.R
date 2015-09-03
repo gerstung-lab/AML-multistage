@@ -86,9 +86,8 @@ output <- hdp_posterior(hdp, #activated hdp structure
 
 #' DP checks
 #+ DPchecks, cache=TRUE
-plot_hdp_lik(output$lik, burnin)
-plot_hdp_numclass_raw(output$numclass)
-plot_hdp_data_assigned(output$classqq, output$numclass)
+plot(output$lik, type='l'); abline(v=burnin, lty=3)
+plot(output$numclass, type='l')
 
 
 #' AML classes
