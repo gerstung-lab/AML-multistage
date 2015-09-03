@@ -34,7 +34,7 @@ library(CoxHD) # library(devtools); install_github("mg14/CoxHD/CoxHD")
 library(mg14) # library(devtools); install_github("mg14/mg14")
 library(hdp)
 set1 <- brewer.pal(8, "Set1")
-load("AML.RData")
+load("AML-2015-09-03.RData")
 
 
 #' #### Preparation of data
@@ -282,6 +282,150 @@ naiveBayes <- t(apply(genotypesImputed,1,sigBayes,posteriorMeans))
 #' Save
 names(dpClass) <- clinicalData$PDID
 save(dpClass, posteriorMeans, posteriorQuantiles, posteriorProbability, file='dpClass.RData')
+
+#' ## Curated classification
+c <- read.table("../data/reduced_classes.txt", header=TRUE, sep="\t")
+curatedClass <- c$ReductionClass
+names(curatedClass) <- c$Sample
+rm(c)
+
+table(dpClass, curatedClass)
+
+#' ### Associations
+
+#' #### Age
+boxplot(clinicalData$AOD ~ factor(curatedClass))
+summary(lm(clinicalData$AOD ~ factor(curatedClass)))
+
+X <- as.matrix(MakeInteger(curatedClass))
+Z <- as.matrix(genotypesImputed)
+Y <- as.matrix(dataFrame[groups %in% c("Clinical","Dempgraphics")])
+
+cv.glm <- function(x,y, fold=5, family="gaussian"){
+	cvIdx <- sample(1:nrow(x)%% fold +1 )
+	p <- numeric(length(y))
+	for(i in 1:fold){
+		p[cvIdx==i] <- predict(glm(y ~ ., data=x, subset=cvIdx!=i, family=family), newdata=x[cvIdx==i,])
+	}
+	if(family=="gaussian")
+		mean((p-y)^2)
+	else if(family=="binomial")
+		performance(prediction(p, y), "auc")@y.values[[1]]
+		
+}
+
+#' #### White counts
+#+ wbc
+set.seed(42)
+y <- log(clinicalData$wbc)
+boxplot(y ~ factor(curatedClass), ylab="log wbc")
+mse0 <- cv.glm(as.data.frame(X[!is.na(y),-1]), na.omit(y))
+mse1 <- min(cv.glmnet(cbind(X,Z)[!is.na(y),], na.omit(y), type="mse", alpha=1, penalty.factor=c(rep(0,13), rep(1,83)))$cvm)
+v <- var(y, use='c')
+barplot((v-c(subtypes=mse0, `subtypes+genomics`=mse1))/v*100, ylab="Explained variance (%)", main="White counts")
+
+#' #### Bone marrow blasts
+#+ BM
+set.seed(42)
+y <- car::logit(clinicalData$BM_Blasts/100 )
+boxplot(y ~ factor(curatedClass), ylab="logit BM blasts")
+mse0 <- cv.glm(as.data.frame(X[!is.na(y),-1]), na.omit(y))
+mse1 <- min(cv.glmnet(cbind(X,Z)[!is.na(y),], na.omit(y), type="mse", alpha=1, penalty.factor=c(rep(0,13), rep(1,83)))$cvm)
+v <- var(y, use='c')
+barplot((v-c(subtypes=mse0, `subtypes+genomics`=mse1))/v*100, ylab="Explained variance (%)", main="BM Blasts")
+
+#' #### PB blasts
+#+ PB
+set.seed(42)
+y <- car::logit(clinicalData$PB_Blasts/100 )
+boxplot(y ~ factor(curatedClass), ylab="logit PB blasts")
+mse0 <- cv.glm(as.data.frame(X[!is.na(y),-1]), na.omit(y))
+mse1 <- min(cv.glmnet(cbind(X,Z)[!is.na(y),], na.omit(y), type="mse", alpha=1, penalty.factor=c(rep(0,13), rep(1,83)))$cvm)
+v <- var(y, use='c')
+barplot((v-c(subtypes=mse0, `subtypes+genomics`=mse1))/v*100, ylab="Explained variance (%)", main="PB Blasts")
+
+#' #### Age
+#+ Age
+set.seed(42)
+y <- clinicalData$AOD
+boxplot(y ~ factor(curatedClass), ylab="Age")
+mse0 <- cv.glm(as.data.frame(X[!is.na(y),-1]), na.omit(y))
+mse1 <- min(cv.glmnet(cbind(X,Z)[!is.na(y),], na.omit(y), type="mse", alpha=1, penalty.factor=c(rep(0,13), rep(1,83)))$cvm)
+v <- var(y, use='c')
+barplot((v-c(subtypes=mse0, `subtypes+genomics`=mse1))/v*100, ylab="Explained variance (%)", main="Age")
+
+#' #### LDH
+#+ LDH
+set.seed(42)
+y <- log(clinicalData$LDH)
+boxplot(y ~ factor(curatedClass), ylab="log LDH")
+mse0 <- cv.glm(as.data.frame(X[!is.na(y),-1]), na.omit(y))
+mse1 <- min(cv.glmnet(cbind(X,Z)[!is.na(y),], na.omit(y), type="mse", alpha=1, penalty.factor=c(rep(0,13), rep(1,83)))$cvm)
+v <- var(y, use='c')
+barplot((v-c(subtypes=mse0, `subtypes+genomics`=mse1))/v*100, ylab="Explained variance (%)", main="LDH")
+
+#' #### Platelets
+#+ platelets
+set.seed(42)
+y <- log(clinicalData$platelet)
+boxplot(y ~ factor(curatedClass), ylab="log platelets")
+mse0 <- cv.glm(as.data.frame(X[!is.na(y),-1]), na.omit(y))
+mse1 <- min(cv.glmnet(cbind(X,Z)[!is.na(y),], na.omit(y), type="mse", alpha=1, penalty.factor=c(rep(0,13), rep(1,83)))$cvm)
+v <- var(y, use='c')
+barplot((v-c(subtypes=mse0, `subtypes+genomics`=mse1))/v*100, ylab="Explained variance (%)", main="platelets")
+
+#' #### HB
+#+ HB
+set.seed(42)
+y <- log(clinicalData$HB)
+boxplot(y ~ factor(curatedClass), ylab="log HB")
+mse0 <- cv.glm(as.data.frame(X[!is.na(y),-1]), na.omit(y))
+mse1 <- min(cv.glmnet(cbind(X,Z)[!is.na(y),], na.omit(y), type="mse", alpha=1, penalty.factor=c(rep(0,13), rep(1,83)))$cvm)
+v <- var(y, use='c')
+barplot((v-c(subtypes=mse0, `subtypes+genomics`=mse1))/v*100, ylab="Explained variance (%)", main="HB")
+
+
+#' #### Splenomegaly
+#+ Splenomegaly
+set.seed(42)
+y <- clinicalData$Splenomegaly
+table(Splenomegaly=y,factor(curatedClass))
+auc0 <- cv.glm(as.data.frame(X[!is.na(y),-1]), y[!is.na(y)], family="binomial")
+auc1 <- max(cv.glmnet(cbind(X,Z)[!is.na(y),], na.omit(y), family='binomial',type="auc", alpha=1, penalty.factor=c(rep(0,13), rep(1,83)))$cvm)
+a <- c(subtypes=auc0, `subtypes+genomics`=auc1)*100
+barplot(a-50, ylab="AUC (%)", main="Splenomegaly",  offset=50)
+
+#' #### Gender
+#+ Gender
+set.seed(42)
+y <- clinicalData$gender -1
+table(Gender=factor(y, labels=c('male','female')),factor(curatedClass))
+auc0 <- cv.glm(as.data.frame(X[!is.na(y),-1]), y[!is.na(y)], family="binomial")
+auc1 <- max(cv.glmnet(cbind(X,Z)[!is.na(y),], na.omit(y), family='binomial',type="auc", alpha=1, penalty.factor=c(rep(0,13), rep(1,83)))$cvm)
+a <- c(subtypes=auc0, `subtypes+genomics`=auc1)*100
+barplot(a-50, ylab="AUC (%)", main="Gender",  offset=50)
+
+#' #### CR
+#+ CR
+set.seed(42)
+y <- !is.na(clinicalData$CR_date)
+y[as.date]
+table(CR=y,factor(curatedClass))
+auc0 <- cv.glm(as.data.frame(X[!is.na(y),-1]), y[!is.na(y)], family="binomial")
+auc1 <- max(cv.glmnet(cbind(X,Z)[!is.na(y),], na.omit(y), family='binomial',type="auc", alpha=1, penalty.factor=c(rep(0,13), rep(1,83)))$cvm)
+a <- c(subtypes=auc0, `subtypes+genomics`=auc1)*100
+barplot(a-50, ylab="AUC (%)", main="Complete remission",  offset=50)
+
+#' #### OS
+set.seed(42)
+y <- os[1:1540,2]
+y[os[1:1540,1] < 3 * 365 & os[1:1540,2]==0] <- NA
+table(OS=factor(y,labels=c("alive","dead")),factor(curatedClass))
+auc0 <- cv.glm(as.data.frame(X[!is.na(y),-1]), y[!is.na(y)], family="binomial")
+auc1 <- max(cv.glmnet(cbind(X,Z)[!is.na(y),], na.omit(y), family='binomial',type="auc", alpha=1, penalty.factor=c(rep(0,13), rep(1,83)))$cvm)
+a <- c(subtypes=auc0, `subtypes+genomics`=auc1)*100
+barplot(a-50, ylab="AUC (%)", main="Survival",  offset=50)
+
 
 #' ## Session
 devtools::session_info()
