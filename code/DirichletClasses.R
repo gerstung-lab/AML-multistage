@@ -188,8 +188,24 @@ plot(nj(dist(t(posteriorMeans/(rep(rowSums(posteriorProbability), each=nrow(post
 #' #### Population based
 #+ computeInteractions, cache=TRUE
 geneToClass <- factor(apply(posteriorMeans, 1,which.max) -1)
-logPInt <- sapply(1:ncol(genotypesImputed), function(i) sapply(1:ncol(genotypesImputed), function(j) {f<- try(fisher.test(genotypesImputed[,i], genotypesImputed[,j]), silent=TRUE); if(class(f)=="try-error") 0 else ifelse(f$estimate>1, -log10(f$p.val),log10(f$p.val))} ))
-odds <- sapply(1:ncol(genotypesImputed), function(i) sapply(1:ncol(genotypesImputed), function(j) {f<- try(fisher.test(table(genotypesImputed[,i], genotypesImputed[,j])), silent=TRUE); if(class(f)=="try-error") f=NA else f$estimate} ))
+getOdds <- function(x) {
+	f <- sapply(1:ncol(x), 
+			function(i) sapply(1:ncol(x), 
+						function(j) {
+							if(j <= i) return(c(NA,NA))
+							f<- try(fisher.test(x[,i], x[,j]), silent=TRUE)
+							if(class(f)=="try-error") c(0,NA) 
+							else if(f$estimate>1) c(-log10(f$p.val),f$estimate)
+							else c(log10(f$p.val), f$estimate)}
+				), 
+			simplify="array")
+	for(i in 1:2)
+		f[i,,][upper.tri(f[i,,])] <- t(f[i,,])[upper.tri(f[i,,])]
+	return(f)
+}
+f <- getOdds(genotypesImputed)
+logPInt <- f[1,,]
+odds <- f[2,,]
 pairs <- sapply(1:ncol(genotypesImputed), function(i) colMeans(genotypesImputed * genotypesImputed[,i], na.rm=TRUE))
 diag(logPInt) <- 0
 diag(odds) <- 1
@@ -235,7 +251,7 @@ rect(s[-1],s[-1], s[-length(s)], s[-length(s)], border=col)
 
 
 #' Expected heatmap
-#+ heatmapExpected, fig.width=6, fig.height=6
+#+ heatmapExpected, fig.width=6, fig.height=6, cache=TRUE
 set.seed(42)
 t <- table(dpClass)
 pp <- t(t(posteriorMeans)/as.numeric(t))
@@ -271,16 +287,7 @@ rect(s[-1],s[-1], s[-length(s)], s[-length(s)], border=col)
 #+ plotInteractionsClass, cache=TRUE, fig.width=6, fig.height=6
 for(cls in levels(dpClass)){
 	w <- dpClass == cls
-	f <- sapply(1:ncol(genotypesImputed), 
-			function(i) sapply(1:ncol(genotypesImputed), 
-						function(j) {
-							f<- try(fisher.test(genotypesImputed[w,i], genotypesImputed[w,j]), silent=TRUE)
-							if(class(f)=="try-error") c(0,NA) 
-							else 
-							if(f$estimate>1) c(-log10(f$p.val),f$estimate)
-							else c(log10(f$p.val), f$estimate)}
-				), 
-			simplify="array")
+	f <- getOdds(genotypesImputed[w,])
 	logPInt <- f[1,,]
 	odds <- f[2,,]
 	pairs <- sapply(1:ncol(genotypesImputed), function(i) colMeans(genotypesImputed[w,] * genotypesImputed[w,i], na.rm=TRUE))
@@ -298,7 +305,7 @@ for(cls in levels(dpClass)){
 	o = order(geneToClass, -colSums(genotypesImputed))
 	M <-  matrix( NA, ncol=ncol(odds), nrow=nrow(odds))
 	M[lower.tri(M)] <- cut(logOdds[o,o][lower.tri(M)], breaks = c(-4:0-.Machine$double.eps,0:4), include.lowest=TRUE)
-	M[upper.tri(M, diag=TRUE)] <- as.numeric(cut(pairs[o,o][upper.tri(M, diag=TRUE)]*nrow(genotypesImputed), breaks=c(-1,0,5,10,20,50,100,200,600))) + 9 
+	M[upper.tri(M, diag=TRUE)] <- as.numeric(cut(pairs[o,o][upper.tri(M, diag=TRUE)]*nrow(genotypesImputed[w,]), breaks=c(-1,0,5,10,20,50,100,200,600))) + 9 
 	image(x=1:ncol(logPInt), y=1:nrow(logPInt), M, col=c(brewer.pal(9,"BrBG"), c("white",brewer.pal(7,"Reds"))), breaks=0:17, xaxt="n", yaxt="n", xlab="",ylab="", xlim=c(0, ncol(logPInt)+3), ylim=c(0, ncol(logPInt)+3))
 	l <- colnames(logPInt)[o]
 	mtext(side=1, at=1:ncol(logPInt), l, cex=.66, font=ifelse(grepl("^[A-Z]",l),3,1), col=col[geneToClass[o]])
