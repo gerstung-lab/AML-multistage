@@ -107,6 +107,7 @@ kable(posteriorQuantiles[2,,], "html", table.attr = 'id="posteriorMedian"') # Po
 
 #' Most prevalent lesions
 genes <- apply(posteriorMeans, 2, function(x) paste(ifelse(x>10,rownames(posteriorMeans),"")[order(x, decreasing = TRUE)[1:5]], collapse=";"))
+genes <- gsub(";+$","",genes)
 genes
 
 #' Assignment from posterior samples
@@ -184,6 +185,7 @@ library(ape)
 plot(nj(dist(t(posteriorMeans/(rep(rowSums(posteriorProbability), each=nrow(posteriorMeans)))>.1))))
 
 #' ### Gene:Gene interactions
+#' #### Population based
 #+ computeInteractions, cache=TRUE
 geneToClass <- factor(apply(posteriorMeans, 1,which.max) -1)
 logPInt <- sapply(1:ncol(genotypesImputed), function(i) sapply(1:ncol(genotypesImputed), function(j) {f<- try(fisher.test(genotypesImputed[,i], genotypesImputed[,j]), silent=TRUE); if(class(f)=="try-error") 0 else ifelse(f$estimate>1, -log10(f$p.val),log10(f$p.val))} ))
@@ -265,7 +267,65 @@ t <- c(0,table(geneToClass))
 s <- cumsum(t)+.5
 rect(s[-1],s[-1], s[-length(s)], s[-length(s)], border=col)
 
-
+#' #### Per class
+#+ plotInteractionsClass, cache=TRUE, fig.width=6, fig.height=6
+for(cls in levels(dpClass)){
+	w <- dpClass == cls
+	f <- sapply(1:ncol(genotypesImputed), 
+			function(i) sapply(1:ncol(genotypesImputed), 
+						function(j) {
+							f<- try(fisher.test(genotypesImputed[w,i], genotypesImputed[w,j]), silent=TRUE)
+							if(class(f)=="try-error") c(0,NA) 
+							else 
+							if(f$estimate>1) c(-log10(f$p.val),f$estimate)
+							else c(log10(f$p.val), f$estimate)}
+				), 
+			simplify="array")
+	logPInt <- f[1,,]
+	odds <- f[2,,]
+	pairs <- sapply(1:ncol(genotypesImputed), function(i) colMeans(genotypesImputed[w,] * genotypesImputed[w,i], na.rm=TRUE))
+	diag(logPInt) <- 0
+	diag(odds) <- 1
+	colnames(odds) <- rownames(odds) <- colnames(logPInt) <- rownames(logPInt) <- colnames(genotypesImputed)
+	odds[odds<1e-3] = 1e-4
+	odds[odds>1e3] = 1e4
+	
+	odds[10^-abs(logPInt) > 0.1] = 1
+	logOdds=log10(odds)
+	diag(logPInt) <- NA
+	par(bty="n", mgp = c(2,.5,0), mar=c(4,4,4,4)+.1, las=2, tcl=-.33)
+	ix = TRUE#colnames(interactions) %in% colnames(all_genotypes)
+	o = order(geneToClass, -colSums(genotypesImputed))
+	M <-  matrix( NA, ncol=ncol(odds), nrow=nrow(odds))
+	M[lower.tri(M)] <- cut(logOdds[o,o][lower.tri(M)], breaks = c(-4:0-.Machine$double.eps,0:4), include.lowest=TRUE)
+	M[upper.tri(M, diag=TRUE)] <- as.numeric(cut(pairs[o,o][upper.tri(M, diag=TRUE)]*nrow(genotypesImputed), breaks=c(-1,0,5,10,20,50,100,200,600))) + 9 
+	image(x=1:ncol(logPInt), y=1:nrow(logPInt), M, col=c(brewer.pal(9,"BrBG"), c("white",brewer.pal(7,"Reds"))), breaks=0:max(M,na.rm=TRUE), xaxt="n", yaxt="n", xlab="",ylab="", xlim=c(0, ncol(logPInt)+3), ylim=c(0, ncol(logPInt)+3))
+	l <- colnames(logPInt)[o]
+	mtext(side=1, at=1:ncol(logPInt), l, cex=.66, font=ifelse(grepl("^[A-Z]",l),3,1), col=col[geneToClass[o]])
+	mtext(side=2, at=1:ncol(logPInt), l, cex=.66, font=ifelse(grepl("^[A-Z]",l),3,1), col=col[geneToClass[o]])
+	abline(h=0:ncol(logPInt)+.5, col="white", lwd=.5)
+	abline(v=0:ncol(logPInt)+.5, col="white", lwd=.5)
+	P <- 10^-abs(logPInt[o,o])
+	P[upper.tri(P)] <- NA
+	w = arrayInd(which(p.adjust(P, method="BH") < .1), rep(nrow(logPInt),2))
+	points(w, pch=".", col="black")
+	w = arrayInd(which(p.adjust(P) < .05), rep(nrow(logPInt),2))
+	points(w, pch="*", col="black")
+	image(y = 1:9 +18, x=rep(ncol(logPInt),2)+c(2,3), z=matrix(c(1:8), nrow=1), col=c("white",brewer.pal(7,"Reds")), add=TRUE)
+	axis(side = 4, at = seq(1,7) + 19, cex.axis=.66, tcl=-.15, label=c(1,5,10,20,50,100,200), las=1, lwd=.5)
+	mtext(side=4, at=28, "Frequency", las=2, line=-1,cex=.66)
+	image(y = 1:8 +5, x=rep(ncol(logPInt),2)+c(2,3), z=matrix(c(1:8), nrow=1), col=brewer.pal(8,"BrBG"), add=TRUE)
+	axis(side = 4, at = seq(1,7) + 5.5, cex.axis=.66, tcl=-.15, label=10^seq(-3,3), las=1, lwd=.5)
+	mtext(side=4, at=14, "Odds ratio", las=2, line=-1,cex=.66)
+	mtext(side=4, at=4, "Significance", las=2, line=-1,cex=.66)
+	points(x=rep(ncol(logPInt),2)+2.5, y=1:2, pch=c("*","."))
+	image(x=rep(ncol(logPInt),2)+c(2,3), y=(2:3) +0.5, z=matrix(1), col=brewer.pal(3,"BrBG"), add=TRUE)
+	mtext(side=4, at=3:1, c("P > 0.05", "FDR < 0.1", "FWER < 0.05"), cex=.66, line=0.2)
+	t <- c(0,table(geneToClass))
+	s <- cumsum(t)+.5
+	rect(s[-1],s[-1], s[-length(s)], s[-length(s)], border=col)
+	title(main=paste0("Class ",cls,": ", genes[cls]))
+}
 
 #' Alternatively: Naive Bayes assignment
 sigBayes <- function(genotype, sigs){
