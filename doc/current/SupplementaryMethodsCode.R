@@ -1886,7 +1886,7 @@ addDataFrame(w,
 #' Relapses
 w <- WaldTest(coxRFXRelTD)
 w$Q.BH <- p.adjust(w$p.value, "BH")
-w$Q.BY <- p.adjust(w$p.value, "BH")
+w$Q.BY <- p.adjust(w$p.value, "BY")
 datatable(w)
 sheet  <- createSheet(wb, sheetName="Relapse")
 addDataFrame(w, 
@@ -1899,7 +1899,7 @@ addDataFrame(w,
 #' Post-relapse survival
 w <- WaldTest(coxRFXPrdTD)
 w$Q.BH <- p.adjust(w$p.value, "BH")
-w$Q.BY <- p.adjust(w$p.value, "BH")
+w$Q.BY <- p.adjust(w$p.value, "BY")
 datatable(w)
 sheet  <- createSheet(wb, sheetName="Post-relapse deaths")
 addDataFrame(w, 
@@ -1912,7 +1912,7 @@ addDataFrame(w,
 #' Non-relapse deaths
 w <- WaldTest(coxRFXNrdTD)
 w$Q.BH <- p.adjust(w$p.value, "BH")
-w$Q.BY <- p.adjust(w$p.value, "BH")
+w$Q.BY <- p.adjust(w$p.value, "BY")
 datatable(w)
 sheet  <- createSheet(wb, sheetName="Non-relapse deaths")
 addDataFrame(w, 
