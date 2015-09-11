@@ -924,7 +924,7 @@ for(i in 1:dim(allModelsCvAuc)[2]){
 legend("bottomright", colnames(allModelsCvPredictions[[1]]), bty="n", lty=1, col=colModels)
 
 
-#' Wisdom of the Krauts?
+#' Wisdom of the crowds?
 foo <- 1
 allModelsCvCKraut <- sapply(allModelsCvPredictions, function(x){
 			set.seed(foo)
