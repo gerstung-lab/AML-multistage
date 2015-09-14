@@ -65,7 +65,7 @@ dev.off()
 pdf("allKM.pdf",3,2.5, pointsize=8)
 par(mar=c(3,3,0,0)+.1, mgp=c(2,0.5,0), bty="n")
 for(j in colnames(data)){
-	plot(survfit(survival ~ data[[j]]), col=c("grey", set1[1]), main=j, xlab="Days", ylab="EFS")
+	plot(survfit(surv ~ data[[j]]), col=c("grey", set1[1]), main=j, xlab="Days", ylab="EFS")
 }
 dev.off()
 
@@ -354,7 +354,7 @@ x <- x/(2*t) + 1
 
 
 d <- sapply(1:ncol(x), function(i) density(x[,i], bw=diff(range(x[,i]/50)))[1:2])
-q <- apply(x, 2, quantile, c(0.1,0.5,0.9))
+x <- apply(x, 2, quantile, c(0.1,0.5,0.9))
 sig <- apply(x,2, function(x) mean(x)+ (-1:1) * sd(x))
 rotation <- function(theta) matrix(c(cos(theta), sin(theta),  -sin(theta),cos(theta)), ncol=2)
 j <- apply(x, 2, function(y) {v <- violinJitter(y)$y; v/max(v)})/5
@@ -376,7 +376,7 @@ points(t(x) * c - t(j) *s, t(x) * s + t(j) * c, pch=16, cex=.25, col=col1[colnam
 #for(i in nrow(q):1){
 #	polygon(q[i,]*c, q[i,]*s, col=NA, lty=1, lwd=c(1,2,1)[i])
 #}
-segments(q[1,]*c, q[1,]*s,q[3,]*c,q[3,]*s, lwd=2)
+segments(x[1,]*c, x[1,]*s,x[3,]*c,x[3,]*s, lwd=2)
 #points(q[2,]*c, q[2,]*s, pch=16, cex=.25, col=col1[colnames(x)])
 m <- apply(x,2,max)
 for(i in seq_along(m))
@@ -872,8 +872,8 @@ mtext(side=3, at = log(-log(l)/hazardDist(par("usr")[4])), text=paste(100*l, "%"
 par(xpd=NA)
 mtext(side=3, "Survival",line=2, cex=.66)
 mtext(side=2, line=2.5, "Time",cex=.66)
-q <- quantile(os[,1], seq(0,1,0.1), na.rm=TRUE)
-image(x=c(3.5,4), y = q, matrix(1:10, nrow=1), col=brewer.pal(10,'RdBu'), add=TRUE)
+x <- quantile(os[,1], seq(0,1,0.1), na.rm=TRUE)
+image(x=c(3.5,4), y = x, matrix(1:10, nrow=1), col=brewer.pal(10,'RdBu'), add=TRUE)
 
 
 par(mar=c(4,.5,1,1), xpd=FALSE)
@@ -886,7 +886,7 @@ par(xpd=NA)
 x <- seq(-3,5,l=100)
 lines(x , dnorm(x, 0, sd(h))*100 /  dnorm(0, 0, sd(h)) + length(h)*1.01)
 
-c <- cut(os[p,1], q)
+c <- cut(os[p,1], x)
 #c[os[p,2]==0] <- NA
 image(x=c(3.5,4), y = c(0,seq_along(c)), matrix(as.numeric(c), nrow=1), col=brewer.pal(10,'RdBu'), add=TRUE, useRaster=TRUE)
 points(x=rep(4.1, sum(os[p,2]==0, na.rm=TRUE)), y=which(os[p,2]==0), pch=".")
@@ -973,15 +973,15 @@ names(riskCol) <- levels(clinicalData$M_Risk)
 r <- coxRFXCirTD$X %*% coef(coxRFXCirTD) - cirData$transplant * coef(coxRFXCirTD)["transplant"]
 g <- "Inter-2"
 w <- which(clinicalData$M_Risk[cirData$index]==g)
-q <- cut(r[w], quantile(r[w], seq(0,1,.33)))
+x <- cut(r[w], quantile(r[w], seq(0,1,.33)))
 
 plot(survfit(Surv(time1, time2, event) ~ clinicalData$M_Risk[cirData$index], data=cirData), col=riskCol, ylab="Recurrence-free fraction", xlab="Time after CR", main="Molecular risk groups, all cases")
 legend("topright", lty=1, bty="n", paste(levels(clinicalData$M_Risk), table(clinicalData$M_Risk[!is.na(c)])), col=riskCol)
-plot(survfit(Surv(time1, time2, event) ~ q + transplant, data=cirData[w,]), col=riskCol[g], lty=c(1,3), ylab="Recurrence-free fraction", main=paste(g, "terciles"), xlab="Time after CR")
+plot(survfit(Surv(time1, time2, event) ~ x + transplant, data=cirData[w,]), col=riskCol[g], lty=c(1,3), ylab="Recurrence-free fraction", main=paste(g, "terciles"), xlab="Time after CR")
 legend("topright", lty=c(1,3), bty="n", c("no TPL","TPL"), col=riskCol[g])
 
 plot(survfit(prsTD ~ clinicalData$M_Risk[prsSplit]), col=set1[1:4], ylab="Post-relapse survival", xlab="Time after relapse", main="Molecular risk groups, all cases")
-plot(survfit(prs[w[w<=1540]] ~ q[w<=1540]), col=set1[2], lty=1:3, ylab="Post-relapse survival", xlab="Time after relapse", main="Favourable; terciles")
+plot(survfit(prs[w[w<=1540]] ~ x[w<=1540]), col=set1[2], lty=1:3, ylab="Post-relapse survival", xlab="Time after relapse", main="Favourable; terciles")
 
 ## NRM
 t <- clinicalData$Time_1CR_TPL
@@ -1009,9 +1009,9 @@ plot(survfit(Surv(time1, time2, event) ~ clinicalData$M_Risk[cirData$index], dat
 legend("bottomright", lty=1, bty="n", paste(levels(clinicalData$M_Risk), table(clinicalData$M_Risk[!is.na(c)])), col=riskCol)
 for(g in levels(clinicalData$M_Risk)){
 	w <- which(clinicalData$M_Risk[cirData$index]==g)
-	q <- cut(r[w], quantile(r[w], seq(0,1,.33)))
+	x <- cut(r[w], quantile(r[w], seq(0,1,.33)))
 	
-	plot(survfit(Surv(time1, time2, event) ~ q + transplant, data=cirData[w,]), col=riskCol[g], lty=c(1,3), ylab="CIR", main=paste(g, "terciles"), xlab="Time after CR", fun=f, ylim=c(0,1))
+	plot(survfit(Surv(time1, time2, event) ~ x + transplant, data=cirData[w,]), col=riskCol[g], lty=c(1,3), ylab="CIR", main=paste(g, "terciles"), xlab="Time after CR", fun=f, ylim=c(0,1))
 	legend("bottomright", lty=c(1,3), bty="n", c("no TPL","TPL"), col=riskCol[g])
 }
 dev.off()
@@ -1127,9 +1127,9 @@ plot(survfit(Surv(time1, time2, event) ~ clinicalData$M_Risk[cirData$index], dat
 legend("bottomright", lty=1, bty="n", paste(levels(clinicalData$M_Risk), table(clinicalData$M_Risk[!is.na(c)])), col=riskCol)
 for(g in levels(clinicalData$M_Risk)){
 	w <- which(clinicalData$M_Risk[cirData$index]==g)
-	q <- cut(r[w], quantile(r[w], seq(0,1,.33)))
+	x <- cut(r[w], quantile(r[w], seq(0,1,.33)))
 	
-	plot(survfit(Surv(time1, time2, event) ~ q + transplant1CR, data=cirData[w,]), col=riskCol[g], lty=c(1,3), ylab="CIR", main=paste(g, "terciles"), xlab="Time after CR", fun=f, ylim=c(0,1))
+	plot(survfit(Surv(time1, time2, event) ~ x + transplant1CR, data=cirData[w,]), col=riskCol[g], lty=c(1,3), ylab="CIR", main=paste(g, "terciles"), xlab="Time after CR", fun=f, ylim=c(0,1))
 	legend("bottomright", lty=c(1,3), bty="n", c("no TPL","TPL"), col=riskCol[g])
 }
 plot(survfit(Surv(time1, time2, event) ~ transplant1CR, data=nrmData), col="black", lty=c(1,3), ylab="NRM", xlab="Time after CR", fun=f, ylim=c(0,1))
@@ -1281,8 +1281,8 @@ dev.off()
 f <- character(nrow(clinicalData))
 for(l in levels(clinicalData$M_Risk)){
 	w <- which(clinicalData$M_Risk==l)
-	q <- cut(r[w], quantile(r[w], seq(0,1,.33), include.lowest=TRUE), labels=c("T1","T2","T3"))
-	f[w] <- as.character(q)
+	x <- cut(r[w], quantile(r[w], seq(0,1,.33), include.lowest=TRUE), labels=c("T1","T2","T3"))
+	f[w] <- as.character(x)
 }
 f <- factor(f, levels=c("T1","T2","T3"))
 
@@ -1827,14 +1827,14 @@ predictNpCox <- function(fit, risk = predict(fit), surv=fit$surv){
 
 p <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, allData, x =365)
 s <- survfit(coxRFXOsCR)
-q <- s$surv[which.min(abs(s$time-365))] ^ exp(predict(coxRFXOsCR, newdata=allData))
+x <- s$surv[which.min(abs(s$time-365))] ^ exp(predict(coxRFXOsCR, newdata=allData))
 
 osCR <- Surv(osData$time1, osData$time2, osData$status)
-survConcordance(osCR ~ q)
+survConcordance(osCR ~ x)
 survConcordance(osCR ~ p$os)
 
 p <- sapply(1:10*365/2, function(i)  PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, d, x =round(i))$os)
-plot(1:10*365/2,cor(p,q), xlab="time", ylab='cor')
+plot(1:10*365/2,cor(p,x), xlab="time", ylab='cor')
 plot(1:10*365/2,1-apply(p,2, function(x) survConcordance(osCR ~ x)$concordance))
 
 apply(apply(-sapply(concordanceCIRcv[[1]], `[[` , "C")[4:5,],2,rank),1,function(x) table(factor(x, levels=1:6)))
@@ -1858,13 +1858,13 @@ c <- coxRFXCirTD
 c$coefficients <- m[,"CIRrfx"]
 
 p <- PredictOS(coxRFXNrmTD, coxRFXCirTD, coxRFXPrsTD, allData, x =365)
-q <- PredictOS(n, c, r, allData, x =365)
+x <- PredictOS(n, c, r, allData, x =365)
 
-plot(p$os, q$os)
-cor(p$os, q$os)
+plot(p$os, x$os)
+cor(p$os, x$os)
 
 survConcordance(osCR ~ p$os)
-survConcordance(osCR ~ q$os)
+survConcordance(osCR ~ x$os)
 
 ## more bagging
 concordanceCIRbag <- mclapply(1:replicates, function(foo){
@@ -2012,9 +2012,9 @@ PredictAbsoluteCoxph <- function(coxRFXOsCR, allData, time) {
 	s <- survfit(coxRFXOsCR)
 	q <- s$surv[which.min(abs(s$time-time))] ^ exp(predict(coxRFXOsCR, newdata=allData))
 }
-q <- PredictAbsoluteCoxph(coxRFXOsCR = coxRFXOsCR, allData = allData, time=365)
+x <- PredictAbsoluteCoxph(coxRFXOsCR = coxRFXOsCR, allData = allData, time=365)
 
-absPredErrorOs <- EvalAbsolutePred(q, Surv(allData$time1, allData$time2, allData$status), time=365)
+absPredErrorOs <- EvalAbsolutePred(x, Surv(allData$time1, allData$time2, allData$status), time=365)
 plot(absPredErrorOs$x, absPredErrorOs$survfit$surv, xlim=c(0,1), ylim=c(0,1))
 segments(absPredErrorOs$x, absPredErrorOs$survfit$lower,absPredErrorOs$x, absPredErrorOs$survfit$upper)
 abline(0,1)
@@ -2194,7 +2194,68 @@ r <- rank(r)/length(r)
 p <- -allPredictLOO[,1]
 
 
+glmNetRfx <- function(Z, y, X=NULL, groups = rep(1,ncol(y)), ..., tol=1e-6, max.iter=100){
+	nfixed <- ifelse(is.null(X), 0,ncol(X))
+	nran <- ncol(Z)
+	beta <- beta0ld <- rep(1, ncol(Z))
+	sigma2 <- 1
+	sigma20ld <- 10
+	mu <- mu0ld <- 0
+	df <- ncol(Z)
+	iter <- 1
+	s <- svd(cbind(X,Z))
+	d <- s$d
+	mrsq <- var(y)
+	nobs <- nrow(Z)
+	while((max(abs(beta-beta0ld)) > tol | max(abs(mu - mu0ld)) > tol | max(abs(sigma2 - sigma20ld)) > tol) & iter < max.iter){
+		fit <- glmnet(cbind(X,Z),y, ..., alpha=0, lambda = mrsq/(2*sigma2)/nobs * 10^seq(2,0, l=100), standardize=FALSE, penalty.factor=c(rep(0,nfixed), rep(1, nran)))
+		beta0ld <- beta
+		beta <- coef(fit, s=fit$lambda[100])[-(1:(nfixed+1))]
+		yp <- predict(fit, newx=cbind(X,Z), s=fit$lambda[100])
+		mrsq <- sum((y - yp)^2)/(nobs-df)
+		df <- sum((s$d^2/(s$d^2+ mrsq/sigma2))) - nfixed
+		cat("sigma2 ", sigma2, "\tdf",df, "\tmrsq",mrsq,"\n")
+		sigma20ld <- sigma2
+		sigma2 <- sum(beta^2)/df
+	}
+	return(list(coef=coef(fit, s=fit$lambda[100])[1:(nfixed+1)], ranef=beta, sigma2=sigma2, df=df, iter=iter, mrsq=mrsq, yhat=yp))
+}
 
+
+
+
+ape <- function(prediction, survival, time){
+	status <- survival[,1] >= time
+	status[survival[,2]==0 & survival[,1] < time] <- NA
+	mean(abs(status - prediction), na.rm=TRUE)
+}
+
+brier <- function(prediction, survival, time){
+	status <- survival[,1] >= time
+	status[survival[,2]==0 & survival[,1] < time] <- NA
+	mean((status - prediction)^2, na.rm=TRUE)
+}
+
+kld <- function(prediction, survival, time){
+	status <- survival[,1] >= time
+	status[survival[,2]==0 & survival[,1] < time] <- NA
+	mean(ifelse(status, -log2(prediction), -log2(1-prediction)), na.rm=TRUE)
+}
+
+be <- function(prediction, survival, time){
+	status <- survival[,1] >= time
+	status[survival[,2]==0 & survival[,1] < time] <- NA
+	bp <- prediction > 0.5
+	mean(bp != status, na.rm=TRUE)
+}
+
+
+
+p <- allPredictLOO[,3]
+p[osData$index[osData$transplantCR1==1]] <-  allPredictLOO[osData$index[osData$transplantCR1==1],2]
+
+
+predErr(c)
 
 
 
