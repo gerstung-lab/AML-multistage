@@ -2713,13 +2713,19 @@ table(clinicalData$M_Risk, apply(allPredictTpl, 1, function(x) x[2] > x[3]+.05))
 summary(survfit(Surv(time1, time2, status) ~ 1, data=osData), time=3*365)
 
 #' Under different scenarios
-colMeans(allPredictTpl)
+colMeans(allPredictTpl[!is.na(clinicalData$CR_date),])
 
-#' Using observed (assuming salvage as fallback)
-mean(sapply(1:nrow(data), function(i) allPredictTpl[i,3 - data[i,"transplantCR1"] ]))
+#' Using observed 
+mean(sapply((1:nrow(data))[!is.na(clinicalData$CR_date)], function(i) allPredictTpl[i, 1+data[i,"transplantCR1"] + 2*data[i, "transplantRel"] ]))
 
 #' Best possible - everyone had received the optimum 
-mean(apply(allPredictTpl,1,max))
+mean(apply(allPredictTpl[!is.na(clinicalData$CR_date),],1,max))
+
+#' Benefit v number of allografts in CR1
+#+ survNallo
+o <- order(-allPredictTpl[,2]+allPredictTpl[,3] + ifelse(is.na(clinicalData$CR_date),NA,0), na.last=NA)
+sapply(seq_along(o), function(i) mean(c(allPredictTpl[o[1:i],2], allPredictTpl[o[-(1:i)],3]), na.rm=TRUE)) -> s
+plot(s, type='l', xlab="# Allografts in CR1", ylab="Average Survival 3yrs after CR")
 
 #' #### Leave one out cross-validation 
 #' ##### Three state model
