@@ -2721,7 +2721,8 @@ mean(sapply(1:nrow(data), function(i) allPredictTpl[i,3 - data[i,"transplantCR1"
 #' Best possible - everyone had received the optimum 
 mean(apply(allPredictTpl,1,max))
 
-#' #### Leave one out cross-validation of the three state model
+#' #### Leave one out cross-validation 
+#' ##### Three state model
 #' We compute LOO out-of-sample predictions for the survival gain by allograft in CR1 v relapse by training 1540 models on 1539 patients each. 
 #' This we compare to in-sample predictions of the model trained on all 1540 patients.
 #+ allPredictLOO, cache=TRUE
@@ -2791,6 +2792,51 @@ segments(b[2,],e[2,],b[2,],e[3,])
 #' The bottom line is that we are able to confidently isolate a quarte of patients with high benefit of allografts (about 12% absolute benefit). The breakdown across 
 #' ELN risk groups is:
 table(c, clinicalData$M_Risk)
+
+#' ##### Leave one out cross-validation for RFX on post-CR OS 
+#+ coxRFXOsCrLOO, cache=TRUE
+cvFold <- nrow(dataFrame)
+cvIdx <- 1:nrow(dataFrame)
+p <- Reduce("rbind", mclapply(cvIdx, function(i){
+					whichTrain <- which(cvIdx != i)
+					rfxOS <- CoxRFX(osData[osData$index %in% whichTrain, names(crGroups)], Surv(osData$time1, osData$time2, osData$status)[osData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+					p <- as.data.frame(predict(rfxOS, newdata=osData[!osData$index %in% whichTrain, names(crGroups)], se.fit=TRUE))
+					s <- summary(survfit(Surv(osData$time1, osData$time2, osData$status)[osData$index %in% whichTrain] ~ 1), time=3*365)$surv
+					cbind(p, surv=s^exp(p$fit))
+				}, mc.cores=10))
+d <- duplicated(sub(".1$","",rownames(p)))
+coxRFXOsCrLOO <- rbind(p[!d,], p[d,])
+rm(p,d)
+
+#' Compare with corresponding multistage predictions
+#+ coxRFXOsCrLOOplot
+m <- c(allPredictLOO[,3],allPredictLOO[osData$index[osData$transplantCR1==1],2])
+plot(m, coxRFXOsCrLOO[,3])
+abline(0,1)
+cor(m, coxRFXOsCrLOO[,3])
+
+#' #### Prediction errors
+#' ##### Training error
+#' 3-state model
+c <- Surv(as.numeric(clinicalData$Date_LF - clinicalData$CR_date), clinicalData$Status)
+p <- allPredictTplCi[3,1,1,]
+p[osData$index[osData$transplant1CR==1]] <-  allPredictTplCi[2,1,1,]
+ape(p, c, time=3*365)
+
+#' RFX
+unduplicate <- function(index) {u <- unique(index); u[which(rev(duplicated(rev(index))))] <- seq_along(index)[duplicated(index)]; return(u)}
+q <- summary(survfit(cr ~ 1), time=3*365)$surv^exp(scale(predict(coxRFXOsCR, newdata=osData[unduplicate(osData$index),]), scale=FALSE))
+ape(q, c, time=3*365)
+
+#' ##### LOO test error
+#' 3-state model
+p <- allPredictLOO[,3]
+p[osData$index[osData$transplantCR1==1]] <-  allPredictLOO[osData$index[osData$transplantCR1==1],2]
+ape(p, c, time=3*365)
+
+#' RFX
+ape(coxRFXOsCrLOO$surv[unduplicate(osData$index)], c, time=3*365)
+
 
 #' ### Predicting outcome from diagnosis
 #' The following function fits a 5-stage model. Note that we use a single smooth function g(t) to model the association between time of CR and all subsequent events.
