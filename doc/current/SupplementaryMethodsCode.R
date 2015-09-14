@@ -2811,9 +2811,10 @@ rm(p,d)
 #' Compare with corresponding multistage predictions
 #+ coxRFXOsCrLOOplot
 m <- c(allPredictLOO[,3],allPredictLOO[osData$index[osData$transplantCR1==1],2])
-plot(m, coxRFXOsCrLOO[,3])
+r <- c(coxRFXOsCrLOO$surv[1:1540],coxRFXOsCrLOO$surv[osData$transplantCR1==1]) 
+plot(m, r)
 abline(0,1)
-cor(m, coxRFXOsCrLOO[,3])
+cor(m, r)
 
 #' #### Prediction errors
 #' ##### Training error
@@ -2825,7 +2826,7 @@ ape(p, c, time=3*365)
 
 #' RFX
 unduplicate <- function(index) {u <- unique(index); u[which(rev(duplicated(rev(index))))] <- seq_along(index)[duplicated(index)]; return(u)}
-q <- summary(survfit(cr ~ 1), time=3*365)$surv^exp(scale(predict(coxRFXOsCR, newdata=osData[unduplicate(osData$index),]), scale=FALSE))
+q <- summary(survfit(Surv(time1,time2,status) ~ 1, data=osData), time=3*365)$surv^exp(scale(predict(coxRFXOsCR, newdata=osData[unduplicate(osData$index),]), scale=FALSE))
 ape(q, c, time=3*365)
 
 #' ##### LOO test error
