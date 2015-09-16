@@ -84,22 +84,24 @@ addGrid <- function() {
 # Define server logic required to generate and plot a random distribution
 shinyServer(function(input, output) {
 			getData <- reactive({
-						l <- list()
-						for(n in VARIABLES){
-							l[[n]] <- ifelse(input[[n]]=="NA",NA,as.numeric(input[[n]]))
-							if(is.null(input[[n]])) l[[n]] <- NA
-						}
-						for(n in INTERACTIONS){
-							s <- strsplit(n, ":")[[1]]
-							l[[n]] <- l[[s[1]]] * l[[s[2]]]
-						}
-						for(n in NUISANCE)
-							l[[n]] <- NA
-						out <- do.call("data.frame",l)
-						names(out) <- names(l)
-						out[VARIABLES] <- out[VARIABLES]/SCALEFACTORS
-						return(out)
-						
+						input$compute
+						isolate({
+									l <- list()
+									for(n in VARIABLES){
+										l[[n]] <- ifelse(input[[n]]=="NA",NA,as.numeric(input[[n]]))
+										if(is.null(input[[n]])) l[[n]] <- NA
+									}
+									for(n in INTERACTIONS){
+										s <- strsplit(n, ":")[[1]]
+										l[[n]] <- l[[s[1]]] * l[[s[2]]]
+									}
+									for(n in NUISANCE)
+										l[[n]] <- NA
+									out <- do.call("data.frame",l)
+									names(out) <- names(l)
+									out[VARIABLES] <- out[VARIABLES]/SCALEFACTORS
+									return(out)
+								})
 					})
 			output$ui <- renderUI({
 						pdid <- input[["pdid"]]
@@ -178,9 +180,12 @@ shinyServer(function(input, output) {
 				par(usr=u)
 			}
 			
-			dataImputed <- reactive({ImputeMissing(data[1:1540,], getData()[,colnames(data)])})
+			dataImputed <- reactive({
+						ImputeMissing(data[1:1540,], getData()[,colnames(data)])
+					})
 			models <- c("Ncd","Cr","Rel","Nrd","Prd")
-			riskMissing <- reactive({sapply(models, function(m){
+			riskMissing <- reactive({
+						sapply(models, function(m){
 									fit <- get(paste("coxRFX",m,"TD", sep=""))
 									if(!is.null(fit$na.action))
 										fit$Z <- fit$Z[-fit$na.action,]

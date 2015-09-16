@@ -19,7 +19,7 @@ Based on these rates the probability to be alive or die in either stage are comp
 The left navigation panel has the following elements:
 
 * **Help** Displays this page.
-* **Select sample** You can select a sample from the drop down list to load the values of each his prognostic variables. Click **load presets** when done.
+* **Select sample** You can select a sample from the drop down list to load the values of each his prognostic variables. 
 * **Prognostic variables** You may also manually enter the values of prognostic variables. For genomic lesions the choices are given by radio buttons. Other variables
 are entered as a numeric value. The valid range is denoted by square brackets.
 * **Confidence intervals**. You can choose between numerical and analytically computed confidence intervals. Currently latter only works for predictions after remission, but
@@ -32,7 +32,7 @@ to the prediction for a hypothetical individual with all variables being average
 The prediction for an average patient is shown if you select 'reset' under **Select sample**. Note that 
 the prediction for an average individual is very similar, but not 100% identical to the average of all predictions. 
 
-After changing any input parameters, please click **Compute survival** to update the predictions. In some cases you may to click twice.
+After changing any input parameters, please click **Compute survival** to update the predictions. 
 
 ### Main panel
 #### Top figures
