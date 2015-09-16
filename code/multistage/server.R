@@ -17,7 +17,7 @@ VARIABLES <- names(crGroups)[s]
 rg <- c("Fusions"=5, "CNA"=4,"Genetics"=3, "Clinical"=7, "Demographics"=8, "Treatment"=6)
 o <- order(rg[crGroups[s]],(coef(coxRFXPrdTD)^2/diag(coxRFXPrdTD$var2))[VARIABLES], decreasing=TRUE)
 VARIABLES <- VARIABLES[o]
-NEWGRP <- c(1,diff(as.numeric(as.factor(crGroups))[s][o])) != 0
+NEWGRP <- c(0,diff(as.numeric(as.factor(crGroups))[s][o])) != 0
 names(NEWGRP) <- VARIABLES
 INTERACTIONS <- names(crGroups)[crGroups %in% "GeneGene"] 
 NUISANCE <- names(crGroups)[crGroups %in% "Nuisance" | names(crGroups) %in%  c("oAML","ATRA","VPA")] 
@@ -122,7 +122,8 @@ shinyServer(function(input, output) {
 						defaults[VARIABLES] <- defaults[VARIABLES] * SCALEFACTORS
 						#cat(defaults,"\n")
 						
-						lapply(VARIABLES, 
+						c(list(tags$em(tags$b(crGroups[VARIABLES[1]]))),
+								lapply(VARIABLES, 
 								function(x) {
 									d <- defaults[x]
 									f <- if(crGroups[x] %in% c("Genetics","CNA","Fusions","Treatment")){
@@ -136,7 +137,7 @@ shinyServer(function(input, output) {
 									h <- if(NEWGRP[x]) list(tags$hr(), tags$em(tags$b(crGroups[x]))) else NULL
 									list(h,f)}
 						
-						)
+						))
 					})
 			x <- 0:2000
 			
