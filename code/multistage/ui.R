@@ -20,10 +20,9 @@ shinyUI(fluidPage(
 						column(3, 
 								wellPanel(div(HTML('<b><a href="help.html">Help</a></b>'))),
 								wellPanel(
-										selectInput("pdid", tags$b("Select sample"), c("reset",rownames(data)), selected = "reset", multiple=FALSE), ## select sample
-										submitButton("1. Load presets")
+										selectInput("pdid", tags$b("Select sample"), c("reset",rownames(data)), selected = "reset", multiple=FALSE)
 								),
-								wellPanel(submitButton("2. Compute survival")),
+								wellPanel(actionButton("compute", "Compute survival")),
 								wellPanel(
 										tags$b("Prognostic variables"),
 										uiOutput("ui")
