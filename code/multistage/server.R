@@ -28,10 +28,23 @@ w <- crGroups[VARIABLES] %in% c("Demographics","Clinical")
 r <- regexpr("(?<=_)[0-9]+$", VARIABLES[w], perl=TRUE)
 SCALEFACTORS[w][r!=-1] <- as.numeric(regmatches(VARIABLES[w],r))
 
+CATEGORIES <- sapply(VARIABLES, function(x){
+			if(length(unique(data[,x])) <= 10){
+				c <- min(data[,x]):max(data[,x])
+				if(all(c %in% 0:1))
+					names(c) <- c("absent","present")
+				else if(x =="gender")
+					names(c) <- c("male","female")
+				return(c)
+			}
+			else
+				NULL
+		})
+
 LABELS <- sapply(VARIABLES, function(x){
 			r <- round(range(data[,x]*SCALEFACTORS[x], na.rm=TRUE),1)
 			i <- paste0(" [",r[1],"-",r[2],"]")
-			paste0(sub(paste0("_",SCALEFACTORS[x],"$"),"",x), ifelse(crGroups[x] %in% c("Genetics","Fusions","CNA","Treatment"),"",i))
+			paste0(sub(paste0("_",SCALEFACTORS[x],"$"),"",x), ifelse(is.null(CATEGORIES[[x]]),i,""))
 		})
 
 LABELS["AOD_10"] <- sub("AOD", "Age at diagnosis (yr)", LABELS["AOD_10"])
@@ -44,7 +57,7 @@ LABELS["platelet_100"] <- sub("platelet", "Platelet count (1e-9/l)", LABELS["pla
 LABELS["VPA"] <- "VPA (Valproic acid)"
 LABELS["transplantCR1"] <- "Allograft in CR1"
 LABELS["transplantRel"] <- "Allograft after Relapse"
-LABELS["gender"] <- "Gender: 1=male, 2=female"
+LABELS["gender"] <- "Gender"
 LABELS <- sub("t_*([a-z,0-9]+)_([a-z,0-9]+)", "t(\\1;\\2)", LABELS)
 LABELS[crGroups[VARIABLES] %in% c("Fusions","CNA")] <- gsub("_","/",LABELS[crGroups[VARIABLES] %in% c("Fusions","CNA")])
 LABELS <- sub("plus","+",LABELS)
@@ -132,7 +145,13 @@ shinyServer(function(input, output) {
 												radioButtons(x, label=if(crGroups[x]=="Genetics") tags$em(LABELS[x]) else LABELS[x], choices=c("present"= "1", "absent"="0", "NA"="NA"), selected=d)
 											}else{
 												r <- round(quantile(data[,x]*SCALEFACTORS[x], c(0.05,0.95), na.rm=TRUE),1)
-												numericInput(inputId=x, label=LABELS[x], value=d, min=r[1], max=r[2], step = if(round(min(data[,x]*SCALEFACTORS[x], na.rm=TRUE),1) %% 1 ==0) 1 else 0.1)
+												if(is.null(CATEGORIES[[x]]))
+													numericInput(inputId=x, label=LABELS[x], value=d, min=r[1], max=r[2], step = if(round(min(data[,x]*SCALEFACTORS[x], na.rm=TRUE),1) %% 1 ==0) 1 else 0.1)
+												else{
+													if(!d %in% 0:10) d <- NA
+													d <- paste(d)
+													radioButtons(x, label=LABELS[x], choices=c(CATEGORIES[[x]],"NA"="NA"), selected=d)
+												}
 											}
 									h <- if(NEWGRP[x]) list(tags$hr(), tags$em(tags$b(crGroups[x]))) else NULL
 									list(h,f)}
