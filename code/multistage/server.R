@@ -12,7 +12,7 @@ load("predictTest.RData", envir=globalenv())
 cr <<- cr
 set1 <- brewer.pal(8, "Set1")
 pastel1 <- brewer.pal(8, "Pastel1")
-s <- !crGroups %in% c("Nuisance","GeneGene")  & ! names(crGroups) %in% c("oAML","ATRA","VPA")
+s <- !crGroups %in% c("Nuisance","GeneGene")  & ! names(crGroups) %in% c("ATRA","VPA")
 VARIABLES <- names(crGroups)[s] 
 rg <- c("Fusions"=5, "CNA"=4,"Genetics"=3, "Clinical"=7, "Demographics"=8, "Treatment"=6)
 o <- order(rg[crGroups[s]],(coef(coxRFXPrdTD)^2/diag(coxRFXPrdTD$var2))[VARIABLES], decreasing=TRUE)
@@ -20,7 +20,7 @@ VARIABLES <- VARIABLES[o]
 NEWGRP <- c(0,diff(as.numeric(as.factor(crGroups))[s][o])) != 0
 names(NEWGRP) <- VARIABLES
 INTERACTIONS <- names(crGroups)[crGroups %in% "GeneGene"] 
-NUISANCE <- names(crGroups)[crGroups %in% "Nuisance" | names(crGroups) %in%  c("oAML","ATRA","VPA")] 
+NUISANCE <- names(crGroups)[crGroups %in% "Nuisance" | names(crGroups) %in%  c("ATRA","VPA")] 
 
 SCALEFACTORS<- rep(1, length(VARIABLES))
 names(SCALEFACTORS) <- VARIABLES
@@ -66,6 +66,13 @@ LABELS <- sub("(_|/)*other"," (other)", LABELS)
 LABELS <- sub("_([0-9a-zA-Z]+)"," (\\1)", LABELS)
 
 
+COMPVAR <- list(`Allogeneic HSCT`=c(none="none", `in first CR`="transplantCR1", `after relapse`="transplantRel"), `AML type`=c(primary='AML', secondary='sAML',tertiary='tAML',other='oAML')) ## Compound variables (factors)
+COMPIDX <- numeric(length(VARIABLES))
+names(COMPIDX) <- VARIABLES
+COMPIDX[c("transplantRel","oAML")] <- 1 ## Index of last elements for display
+VAR2COMP <- unlist(sapply(names(COMPVAR), function(n) rep(n, length(COMPVAR[[n]])))) 
+names(VAR2COMP) <- unlist(COMPVAR)
+
 #* AOD: Age on diagnosis 
 #* LDH: Lactic Acid Dehydrogenase (units/l)
 #* WBC: White cell count (1e-9/l), 
@@ -101,8 +108,13 @@ shinyServer(function(input, output) {
 						isolate({
 									l <- list()
 									for(n in VARIABLES){
-										l[[n]] <- ifelse(input[[n]]=="NA",NA,as.numeric(input[[n]]))
-										if(is.null(input[[n]])) l[[n]] <- NA
+										if(!n %in% unlist(COMPVAR)){
+											l[[n]] <- ifelse(input[[n]]=="NA",NA,as.numeric(input[[n]]))
+											if(is.null(input[[n]])) l[[n]] <- NA
+										}else{
+											l[[n]] <- ifelse(input[[VAR2COMP[n]]]=="NA", NA, input[[VAR2COMP[n]]]==n) + 0
+											if(is.null(input[[VAR2COMP[n]]])) l[[n]] <- NA
+										}
 									}
 									for(n in INTERACTIONS){
 										s <- strsplit(n, ":")[[1]]
@@ -137,26 +149,33 @@ shinyServer(function(input, output) {
 						
 						c(list(tags$em(tags$b(crGroups[VARIABLES[1]]))),
 								lapply(VARIABLES, 
-								function(x) {
-									d <- defaults[x]
-									f <- if(crGroups[x] %in% c("Genetics","CNA","Fusions","Treatment")){
-												if(!d %in% c(0,1)) d <- NA
-												d <- paste(d)
-												radioButtons(x, label=if(crGroups[x]=="Genetics") tags$em(LABELS[x]) else LABELS[x], choices=c("present"= "1", "absent"="0", "NA"="NA"), selected=d)
-											}else{
-												r <- round(quantile(data[,x]*SCALEFACTORS[x], c(0.05,0.95), na.rm=TRUE),1)
-												if(is.null(CATEGORIES[[x]]))
-													numericInput(inputId=x, label=LABELS[x], value=d, min=r[1], max=r[2], step = if(round(min(data[,x]*SCALEFACTORS[x], na.rm=TRUE),1) %% 1 ==0) 1 else 0.1)
-												else{
-													if(!d %in% 0:10) d <- NA
-													d <- paste(d)
-													radioButtons(x, label=LABELS[x], choices=c(CATEGORIES[[x]],"NA"="NA"), selected=d)
-												}
-											}
-									h <- if(NEWGRP[x]) list(tags$hr(), tags$em(tags$b(crGroups[x]))) else NULL
-									list(h,f)}
-						
-						))
+										function(x) {
+											d <- defaults[x]
+											f <- if(x %in% unlist(COMPVAR)){
+														if(!COMPIDX[x]) return(NULL)
+														s <- defaults[COMPVAR[[VAR2COMP[x]]][-1]]
+														w <- if(any(is.na(s))) 'N/A' else if(all(s==0)) 1 else if(any(!s %in% c(0,1))) 'N/A' else which(s==1)+1
+														c <- c(COMPVAR[[VAR2COMP[x]]], "N/A"="N/A")
+														cat(x,w,c[w],"\n",sep="\t")
+														radioButtons(VAR2COMP[x], label=VAR2COMP[x], choices=c, selected=c[w])
+													}else if(crGroups[x] %in% c("Genetics","CNA","Fusions","Treatment")){
+														if(!d %in% c(0,1)) d <- NA
+														d <- paste(d)
+														radioButtons(x, label=if(crGroups[x]=="Genetics") tags$em(LABELS[x]) else LABELS[x], choices=c("present"= "1", "absent"="0", "N/A"="NA"), selected=d)
+													}else{
+														r <- round(quantile(data[,x]*SCALEFACTORS[x], c(0.05,0.95), na.rm=TRUE),1)
+														if(is.null(CATEGORIES[[x]]))
+															numericInput(inputId=x, label=LABELS[x], value=d, min=r[1], max=r[2], step = if(round(min(data[,x]*SCALEFACTORS[x], na.rm=TRUE),1) %% 1 ==0) 1 else 0.1)
+														else{
+															if(!d %in% 0:10) d <- NA
+															d <- paste(d)
+															radioButtons(x, label=LABELS[x], choices=c(CATEGORIES[[x]],"N/A"="NA"), selected=d)
+														}
+													}
+											h <- if(NEWGRP[x]) list(tags$hr(), tags$em(tags$b(crGroups[x]))) else NULL
+											list(h,f)}
+								
+								))
 					})
 			x <- 0:2000
 			
