@@ -156,7 +156,6 @@ shinyServer(function(input, output) {
 														s <- defaults[COMPVAR[[VAR2COMP[x]]][-1]]
 														w <- if(any(is.na(s))) 'N/A' else if(all(s==0)) 1 else if(any(!s %in% c(0,1))) 'N/A' else which(s==1)+1
 														c <- c(COMPVAR[[VAR2COMP[x]]], "N/A"="N/A")
-														cat(x,w,c[w],"\n",sep="\t")
 														radioButtons(VAR2COMP[x], label=VAR2COMP[x], choices=c, selected=c[w])
 													}else if(crGroups[x] %in% c("Genetics","CNA","Fusions","Treatment")){
 														if(!d %in% c(0,1)) d <- NA
