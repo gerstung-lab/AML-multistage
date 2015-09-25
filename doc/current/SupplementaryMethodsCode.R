@@ -2064,8 +2064,8 @@ concordanceCIRcv <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), f
 						sOs <- Surv(osData$time1, osData$time2, osData$status)[osData$index %in% which(trainIdx)]
 						coxRFXOsCR <- CoxRFX(dOs, sOs, groups=g, which.mu = mainGroups)
 						
-						allRisk365 <- PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=365, prdData=dPrd)
-						allRisk1000 <- PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=1000, prdData=dPrd)
+						allRisk365 <- PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=365, prdData=dPrs)
+						allRisk1000 <- PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=1000, prdData=dPrs)
 						
 						p365 <- -allRisk365[,1]
 						p1000 <-  -allRisk1000[,1]
