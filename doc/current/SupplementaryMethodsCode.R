@@ -2502,7 +2502,7 @@ datatable(format(survivalTpl[order(survivalTpl$CR1 -survivalTpl$Relapse),], digi
 datatable(allPredictTpl[patients,])
 
 #' Function to predict OS from  Relapse, PRS and NRM. This one also computes confidence intervals for each type of allograft and the predicted differences in outcome between allograft types.
-PredictOSTpl <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, ciType="simulated", nSim = 200, mc.cores=10){
+PredictOSTpl <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, prsData, ciType="simulated", nSim = 200, mc.cores=10){
 	## Step 1: Compute KM survival curves and log hazard
 	getS <- function(coxRFX, data, max.x=5000) {		
 		if(!is.null(coxRFX$na.action)) coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
@@ -2529,7 +2529,7 @@ PredictOSTpl <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, ci
 	xx <- 0:max(x)
 	
 	# Baseline Prs (measured from relapse)
-	kmPrs0 <- survPredict(Surv(prdData$time2-prdData$time1, prdData$status))(xx) 
+	kmPrs0 <- survPredict(Surv(prdData$time1, prdData$time2, prdData$status))(xx) 
 	
 	# PRS baseline with spline-based dep on CR length)
 	coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=prdData) 
@@ -2642,11 +2642,11 @@ d <- osData[1:nrow(dataFrame),]
 d$transplantCR1 <- 0
 d$transplantRel <- 0
 p <- grep("PD11104a|PD8314a|PD11080a",rownames(dataFrame))
-predict3 <- PredictOSTpl(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[p,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=1000) ## selected with 1000
+predict3 <- PredictOSTpl(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[p,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=1000, prsData=prsData) ## selected with 1000
 dimnames(predict3)[[4]] <- rownames(dataFrame)[p]
 predict3
 set.seed(42)
-allPredictTplCi <- PredictOSTpl(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=200) ## others with 200
+allPredictTplCi <- PredictOSTpl(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=200, prsData=prsData) ## others with 200
 dimnames(allPredictTplCi)[[4]] <- rownames(dataFrame)
 
 #' #### Figure 4f
