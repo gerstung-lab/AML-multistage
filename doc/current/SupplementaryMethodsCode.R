@@ -1755,6 +1755,7 @@ prdData$transplantRel <- prdData$event
 prdData$event <- NULL
 w <- which(prdData$time1 == prdData$time2) ## 5 cases with LF=Rec
 prdData$time2[w] <- prdData$time2[w] + .5
+prdData$time0 <- time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index]
 
 #' ### RFX fit of transitions
 #+ postCR1Fits, cache=TRUE
@@ -1943,7 +1944,7 @@ cppFunction('NumericVector computeTotalPrsC(NumericVector x, NumericVector diffC
 				}', rebuild=TRUE)
 
 #' Function to predict OS from Relapse, PRS and NRM, as described in [Section 4.3.5](#probabilities-of-each-state).
-PredictOS <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, ciType="analytical"){
+PredictOS <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, ciType="analytical", prdData){
 	## Step 1: Compute KM survival curves and log hazard
 	getS <- function(coxRFX, data, max.x=5000) {		
 		if(!is.null(coxRFX$na.action)) coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
@@ -1985,10 +1986,11 @@ PredictOS <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, ciTyp
 	}
 	xx <- 0:max(x)
 	# Baseline Prs (measured from relapse)
-	kmPrs0 <- survPredict(Surv(prdData$time2-prdData$time1, prdData$status))(xx) 
+	kmPrs0 <- survPredict(Surv(prdData$time1, prdData$time2, prdData$status))(xx) 
 	# PRS baseline with spline-based dep on CR length)
-	coxphPrs <- coxph(Surv(time2-time1, status)~ pspline(time1, df=10), data=prdData) 
-	tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time1=xx[-1])))						
+
+	coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=prdData ) 
+	tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1])))						
 	rs <- sapply(1:nrow(data), function(i){
 				### Different approach				
 				xLen <- 1+floor(x)
@@ -2036,7 +2038,7 @@ w <- which(clinicalData$TPL_date > clinicalData$Recurrence_date)
 allData$transplantCR1[allData$index %in% w] <- 0
 allData$transplantRel[!allData$index %in% w] <- 0
 
-allPredict <-  PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, allData, 3*365)
+allPredict <-  PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=3*365, prdData=prdData)
 
 
 #' ### Model assessment
@@ -2052,7 +2054,7 @@ concordanceCIRcv <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), f
 						coxRFXNrdTD <- CoxRFX(dNrm, sNrm, groups=g, nu=1, which.mu = mainGroups)
 						coxRFXNrdTD$coefficients["transplantRel"] <- 0
 						dPrs <- prdData[prdData$index %in% which(trainIdx), names(g)]
-						sPrs <- Surv(prdData$time2 - prdData$time1, prdData$status)[prdData$index %in% which(trainIdx)]
+						sPrs <- Surv(prdData$time1, prdData$time2, prdData$status)[prdData$index %in% which(trainIdx)]
 						coxRFXPrdTD <-  CoxRFX(dPrs, sPrs, groups=g, nu=1, which.mu = mainGroups)
 						dCir <- relData[relData$index %in% which(trainIdx), names(g)]
 						sCir <- Surv(relData$time1, relData$time2, relData$status)[relData$index %in% which(trainIdx)]
@@ -2062,8 +2064,8 @@ concordanceCIRcv <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), f
 						sOs <- Surv(osData$time1, osData$time2, osData$status)[osData$index %in% which(trainIdx)]
 						coxRFXOsCR <- CoxRFX(dOs, sOs, groups=g, which.mu = mainGroups)
 						
-						allRisk365 <- PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, allData, 365)
-						allRisk1000 <- PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, allData, 1000)
+						allRisk365 <- PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=365, prdData=dPrd)
+						allRisk1000 <- PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=1000, prdData=dPrd)
 						
 						p365 <- -allRisk365[,1]
 						p1000 <-  -allRisk1000[,1]
@@ -2074,7 +2076,7 @@ concordanceCIRcv <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), f
 						
 						C <- c(
 								CIRrfx = survConcordance(Surv(time1, time2, status)~ pCIR, data=relData, subset = relData$index %in% which(!trainIdx) )$concordance,
-								PRSrfx = survConcordance(Surv(time2 - time1, status) ~ pPRS, data=prdData, subset=prdData$index %in% which(!trainIdx) )$concordance,
+								PRSrfx = survConcordance(Surv(time1, time2, status) ~ pPRS, data=prdData, subset=prdData$index %in% which(!trainIdx) )$concordance,
 								NRMrfx = survConcordance(Surv(time1, time2, status)~  pNRM, data=nrdData, subset=nrdData$index %in% which(!trainIdx) )$concordance,
 								OSrfx = survConcordance(Surv(time1, time2, status) ~ pOS, data=osData, subset=osData$index %in% which(!trainIdx) )$concordance,
 								OS365 = survConcordance(Surv(time1, time2, status) ~ p365, data=osData, subset=osData$index %in% which(!trainIdx) )$concordance,
@@ -2107,7 +2109,7 @@ concordanceCIRcvTrain <- lapply(list(crGroups[crGroups %in% mainGroups], crGroup
 						C <- sapply(list(train=which(trainIdx), test=which(!trainIdx)), function(w)
 									c(
 											CIRrfx = survConcordance(Surv(time1, time2, status)~ pCIR, data=relData, subset = relData$index %in% w )$concordance,
-											PRSrfx = survConcordance(Surv(time2 - time1, status) ~ pPRS, data=prdData, subset=prdData$index %in% w )$concordance,
+											PRSrfx = survConcordance(Surv(time1, time2, status) ~ pPRS, data=prdData, subset=prdData$index %in% w )$concordance,
 											NRMrfx = survConcordance(Surv(time1, time2, status)~  pNRM, data=nrdData, subset=nrdData$index %in% w )$concordance,
 											OSrfx = survConcordance(Surv(time1, time2, status) ~ pOS, data=osData, subset=osData$index %in% w )$concordance,
 											OS365 = survConcordance(Surv(time1, time2, status) ~ p365, data=osData, subset=osData$index %in% w )$concordance,
@@ -2167,7 +2169,7 @@ concordanceCIRcvTrial <- mclapply(list(crGroups[crGroups %in% mainGroups], crGro
 						coxRFXNrdTD <- CoxRFX(dNrm, sNrm, groups=g, nu=1, which.mu = mainGroups)
 						coxRFXNrdTD$coefficients["transplantRel"] <- 0
 						dPrs <- prdData[prdData$index %in% which(trainIdx), names(g)]
-						sPrs <- Surv(prdData$time2 - prdData$time1, prdData$status)[prdData$index %in% which(trainIdx)]
+						sPrs <- Surv(prdData$time1, prdData$time2, prdData$status)[prdData$index %in% which(trainIdx)]
 						coxRFXPrdTD <-  CoxRFX(dPrs, sPrs, groups=g, nu=1, which.mu = mainGroups)
 						dCir <- relData[relData$index %in% which(trainIdx), names(g)]
 						sCir <- Surv(relData$time1, relData$time2, relData$status)[relData$index %in% which(trainIdx)]
@@ -2177,8 +2179,8 @@ concordanceCIRcvTrial <- mclapply(list(crGroups[crGroups %in% mainGroups], crGro
 						sOs <- Surv(osData$time1, osData$time2, osData$status)[osData$index %in% which(trainIdx)]
 						coxRFXOsCR <- CoxRFX(dOs, sOs, groups=g, which.mu = mainGroups)
 						
-						allRisk365 <- PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, allData, 365)
-						allRisk1000 <- PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, allData, 1000)
+						allRisk365 <- PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=365, prdData=dPrs)
+						allRisk1000 <- PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=1000, prdData=dPrs)
 						
 						p365 <- -allRisk365[,1]
 						p1000 <-  -allRisk1000[,1]
@@ -2491,7 +2493,7 @@ w <- sort(unique(osData$index[which(quantileRiskOsCR==3 & clinicalData$M_Risk[os
 allDataTpl <- osData[rep(1:nrow(dataFrame), each=3),]
 allDataTpl$transplantCR1 <- rep(c(0,1,0), nrow(dataFrame))
 allDataTpl$transplantRel <- rep(c(0,0,1), nrow(dataFrame))
-allPredictTpl <- PredictOS(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, allDataTpl, x=3*365)
+allPredictTpl <- PredictOS(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=allDataTpl, x=3*365, prdData=prdData)
 allPredictTpl <- as.data.frame(matrix(allPredictTpl$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse"))), row.names=rownames(dataFrame))
 survivalTpl <- data.frame(allPredictTpl, os=osYr, age=clinicalData$AOD, ELN=clinicalData$M_Risk, tercile=quantileRiskOsCR[1:nrow(allPredictTpl)])
 
@@ -2530,8 +2532,8 @@ PredictOSTpl <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, ci
 	kmPrs0 <- survPredict(Surv(prdData$time2-prdData$time1, prdData$status))(xx) 
 	
 	# PRS baseline with spline-based dep on CR length)
-	coxphPrs <- coxph(Surv(time2-time1, status)~ pspline(time1, df=10), data=prdData) 
-	tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time1=xx[-1])))						
+	coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=prdData) 
+	tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1])))						
 	
 	stopifnot(length(x)==1 | length(x) == nrow(data))
 	if(length(x)==nrow(data))
@@ -2764,7 +2766,7 @@ allPredictLOO <- Reduce("rbind", mclapply(1:nrow(data), function(i){
 					rfxPrs <-  CoxRFX(prdData[prdData$index %in% whichTrain, names(crGroups)], Surv(prdData$time2 - prdData$time1, prdData$status)[prdData$index %in% whichTrain], groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
 					rfxCir <-  CoxRFX(relData[relData$index %in% whichTrain, names(crGroups)], Surv(relData$time1, relData$time2, relData$status)[relData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 					rfxCir$coefficients["transplantRel"] <- 0
-					allPrd <- PredictOS(rfxNrm, rfxCir, rfxPrs, allDataTpl[rep(cvIdx, each=3) == i,], x=3*365)
+					allPrd <- PredictOS(rfxNrm, rfxCir, rfxPrs, data=allDataTpl[rep(cvIdx, each=3) == i,], x=3*365, prdData=prdData[prdData$index %in% whichTrain,])
 					allPrd <- matrix(allPrd$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse")))
 				}, mc.cores=10))
 
@@ -2781,7 +2783,7 @@ q <- quantile(d, c(0,0.75,1))
 c <- cut(d, breaks=q, paste0("[",names(q)[-length(q)],",",names(q)[-1],")"))
 e <- sapply(levels(c), 
 		function(cc) {
-			t <- try(survfit(Surv(time2- time1, status) ~ transplantCR1, data=osData, subset=c[osData$index]==cc)); 
+			t <- try(survfit(Surv(time1, time2, status) ~ transplantCR1, data=osData, subset=c[osData$index]==cc)); 
 			if(class(t)=="try-error") 
 				rep(NA,2)
 			else {
@@ -2790,7 +2792,7 @@ e <- sapply(levels(c),
 					ci <- sapply(1:200, function(foo){
 								set.seed(foo)
 								w <- sample(1:nrow(dataFrame), replace=TRUE)
-								diff(summary(survfit(Surv(time2- time1, status) ~ transplantCR1, data=osData[osData$index %in% w,], subset=c[osData$index[osData$index %in% w]]==cc), time=3*365)$surv)
+								diff(summary(survfit(Surv(time1, time2, status) ~ transplantCR1, data=osData[osData$index %in% w,], subset=c[osData$index[osData$index %in% w]]==cc), time=3*365)$surv)
 							})
 					r <- c(diff(s$surv), quantile(ci, c(0.025, 0.975)))
 					names(r) <- c("delta", "lower",'upper')
@@ -2937,11 +2939,11 @@ PredictOS5 <- function(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFX
 #+ fiveStagePredicted, cache=TRUE
 xmax <- 2000
 xx <- 0:ceiling(xmax)
-coxphPrs <- coxph(Surv(time2-time1, status)~ pspline(time1, df=10), data=prdData) 
-tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time1=xx[-1]))) ## Hazard (function of CR length)	
+coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(prdData, time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index])) 
+tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1]))) ## Hazard (function of CR length)	
 
-coxphOs <- coxph(Surv(time2-time1, status)~ pspline(cr[osData$index,1], df=10), data=osData) 
-tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time1=xx[-1])))	 ## Hazard (function of induction length), only for OS (could do CIR,NRM,PRS seperately)
+coxphOs <- coxph(Surv(time1,time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))) 
+tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time0=xx[-1])))	 ## Hazard (function of induction length), only for OS (could do CIR,NRM,PRS seperately)
 
 fiveStagePredicted <- PredictOS5(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=xmax)
 
@@ -2973,11 +2975,12 @@ lineStage <- function(CR_date, Recurrence_date, Date_LF, ERDate, Status, y=0, co
 }
 
 
-#' Average of all predictions
+#' Average of all multistage predictions, not the precise agreement with overall survival.
 #+ fiveStagePredictedAvg, fig.width=3, fig.height=2.5
 pastel1 <- brewer.pal(9, "Pastel1")
 par(mfrow=c(1,1), mar=c(3,3,1,1), cex=1)
 sedimentPlot(-rowMeans(fiveStagePredicted[,1:5,], dims=2), y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"))
+lines(survfit(Surv(OS, Status) ~ 1, data=clinicalData))
 
 #' #### Figure 3d
 #' In order of risk constellation plots
@@ -3026,11 +3029,11 @@ fiveStageCV <- sapply(1:10, function(foo){ ## repeat 10 times, ie. 100 fits
 								rfxCr <- CoxRFX(osData[whichTrain, names(crGroups)], Surv(cr[,1], cr[,2]==2)[whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 								rfxEs <- CoxRFX(osData[whichTrain, names(crGroups)], Surv(cr[,1], cr[,2]==1)[whichTrain], groups=crGroups, which.mu = NULL)
 								
-								coxphPrs <- coxph(Surv(time2-time1, status) ~ pspline(time1, df=10), data=prdData[prdData$index %in% whichTrain,]) 
-								tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time1=xx[-1])))						
+								coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(prdData, time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index])[prdData$index %in% whichTrain,]) 
+								tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1])))						
 								
-								coxphOs <- coxph(Surv(time2-time1, status) ~ pspline(cr[osData$index[osData$index %in% whichTrain],1], df=10), data=osData[osData$index %in% whichTrain,]) # PRS baseline with spline-based dep on CR length)
-								tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time1=xx[-1])))	
+								coxphOs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1])[osData$index %in% whichTrain,])) 
+								tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time0=xx[-1])))	
 								foo <- PredictOS5(rfxEs, rfxCr, rfxNrm, rfxCir, rfxPrs, data[cvIdx == i,], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)
 								rowSums(aperm(foo[,1:3,], c(3,1,2)), dim=2)
 							}, mc.cores=cvFold))
