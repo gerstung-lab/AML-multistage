@@ -2723,9 +2723,32 @@ mean(apply(allPredictTpl[!is.na(clinicalData$CR_date),],1,max))
 
 #' Benefit v number of allografts in CR1
 #+ survNallo
-o <- order(-allPredictTpl[,2]+allPredictTpl[,3] + ifelse(is.na(clinicalData$CR_date),NA,0), na.last=NA)
-sapply(seq_along(o), function(i) mean(c(allPredictTpl[o[1:i],2], allPredictTpl[o[-(1:i)],3]), na.rm=TRUE)) -> s
-plot(s, type='l', xlab="# Allografts in CR1", ylab="Average Survival 3yrs after CR")
+par(bty="L")
+o <- order(-allPredictTplCi["dCr1Rel","hat","os",] + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0), na.last=NA)
+s <- sapply(seq_along(o), function(i) mean(c(allPredictTplCi["cr1","hat","os",o[1:i]], allPredictTplCi["rel","hat","os",o[-(1:i)]]), na.rm=TRUE))
+plot(seq_along(s)/length(s), s, type='l', xlab="Fraction of allografts in CR1", ylab="Survival of eligible patients 3yrs after CR", col=set1[1], lty=3)
+s <- rowMeans(sapply(1:10, function(foo){ set.seed(foo)
+					o <- order(-allPredictTplCi["dCr1Rel","hat","os",] + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0) + rnorm(1540,sd=(allPredictTplCi["dCr1Rel","upper","os",]-allPredictTplCi["dCr1Rel","lower","os",])/4), na.last=NA)
+					s <- sapply(seq_along(o), function(i) mean(c(allPredictTplCi["cr1","hat","os",o[1:i]], allPredictTplCi["rel","hat","os",o[-(1:i)]]), na.rm=TRUE))
+				}))
+lines(seq_along(s)/length(s), s, type='l',col=set1[1], lty=1)
+p <- order(na.zero(c(1,4,2,3)[clinicalData$M_Risk])  + dataFrame$AOD_10/20 + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0), na.last=NA)
+e <- sapply(seq_along(p), function(i) mean(c(allPredictTpl[p[1:i],2], allPredictTpl[p[-(1:i)],3]), na.rm=TRUE)) 
+lines(seq_along(e)/length(e), e, type='l', col=set1[2])
+legend("bottomright", c("Personalised risk", "ELN and age"), lty=1, col=set1, bty="n")
+
+r <- 1+allPredictTplCi[1:2,1,"aar",] - allPredictTplCi[1:2,1,"rs",] ## Relapse probabilities
+a <- sapply(seq_along(o), function(i) mean(c(r[2,o[1:i]], r[1,o[-(1:i)]]), na.rm=TRUE)) # Personalised
+b <- sapply(seq_along(p), function(i) mean(c(r[2,p[1:i]], r[1,p[-(1:i)]]), na.rm=TRUE)) # ELN
+
+x <- seq_along(s)/length(s)
+plot(x + (1-x)*a,s, type='l', xlab="Total fraction of allografts", ylab="Survival of eligible patients 3yrs after CR", col=set1[1])
+lines(x + (1-x)*b,e, lty=1, col=set1[2])
+legend("bottomright", c("Personalised risk", "ELN and age"), lty=1, col=set1, bty="n")
+
+plot(x ,a, type='l', xlab="Fraction with allograft in CR1", ylab="Fraction relapsing", col=set1[1])
+lines(x, b, lty=1, col=set1[2])
+legend("bottomright", c("Personalised risk", "ELN and age"), lty=1, col=set1, bty="n")
 
 #' #### Leave one out cross-validation 
 #' ##### Three state model
