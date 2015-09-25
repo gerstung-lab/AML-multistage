@@ -2168,7 +2168,7 @@ concordanceCIRcvTrial <- mclapply(list(crGroups[crGroups %in% mainGroups], crGro
 						sNrm <- Surv(nrdData$time1, nrdData$time2, nrdData$status)[nrdData$index %in% which(trainIdx)]
 						coxRFXNrdTD <- CoxRFX(dNrm, sNrm, groups=g, nu=1, which.mu = mainGroups)
 						coxRFXNrdTD$coefficients["transplantRel"] <- 0
-						dPrs <- prdData[prdData$index %in% which(trainIdx), prdData[prdData$index %in% which(trainIdx), c(names(g),"time0","time1","time2","status")]]
+						dPrs <- prdData[prdData$index %in% which(trainIdx), c(names(g),"time0","time1","time2","status")]
 						sPrs <- Surv(prdData$time1, prdData$time2, prdData$status)[prdData$index %in% which(trainIdx)]
 						coxRFXPrdTD <-  CoxRFX(dPrs, sPrs, groups=g, nu=1, which.mu = mainGroups)
 						dCir <- relData[relData$index %in% which(trainIdx), names(g)]
