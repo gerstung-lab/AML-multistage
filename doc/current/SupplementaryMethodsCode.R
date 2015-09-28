@@ -3032,7 +3032,7 @@ fiveStageCV <- sapply(1:10, function(foo){ ## repeat 10 times, ie. 100 fits
 								coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(prdData, time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index])[prdData$index %in% whichTrain,]) 
 								tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1])))						
 								
-								coxphOs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1])[osData$index %in% whichTrain,])) 
+								coxphOs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))[osData$index %in% whichTrain,]) 
 								tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time0=xx[-1])))	
 								foo <- PredictOS5(rfxEs, rfxCr, rfxNrm, rfxCir, rfxPrs, data[cvIdx == i,], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)
 								rowSums(aperm(foo[,1:3,], c(3,1,2)), dim=2)
