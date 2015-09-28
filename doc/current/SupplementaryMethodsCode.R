@@ -1756,7 +1756,6 @@ prdData$transplantRel <- prdData$event
 prdData$event <- NULL
 w <- which(prdData$time1 == prdData$time2) ## 5 cases with LF=Rec
 prdData$time2[w] <- prdData$time2[w] + .5
-coxRFXPrdTD <-  CoxRFX(prdData[names(crGroups)], Surv(prdData$time2 - prdData$time1, prdData$status), groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
 
 #' ### RFX fit of transitions
 #+ postCR1Fits, cache=TRUE
