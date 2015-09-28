@@ -1764,7 +1764,7 @@ names(crGroups) <- c(names(dataFrame)[whichRFXRel],"transplantCR1","transplantRe
 coxRFXNrdTD <- CoxRFX(nrdData[names(crGroups)], Surv(nrdData$time1, nrdData$time2, nrdData$status), groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 coxRFXNrdTD$coefficients["transplantRel"] <- 0
 #prsData$time1[!is.na(prsData$time1)] <- 0
-coxRFXPrdTD <-  CoxRFX(prdData[names(crGroups)], Surv(prdData$time2 - prdData$time1, prdData$status), groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
+coxRFXPrdTD <-  CoxRFX(prdData[names(crGroups)], Surv(prdData$time1, prdData$time2, prdData$status), groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
 coxRFXRelTD <-  CoxRFX(relData[names(crGroups)], Surv(relData$time1, relData$time2, relData$status), groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 coxRFXRelTD$coefficients["transplantRel"] <- 0
 
@@ -2288,7 +2288,7 @@ absoluteErrorsCIRcv <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups)
 						err <- sapply(list(train=which(trainIdx), test=which(!trainIdx)), function(w)
 									c(
 											CIRrfx = EvalAbsolutePred(pCIR[relData$index %in% w ], Surv(relData$time1, relData$time2, relData$status)[relData$index %in% w ], time=365)$mean.error,
-											PRSrfx =  EvalAbsolutePred(pPRS[prdData$index %in% w ], Surv(prdData$time2- prdData$time1, prdData$status)[prdData$index %in% w ], time=365)$mean.error,
+											PRSrfx =  EvalAbsolutePred(pPRS[prdData$index %in% w ], Surv(prdData$time1, prdData$time2, prdData$status)[prdData$index %in% w ], time=365)$mean.error,
 											NRMrfx =  EvalAbsolutePred(pNRM[nrdData$index %in% w ], Surv(nrdData$time1, nrdData$time2, nrdData$status)[nrdData$index %in% w ], time=365)$mean.error,
 											OSrfx =  EvalAbsolutePred(pOS[osData$index %in% w ], Surv(osData$time1, osData$time2, osData$status)[osData$index %in% w ], time=365)$mean.error,
 											OS365 =  EvalAbsolutePred(p365[osData$index %in% w ], Surv(osData$time1, osData$time2, osData$status)[osData$index %in% w ], time=365)$mean.error,
@@ -2763,7 +2763,7 @@ allPredictLOO <- Reduce("rbind", mclapply(1:nrow(data), function(i){
 					whichTrain <- which(cvIdx != i)
 					rfxNrm <- CoxRFX(nrdData[nrdData$index %in% whichTrain, names(crGroups)], Surv(nrdData$time1, nrdData$time2, nrdData$status)[nrdData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 					rfxNrm$coefficients["transplantRel"] <- 0
-					rfxPrs <-  CoxRFX(prdData[prdData$index %in% whichTrain, names(crGroups)], Surv(prdData$time2 - prdData$time1, prdData$status)[prdData$index %in% whichTrain], groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
+					rfxPrs <-  CoxRFX(prdData[prdData$index %in% whichTrain, names(crGroups)], Surv(prdData$time1, prdData$time2, prdData$status)[prdData$index %in% whichTrain], groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
 					rfxCir <-  CoxRFX(relData[relData$index %in% whichTrain, names(crGroups)], Surv(relData$time1, relData$time2, relData$status)[relData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 					rfxCir$coefficients["transplantRel"] <- 0
 					allPrd <- PredictOS(rfxNrm, rfxCir, rfxPrs, data=allDataTpl[rep(cvIdx, each=3) == i,], x=3*365, prdData=prdData[prdData$index %in% whichTrain,])
