@@ -1745,9 +1745,10 @@ nrdData <- MakeTimeDependent(dataFrame[whichRFXRel], timeEvent=alloTimeCR1, time
 nrdData$transplantCR1 <- nrdData$event
 nrdData$event <- NULL
 nrdData$transplantRel <- 0
+alloTimeRel <- clinicalData$TPL_date - clinicalData$Recurrence_date + .5 # +.5 to make > 0
+alloTimeRel[!alloIdx | (clinicalData$TPL_date < clinicalData$Recurrence_date & !clinicalData$TPL_Phase %in% c("CR1","RD"))] <- NA
 i <- !is.na(clinicalData$Recurrence_date)
-#prsData <- makeTimeDependent(dataFrame[w], timeTpl=alloTimeRel, timeSurv=as.numeric(clinicalData$Date_LF - clinicalData$Recurrence_date)+1, event=clinicalData$Status)
-prdData <- MakeTimeDependent(dataFrame[i,whichRFXRel], timeEvent=alloTimeCR1[i], timeStop=as.numeric(clinicalData$Date_LF- clinicalData$CR_date)[i], timeStart = as.numeric(clinicalData$Recurrence_date- clinicalData$CR_date)[i], status=clinicalData$Status[i])
+prdData <- MakeTimeDependent(dataFrame[i,whichRFXRel], timeEvent=alloTimeRel[i], timeStop=as.numeric(clinicalData$Date_LF- clinicalData$Recurrence_date)[i], status=clinicalData$Status[i])
 prdData$transplantCR1 <- rep(0,nrow(prdData))
 w <- sub("\\.1","",rownames(relData))[relData$status==1 & relData$transplantCR1==1]
 prdData$transplantCR1[sub("\\.1","",rownames(prdData)) %in% w] <- 1
@@ -1755,7 +1756,7 @@ prdData$transplantRel <- prdData$event
 prdData$event <- NULL
 w <- which(prdData$time1 == prdData$time2) ## 5 cases with LF=Rec
 prdData$time2[w] <- prdData$time2[w] + .5
-prdData$time0 <- as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index]
+coxRFXPrdTD <-  CoxRFX(prdData[names(crGroups)], Surv(prdData$time2 - prdData$time1, prdData$status), groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
 
 #' ### RFX fit of transitions
 #+ postCR1Fits, cache=TRUE
@@ -1944,7 +1945,7 @@ cppFunction('NumericVector computeTotalPrsC(NumericVector x, NumericVector diffC
 				}', rebuild=TRUE)
 
 #' Function to predict OS from Relapse, PRS and NRM, as described in [Section 4.3.5](#probabilities-of-each-state).
-PredictOS <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, ciType="analytical", prdData){
+MultiRFX3 <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, ciType="analytical", prdData){
 	## Step 1: Compute KM survival curves and log hazard
 	getS <- function(coxRFX, data, max.x=5000) {		
 		if(!is.null(coxRFX$na.action)) coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
@@ -2038,7 +2039,7 @@ w <- which(clinicalData$TPL_date > clinicalData$Recurrence_date)
 allData$transplantCR1[allData$index %in% w] <- 0
 allData$transplantRel[!allData$index %in% w] <- 0
 
-allPredict <-  PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=3*365, prdData=prdData)
+multiRFX3 <-  MultiRFX3(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=3*365, prdData=prdData)
 
 
 #' ### Model assessment
@@ -2064,8 +2065,8 @@ concordanceCIRcv <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), f
 						sOs <- Surv(osData$time1, osData$time2, osData$status)[osData$index %in% which(trainIdx)]
 						coxRFXOsCR <- CoxRFX(dOs, sOs, groups=g, which.mu = mainGroups)
 						
-						allRisk365 <- PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=365, prdData=dPrs)
-						allRisk1000 <- PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=1000, prdData=dPrs)
+						allRisk365 <- MultiRFX3(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=365, prdData=dPrs)
+						allRisk1000 <- MultiRFX3(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=1000, prdData=dPrs)
 						
 						p365 <- -allRisk365[,1]
 						p1000 <-  -allRisk1000[,1]
@@ -2179,8 +2180,8 @@ concordanceCIRcvTrial <- mclapply(list(crGroups[crGroups %in% mainGroups], crGro
 						sOs <- Surv(osData$time1, osData$time2, osData$status)[osData$index %in% which(trainIdx)]
 						coxRFXOsCR <- CoxRFX(dOs, sOs, groups=g, which.mu = mainGroups)
 						
-						allRisk365 <- PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=365, prdData=dPrs)
-						allRisk1000 <- PredictOS(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=1000, prdData=dPrs)
+						allRisk365 <- MultiRFX3(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=365, prdData=dPrs)
+						allRisk1000 <- MultiRFX3(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=1000, prdData=dPrs)
 						
 						p365 <- -allRisk365[,1]
 						p1000 <-  -allRisk1000[,1]
@@ -2239,7 +2240,7 @@ EvalAbsolutePred <- function(prediction, surv, time, bins=seq(0,1,0.05)){
 
 #' #### Supplementary Figure 5
 #+ absError
-absPredError <- EvalAbsolutePred(allPredict$os, Surv(allData$time1, allData$time2, allData$status), time=3*365)
+absPredError <- EvalAbsolutePred(multiRFX3$os, Surv(allData$time1, allData$time2, allData$status), time=3*365)
 
 plot(absPredError$x, absPredError$survfit$surv, xlim=c(0,1), ylim=c(0,1), xlab="Predicted probability", ylab="Observed", main="Prediction tool")
 segments(absPredError$x, absPredError$survfit$lower,absPredError$x, absPredError$survfit$upper)
@@ -2493,16 +2494,16 @@ w <- sort(unique(osData$index[which(quantileRiskOsCR==3 & clinicalData$M_Risk[os
 allDataTpl <- osData[rep(1:nrow(dataFrame), each=3),]
 allDataTpl$transplantCR1 <- rep(c(0,1,0), nrow(dataFrame))
 allDataTpl$transplantRel <- rep(c(0,0,1), nrow(dataFrame))
-allPredictTpl <- PredictOS(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=allDataTpl, x=3*365, prdData=prdData)
-allPredictTpl <- as.data.frame(matrix(allPredictTpl$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse"))), row.names=rownames(dataFrame))
-survivalTpl <- data.frame(allPredictTpl, os=osYr, age=clinicalData$AOD, ELN=clinicalData$M_Risk, tercile=quantileRiskOsCR[1:nrow(allPredictTpl)])
+multiRFX3Tpl <- MultiRFX3(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=allDataTpl, x=3*365, prdData=prdData)
+multiRFX3Tpl <- as.data.frame(matrix(multiRFX3Tpl$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse"))), row.names=rownames(dataFrame))
+survivalTpl <- data.frame(multiRFX3Tpl, os=osYr, age=clinicalData$AOD, ELN=clinicalData$M_Risk, tercile=quantileRiskOsCR[1:nrow(multiRFX3Tpl)])
 
 #+ survivalTplOut, results='asis'
 datatable(format(survivalTpl[order(survivalTpl$CR1 -survivalTpl$Relapse),], digits=4))
-datatable(allPredictTpl[patients,])
+datatable(multiRFX3Tpl[patients,])
 
 #' Function to predict OS from  Relapse, PRS and NRM. This one also computes confidence intervals for each type of allograft and the predicted differences in outcome between allograft types.
-PredictOSTpl <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, prsData, ciType="simulated", nSim = 200, mc.cores=10){
+MultiRFX3TplCi <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, prsData, ciType="simulated", nSim = 200, mc.cores=10){
 	## Step 1: Compute KM survival curves and log hazard
 	getS <- function(coxRFX, data, max.x=5000) {		
 		if(!is.null(coxRFX$na.action)) coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
@@ -2642,12 +2643,12 @@ d <- osData[1:nrow(dataFrame),]
 d$transplantCR1 <- 0
 d$transplantRel <- 0
 p <- grep("PD11104a|PD8314a|PD11080a",rownames(dataFrame))
-predict3 <- PredictOSTpl(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[p,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=1000, prsData=prsData) ## selected with 1000
+predict3 <- MultiRFX3TplCi(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[p,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=1000, prsData=prsData) ## selected with 1000
 dimnames(predict3)[[4]] <- rownames(dataFrame)[p]
 predict3
 set.seed(42)
-allPredictTplCi <- PredictOSTpl(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=200, prsData=prsData) ## others with 200
-dimnames(allPredictTplCi)[[4]] <- rownames(dataFrame)
+multiRFX3TplCi <- MultiRFX3TplCi(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=200, prsData=prsData) ## others with 200
+dimnames(multiRFX3TplCi)[[4]] <- rownames(dataFrame)
 
 #' #### Figure 4f
 #' The figure shows the mortality reduction of allograft CR1 v none, allograft in Rel v none, and CR1 v Relapse.
@@ -2657,14 +2658,14 @@ par(mar=c(3,3,1,3), las=2, mgp=c(2,.5,0), bty="n")
 patients <- grep("PD11104a|PD8314a",rownames(dataFrame))
 for(t in c("dCr1","dRel","dCr1Rel")){
 	s <- clinicalData$AOD < 60 #sample(1:1540,100)
-	x <- 1-allPredictTplCi["none","hat","os",]
-	y <- allPredictTplCi[t,"hat","os",]
-	plot(x[s], y[s], pch=NA, ylab="Mortality reduction from allograft", xlab="3yr mortality with standard chemo", col=riskCol[clinicalData$M_Risk], cex=.8, las=1, ylim=range(allPredictTpl$CR1-allPredictTpl$None))
+	x <- 1-multiRFX3TplCi["none","hat","os",]
+	y <- multiRFX3TplCi[t,"hat","os",]
+	plot(x[s], y[s], pch=NA, ylab="Mortality reduction from allograft", xlab="3yr mortality with standard chemo", col=riskCol[clinicalData$M_Risk], cex=.8, las=1, ylim=range(multiRFX3Tpl$CR1-multiRFX3Tpl$None))
 	abline(h=seq(-.1,.3,.1), col='grey', lty=3)
 	abline(v=seq(.2,.9,0.2), col='grey', lty=3)
 	points(x[s], y[s], pch=16,  col=riskCol[clinicalData$M_Risk[s]], cex=.8)
-	segments(1-allPredictTplCi["none","lower","os",patients], y[patients],1-allPredictTplCi["none","upper","os",patients],y[patients])
-	segments(x[patients], allPredictTplCi[t,"lower","os",patients],x[patients], allPredictTplCi[t,"upper","os",patients])
+	segments(1-multiRFX3TplCi["none","lower","os",patients], y[patients],1-multiRFX3TplCi["none","upper","os",patients],y[patients])
+	segments(x[patients], multiRFX3TplCi[t,"lower","os",patients],x[patients], multiRFX3TplCi[t,"upper","os",patients])
 	xn <- seq(0,1,0.01)
 	p <- predict(loess(y~x, data=data.frame(x=x[s], y=y[s])), newdata=data.frame(x=xn), se=TRUE)
 	yn <- c(p$fit + 2*p$se.fit,rev(p$fit - 2*p$se.fit))
@@ -2682,64 +2683,64 @@ for(t in c("dCr1","dRel","dCr1Rel")){
 #+survivalTplBoxPlot
 par(mar=c(7,5,1,1))
 f <- factor(clinicalData$M_Risk, levels=levels(clinicalData$M_Risk)[c(2,4,3,1)])
-boxplot(allPredictTpl$CR1 - allPredictTpl$None ~ quantileRiskOsCR[1:1540]  + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL CR1 at 3yr")
-boxplot(allPredictTpl$Relapse - allPredictTpl$None ~ quantileRiskOsCR[1:1540]  + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL Relapse at 3yr")
-boxplot(allPredictTpl$CR1 - allPredictTpl$Relapse ~ quantileRiskOsCR[1:1540] + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL in CR1 over salvage at 3yr")
+boxplot(multiRFX3Tpl$CR1 - multiRFX3Tpl$None ~ quantileRiskOsCR[1:1540]  + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL CR1 at 3yr")
+boxplot(multiRFX3Tpl$Relapse - multiRFX3Tpl$None ~ quantileRiskOsCR[1:1540]  + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL Relapse at 3yr")
+boxplot(multiRFX3Tpl$CR1 - multiRFX3Tpl$Relapse ~ quantileRiskOsCR[1:1540] + f, las=2, col=t(outer(riskCol[c(2,4,3,1)], 2:0, colTrans)), ylab="Survival gain TPL in CR1 over salvage at 3yr")
 abline(h=0)
 
 #' Mortality reduction v age
 par(c(3,3,1,1))
-y <- allPredictTpl$CR1 - allPredictTpl$None
+y <- multiRFX3Tpl$CR1 - multiRFX3Tpl$None
 x <- dataFrame$AOD_10*10
 plot(y ~ x)
 lines(lowess(x[x<60], y[x<60]), col="green")
 #' Note: The jump after 60 arises from patients after 60 in AMLHD98B not having received allografts. Based on the trial stratum they are hence (incorrectly) predicted to have very low non-relapse mortality upon allograft. However,
 #' this doesn't affect novel patients.
 
-plot(allPredictTpl$CR1 - allPredictTpl$None ~ predict(coxRFXOsCR, newdata=osData[1:1540,]), xlab="Risk", ylab="Survival gain TPL CR1 at 1000d")
-lines(lowess(predict(coxRFXOsCR, newdata=osData[1:1540,]), allPredictTpl$CR1 - allPredictTpl$None), col='green')
+plot(multiRFX3Tpl$CR1 - multiRFX3Tpl$None ~ predict(coxRFXOsCR, newdata=osData[1:1540,]), xlab="Risk", ylab="Survival gain TPL CR1 at 1000d")
+lines(lowess(predict(coxRFXOsCR, newdata=osData[1:1540,]), multiRFX3Tpl$CR1 - multiRFX3Tpl$None), col='green')
 
 
 #' #### Best treatment options
 #' We can explore the the hypothetical survival gain if each patient had received the optimal treatment strategy.
 #' Distribution of ranks.
-apply(apply(-allPredictTpl,1,rank),1,function(x) table(factor(x, levels=1:3)))
+apply(apply(-multiRFX3Tpl,1,rank),1,function(x) table(factor(x, levels=1:3)))
 
 #' Split by ELN risk
-table(clinicalData$M_Risk, factor(apply(allPredictTpl, 1, which.max), levels=1:3, labels=colnames(allPredictTpl)))[c(2,4,3,1),]
+table(clinicalData$M_Risk, factor(apply(multiRFX3Tpl, 1, which.max), levels=1:3, labels=colnames(multiRFX3Tpl)))[c(2,4,3,1),]
 
 #' Split by ELN risk, requiring TPL in CR1 to offer 5% advantage over salvage
-table(clinicalData$M_Risk, apply(allPredictTpl, 1, function(x) x[2] > x[3]+.05))[c(2,4,3,1),]
+table(clinicalData$M_Risk, apply(multiRFX3Tpl, 1, function(x) x[2] > x[3]+.05))[c(2,4,3,1),]
 
 #' Observed outcome
 summary(survfit(Surv(time1, time2, status) ~ 1, data=osData), time=3*365)
 
 #' Under different scenarios
-colMeans(allPredictTpl[!is.na(clinicalData$CR_date),])
+colMeans(multiRFX3Tpl[!is.na(clinicalData$CR_date),])
 
 #' Using observed 
-mean(sapply((1:nrow(data))[!is.na(clinicalData$CR_date)], function(i) allPredictTpl[i, 1+data[i,"transplantCR1"] + 2*data[i, "transplantRel"] ]))
+mean(sapply((1:nrow(data))[!is.na(clinicalData$CR_date)], function(i) multiRFX3Tpl[i, 1+data[i,"transplantCR1"] + 2*data[i, "transplantRel"] ]))
 
 #' Best possible - everyone had received the optimum 
-mean(apply(allPredictTpl[!is.na(clinicalData$CR_date),],1,max))
+mean(apply(multiRFX3Tpl[!is.na(clinicalData$CR_date),],1,max))
 
 #' Benefit v number of allografts in CR1
 #+ survNallo
 par(bty="L")
-o <- order(-allPredictTplCi["dCr1Rel","hat","os",] + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0), na.last=NA)
-s <- sapply(seq_along(o), function(i) mean(c(allPredictTplCi["cr1","hat","os",o[1:i]], allPredictTplCi["rel","hat","os",o[-(1:i)]]), na.rm=TRUE))
+o <- order(-multiRFX3TplCi["dCr1Rel","hat","os",] + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0), na.last=NA)
+s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplCi["cr1","hat","os",o[1:i]], multiRFX3TplCi["rel","hat","os",o[-(1:i)]]), na.rm=TRUE))
 plot(seq_along(s)/length(s), s, type='l', xlab="Fraction of allografts in CR1", ylab="Survival of eligible patients 3yrs after CR", col=set1[1], lty=3)
 s <- rowMeans(sapply(1:10, function(foo){ set.seed(foo)
-					o <- order(-allPredictTplCi["dCr1Rel","hat","os",] + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0) + rnorm(1540,sd=(allPredictTplCi["dCr1Rel","upper","os",]-allPredictTplCi["dCr1Rel","lower","os",])/4), na.last=NA)
-					s <- sapply(seq_along(o), function(i) mean(c(allPredictTplCi["cr1","hat","os",o[1:i]], allPredictTplCi["rel","hat","os",o[-(1:i)]]), na.rm=TRUE))
+					o <- order(-multiRFX3TplCi["dCr1Rel","hat","os",] + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0) + rnorm(1540,sd=(multiRFX3TplCi["dCr1Rel","upper","os",]-multiRFX3TplCi["dCr1Rel","lower","os",])/4), na.last=NA)
+					s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplCi["cr1","hat","os",o[1:i]], multiRFX3TplCi["rel","hat","os",o[-(1:i)]]), na.rm=TRUE))
 				}))
 lines(seq_along(s)/length(s), s, type='l',col=set1[1], lty=1)
 p <- order(na.zero(c(1,4,2,3)[clinicalData$M_Risk])  + dataFrame$AOD_10/20 + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0), na.last=NA)
-e <- sapply(seq_along(p), function(i) mean(c(allPredictTpl[p[1:i],2], allPredictTpl[p[-(1:i)],3]), na.rm=TRUE)) 
+e <- sapply(seq_along(p), function(i) mean(c(multiRFX3Tpl[p[1:i],2], multiRFX3Tpl[p[-(1:i)],3]), na.rm=TRUE)) 
 lines(seq_along(e)/length(e), e, type='l', col=set1[2])
 legend("bottomright", c("Personalised risk", "ELN and age"), lty=1, col=set1, bty="n")
 
-r <- 1+allPredictTplCi[1:2,1,"aar",] - allPredictTplCi[1:2,1,"rs",] ## Relapse probabilities
+r <- 1+multiRFX3TplCi[1:2,1,"aar",] - multiRFX3TplCi[1:2,1,"rs",] ## Relapse probabilities
 a <- sapply(seq_along(o), function(i) mean(c(r[2,o[1:i]], r[1,o[-(1:i)]]), na.rm=TRUE)) # Personalised
 b <- sapply(seq_along(p), function(i) mean(c(r[2,p[1:i]], r[1,p[-(1:i)]]), na.rm=TRUE)) # ELN
 
@@ -2759,26 +2760,26 @@ legend("bottomright", c("Personalised risk", "ELN and age"), lty=1, col=set1, bt
 #+ allPredictLOO, cache=TRUE
 cvFold <- nrow(dataFrame)
 cvIdx <- 1:nrow(dataFrame)
-allPredictLOO <- Reduce("rbind", mclapply(1:nrow(data), function(i){
+multiRFX3LOO <- Reduce("rbind", mclapply(1:nrow(data), function(i){
 					whichTrain <- which(cvIdx != i)
 					rfxNrm <- CoxRFX(nrdData[nrdData$index %in% whichTrain, names(crGroups)], Surv(nrdData$time1, nrdData$time2, nrdData$status)[nrdData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 					rfxNrm$coefficients["transplantRel"] <- 0
 					rfxPrs <-  CoxRFX(prdData[prdData$index %in% whichTrain, names(crGroups)], Surv(prdData$time1, prdData$time2, prdData$status)[prdData$index %in% whichTrain], groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
 					rfxCir <-  CoxRFX(relData[relData$index %in% whichTrain, names(crGroups)], Surv(relData$time1, relData$time2, relData$status)[relData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 					rfxCir$coefficients["transplantRel"] <- 0
-					allPrd <- PredictOS(rfxNrm, rfxCir, rfxPrs, data=allDataTpl[rep(cvIdx, each=3) == i,], x=3*365, prdData=prdData[prdData$index %in% whichTrain,])
+					allPrd <- MultiRFX3(rfxNrm, rfxCir, rfxPrs, data=allDataTpl[rep(cvIdx, each=3) == i,], x=3*365, prdData=prdData[prdData$index %in% whichTrain,])
 					allPrd <- matrix(allPrd$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse")))
 				}, mc.cores=10))
 
-plot(allPredictLOO[,2]-allPredictLOO[,3],allPredictTplCi["dCr1Rel","hat","os",] )
-cor(allPredictLOO[,2]-allPredictLOO[,3],allPredictTplCi["dCr1Rel","hat","os",] )
+plot(multiRFX3LOO[,2]-multiRFX3LOO[,3],multiRFX3TplCi["dCr1Rel","hat","os",] )
+cor(multiRFX3LOO[,2]-multiRFX3LOO[,3],multiRFX3TplCi["dCr1Rel","hat","os",] )
 
 #' The correlation of in-sample and out-of-sample predictions is very high, but there are some differences.
 #' We now assess the accuracy of our predictions by comparing the observed survival with the out-of-sample prediction. To this end,
 #' we split out the quarter of patients predicted to benefit the most. In both subsets we compare the observed 3yr survial between patients with
 #' and without allograft in CR1 and compute the difference. CIs by boostrapping.
 #+ allPredictLOOkM
-d <- allPredictLOO[,2]-allPredictLOO[,3]
+d <- multiRFX3LOO[,2]-multiRFX3LOO[,3]
 q <- quantile(d, c(0,0.75,1))
 c <- cut(d, breaks=q, paste0("[",names(q)[-length(q)],",",names(q)[-1],")"))
 e <- sapply(levels(c), 
@@ -2841,7 +2842,7 @@ rm(p,d)
 
 #' Compare with corresponding multistage predictions
 #+ coxRFXOsCrLOOplot
-m <- c(allPredictLOO[,3],allPredictLOO[osData$index[osData$transplantCR1==1],2])
+m <- c(multiRFX3LOO[,3],multiRFX3LOO[osData$index[osData$transplantCR1==1],2])
 r <- c(coxRFXOsCrLOO$surv[1:1540],coxRFXOsCrLOO$surv[osData$transplantCR1==1]) 
 plot(m, r)
 abline(0,1)
@@ -2851,8 +2852,8 @@ cor(m, r)
 #' ##### Training error
 #' 3-state model
 c <- Surv(as.numeric(clinicalData$Date_LF - clinicalData$CR_date), clinicalData$Status)
-p <- allPredictTplCi[3,1,1,]
-p[osData$index[osData$transplant1CR==1]] <-  allPredictTplCi[2,1,1,]
+p <- multiRFX3TplCi[3,1,1,]
+p[osData$index[osData$transplant1CR==1]] <-  multiRFX3TplCi[2,1,1,]
 ape(p, c, time=3*365)
 
 #' RFX
@@ -2862,8 +2863,8 @@ ape(q, c, time=3*365)
 
 #' ##### LOO test error
 #' 3-state model
-p <- allPredictLOO[,3]
-p[osData$index[osData$transplantCR1==1]] <-  allPredictLOO[osData$index[osData$transplantCR1==1],2]
+p <- multiRFX3LOO[,3]
+p[osData$index[osData$transplantCR1==1]] <-  multiRFX3LOO[osData$index[osData$transplantCR1==1],2]
 ape(p, c, time=3*365)
 
 #' RFX
@@ -2872,7 +2873,7 @@ ape(coxRFXOsCrLOO$surv[unduplicate(osData$index)], c, time=3*365)
 
 #' ### Predicting outcome from diagnosis
 #' The following function fits a 5-stage model. Note that we use a single smooth function g(t) to model the association between time of CR and all subsequent events.
-PredictOS5 <- function(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, tdPrmBaseline = rep(1, ceiling(max(x))+1), tdOsBaseline = rep(1, ceiling(max(x))+1), ciType="analytical"){
+MultiRFX5 <- function(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, tdPrmBaseline = rep(1, ceiling(max(x))+1), tdOsBaseline = rep(1, ceiling(max(x))+1), ciType="analytical"){
 	cppFunction('NumericVector computeHierarchicalSurvival(NumericVector x, NumericVector diffS0, NumericVector S1Static, NumericVector haz1TimeDep) {
 					int xLen = x.size();
 					double h;
@@ -2945,7 +2946,7 @@ tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1]))) ## Haz
 coxphOs <- coxph(Surv(time1,time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))) 
 tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time0=xx[-1])))	 ## Hazard (function of induction length), only for OS (could do CIR,NRM,PRS seperately)
 
-fiveStagePredicted <- PredictOS5(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=xmax)
+fiveStagePredicted <- MultiRFX5(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=xmax)
 
 #' Function to plot stages
 sedimentPlot <- function(Y, x=1:nrow(Y), y0=0, y1=NULL, col=1:ncol(Y), ...){
@@ -3034,7 +3035,7 @@ fiveStageCV <- sapply(1:10, function(foo){ ## repeat 10 times, ie. 100 fits
 								
 								coxphOs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))[osData$index %in% whichTrain,]) 
 								tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time0=xx[-1])))	
-								foo <- PredictOS5(rfxEs, rfxCr, rfxNrm, rfxCir, rfxPrs, data[cvIdx == i,], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)
+								foo <- MultiRFX5(rfxEs, rfxCr, rfxNrm, rfxCir, rfxPrs, data[cvIdx == i,], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)
 								rowSums(aperm(foo[,1:3,], c(3,1,2)), dim=2)
 							}, mc.cores=cvFold))
 			
@@ -3145,7 +3146,7 @@ survConcordance(Surv(cr[,1], cr[,2]==1) ~ fiveStageCVeach[[5]][order(names(fiveS
 #' With and without TPL
 #+ threePatientsAllo, fig.width=3, fig.height=2.5
 xmax=2000
-fiveStagePredictedTpl <- PredictOS5(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, allDataTpl[grep("PD11104a|PD8314a|PD11080a", rownames(allDataTpl)),], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=xmax)
+fiveStagePredictedTpl <- MultiRFX5(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, allDataTpl[grep("PD11104a|PD8314a|PD11080a", rownames(allDataTpl)),], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=xmax)
 #par(mfrow=c(2,2))
 par(mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0)) 
 w <- seq(1,2001,10)
