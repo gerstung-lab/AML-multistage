@@ -3581,6 +3581,170 @@ axis(side=1, at=c(seq(0.1,3,0.1)), labels=rep("",30), tcl=-.2, line=0, las=2)
 axis(side=2, at=rep(c(1:10), 4) * 10^rep(1:4, each=10), labels=rep("",40), tcl=-.2, line=0, las=2)
 legend("topright", legend=c("P < 0.05 *","P < 0.001 ***"), lty=c(1,3), bty="n")
 
+#' ### Multistage simulations 
+
+#' #### Simulation function
+#' The following function simulates data from the 5-stage multistage RFX model
+SimSurv5 <- function(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, coxphOs, coxphPrs, censInd, censCr, censRel){	
+	
+	## Step 1: Compute KM survival curves and log hazard
+	getS <- function(coxRFX, data, max.x=5000) {		
+		if(!is.null(coxRFX$na.action)) coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
+		data <- as.matrix(data[,match(colnames(coxRFX$Z),colnames(data))])
+		r <- PredictRiskMissing(coxRFX, data, var="var2")
+		H0 <- basehaz(coxRFX, centered = FALSE)
+		hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
+		invHazardDist <- splinefun(c(0,H0$hazard), c(0,H0$time), method="monoH.FC")
+		x <- c(0:ceiling(max.x))
+		S <- exp(-hazardDist(x))
+		return(list(S=S, r=r, x=x, hazardDist=hazardDist, invHazardDist=invHazardDist, r0 = coxRFX$means %*% coef(coxRFX)))
+	}
+	
+	x <- 15000
+	kmCr <- getS(coxRFX = coxRFXCrTD, data = data, max.x=max(x))
+	kmEs <- getS(coxRFX = coxRFXNcdTD, data = data, max.x=max(x))
+	kmCir <- getS(coxRFX = coxRFXRelTD, data = data, max.x=max(x))
+	kmNrm <- getS(coxRFX = coxRFXNrdTD, data = data, max.x=max(x))
+	kmPrs <- getS(coxRFX = coxRFXPrdTD, data = data, max.x=max(x))
+	
+	getCens <- function(surv, n){
+		F <- survfit(surv~1)
+		FCensInv <- splinefun(F$surv, F$time)
+		censTimes <- FCensInv(runif(n,0,1)) ## Simulate censoring times
+	}
+	
+	censIndTimes <- getCens(censInd, nrow(data))
+	censCrTimes <- getCens(censCr, nrow(data))
+	censRelTimes <- getCens(censRel, nrow(data))
+	
+	as.data.frame(t(sapply(1:nrow(data), function(i){
+								crTime <- edTime <- relTime <- nrdTime <- prdTime <- NA
+								status <- 1
+								crTime <- kmCr$invHazardDist(rexp(1, exp(kmCr$r[i,1])))
+								edTime <- kmEs$invHazardDist(rexp(1, exp(kmEs$r[i,1])))
+								firstTime <- pmin(edTime, crTime, censIndTimes[i])
+								if(firstTime==censIndTimes[i]){
+									edTime <- firstTime
+									status <- 0
+									crTime <- NA
+								}
+								if(firstTime==edTime){
+									crTime <- NA
+								}else{
+									edTime <- NA
+									rInd <- predict(coxphOs, newdata=data.frame(time0=crTime))
+									relTime <- kmCir$invHazardDist(rexp(1, exp(kmCir$r[i,1] + rInd)))
+									nrdTime <- kmNrm$invHazardDist(rexp(1, exp(kmNrm$r[i,1] + rInd)))
+									secondTime <- pmin(relTime, nrdTime, censCrTimes[i])
+									if(secondTime==censCrTimes[i]){
+										nrdTime <- secondTime
+										relTime <- NA
+										status <- 0
+									}
+									if(secondTime==nrdTime){
+										relTime <- NA
+									}else{
+										nrdTime <- NA
+										rCr <- predict(coxphPrs, newdata=data.frame(time0=relTime))
+										prdTime <- kmPrs$invHazardDist(rexp(1, exp(kmPrs$r[i,1] + rCr)))
+										if(prdTime > censRelTimes[i]){
+											prdTime <- min(prdTime, censRelTimes[i])
+											status <- 0
+										}
+									}
+								}
+								times <- c(crTime=crTime, edTime=edTime, relTime=relTime+crTime, nrdTime=nrdTime+crTime, prdTime=prdTime+crTime+relTime, status=status)
+								return(times)
+							}, simplify='array')))
+}
+
+#' #### Simulate outcomes
+#' First prepare the data. Allograft indices:
+alloIdx <- clinicalData$TPL_type %in% c("ALLO","FREMD") # only allografts
+alloTimeRel <- clinicalData$TPL_date - clinicalData$Recurrence_date + .5 # +.5 to make > 0
+alloTimeRel[!alloIdx | (clinicalData$TPL_date < clinicalData$Recurrence_date & !clinicalData$TPL_Phase %in% c("CR1","RD"))] <- NA
+
+#' Spline fitted transition probabilities.
+coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(prdData, time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index])) 
+coxphOs <- coxph(Surv(time1,time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))) 
+
+#' Censoring distributions
+censInd <- Surv(clinicalData$OS, 1-clinicalData$Status)[is.na(clinicalData$CR_date)]
+censCr <- Surv(as.numeric(clinicalData$Date_LF - clinicalData$CR_date), 1-clinicalData$Status)[!is.na(clinicalData$CR_date) & is.na(clinicalData$Recurrence_date)]
+censRel <- Surv(as.numeric(clinicalData$Date_LF - clinicalData$Recurrence_date), 1-clinicalData$Status)[!is.na(clinicalData$CR_date) & !is.na(clinicalData$Recurrence_date)]
+
+#' Simulate outcomes
+#+ simSurv5, cache=TRUE
+set.seed(42)
+simSurv5 <- SimSurv5(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, coxphOs, coxphPrs, censInd, censCr, censRel)
+
+plot(survfit(Surv(apply(simSurv5[,1:5],1,max,na.rm=TRUE), simSurv5$status) ~ 1), xlim=c(0,5000))
+lines(survfit(Surv(clinicalData$OS, clinicalData$Status) ~ 1), col='red')
+
+#' #### Estimation based on simulated data
+#' Now reestimate models in the scenario of a 10,000 patient cohort
+set.seed(42)
+simDataFrame$transplantCR1 <- rbinom(nrow(simDataFrame), 1, mean(data$transplantCR1))
+simDataFrame$transplantRel <- rbinom(nrow(simDataFrame), 1, mean(data$transplantRel))
+simDataSurv5 <- SimSurv5(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, simDataFrame, coxphOs, coxphPrs, censInd, censCr, censRel)
+
+#' Estimate RFX transition rates
+#+ simRfx, cache=TRUE
+simCr <- Surv(ifelse(!is.na(simDataSurv5$crTime), simDataSurv5$crTime, simDataSurv5$edTime), !is.na(simDataSurv5$crTime))
+simRfxCr <- CoxRFX(simDataFrame[names(crGroups)], simCr, groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+
+simNcd <- Surv(ifelse(!is.na(simDataSurv5$edTime), simDataSurv5$edTime, simDataSurv5$crTime), simDataSurv5$status & !is.na(simDataSurv5$edTime))
+simRfxEs <- CoxRFX(simDataFrame[names(crGroups)], simNcd, groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+
+simRel <- Surv(ifelse(!is.na(simDataSurv5$relTime), simDataSurv5$relTime, simDataSurv5$nrdTime) - simDataSurv5$crTime, !is.na(simDataSurv5$relTime))
+simRfxRel <- CoxRFX(simDataFrame[names(crGroups)], simRel, groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+
+simNrd <- Surv(ifelse(!is.na(simDataSurv5$relTime), simDataSurv5$relTime, simDataSurv5$nrdTime) - simDataSurv5$crTime, simDataSurv5$status & !is.na(simDataSurv5$nrdTime))
+simRfxNrs <- CoxRFX(simDataFrame[names(crGroups)], simNrd, groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+
+simPrd <- Surv(simDataSurv5$prdTime - simDataSurv5$relTime, simDataSurv5$status)
+simRfxPrs <- CoxRFX(simDataFrame[names(crGroups)], simPrd, groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+
+plot(coef(coxRFXCrTD),coef(simRfxCr))
+cor(coef(coxRFXCrTD),coef(simRfxCr))
+
+plot(coef(coxRFXNcdTD),coef(simRfxEs))
+cor(coef(coxRFXNcdTD),coef(simRfxEs))
+
+plot(coef(coxRFXRelTD),coef(simRfxRel))
+cor(coef(coxRFXRelTD),coef(simRfxRel))
+
+plot(coef(coxRFXNrdTD),coef(simRfxNrs))
+cor(coef(coxRFXNrdTD),coef(simRfxNrs))
+
+plot(coef(coxRFXPrdTD),coef(simRfxPrs))
+cor(coef(coxRFXPrdTD),coef(simRfxPrs))
+
+#' Now compute the multistage RFX model
+#+ simMultiRfx5, cache=TRUE 
+xmax <- 2000
+xx <- 0:ceiling(xmax)
+simPrs <- coxph(Surv(prdTime-relTime, status)~ pspline(relTime-crTime, df=10), data=simDataSurv5) 
+simPrsBaseline <- exp(predict(simPrs, newdata=data.frame(relTime=xx[-1], crTime=0))) ## Hazard (function of CR length)	
+
+simOs <- coxph(Surv(pmax(nrdTime, prdTime, na.rm=TRUE)-crTime, status)~ pspline(crTime, df=5), data=simDataSurv5) 
+simOsBaseline <- exp(predict(simOs, newdata=data.frame(crTime=xx[-1]))) ## Hazard (function of CR length)	
+
+simMultiRfx5 <- MultiRFX5(simRfxEs, simRfxCr, simRfxNrs, simRfxRel, simRfxPrs, data, tdPrmBaseline = simPrsBaseline, tdOsBaseline = simOsBaseline, x=xmax)
+
+plot(colSums(fiveStagePredicted[3*365,1:3,]), colSums(simMultiRfx5[3*365,1:3,]))
+abline(0,1)
+
+#' Also compute the predicted benefit of allografts with confidence intervals
+#+ simMultiRFX3TplCi, cache=TRUE
+d <- osData[1:nrow(dataFrame),]
+d$transplantCR1 <- 0
+d$transplantRel <- 0
+simMultiRFX3TplCi <- MultiRFX3TplCi(simRfxNrs, simRfxRel, simRfxPrs, data=d[,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=200, prsData=prsData) ## others with 200
+plot(multiRFX3TplCi["dCr1Rel","hat","os",] , simMultiRFX3TplCi["dCr1Rel","hat","os",], xlab="Benefit 1,540 patients", ylab="Benefit 10,000 patients")
+plot(multiRFX3TplCi["dCr1Rel","upper","os",] - multiRFX3TplCi["dCr1Rel","lower","os",], simMultiRFX3TplCi["dCr1Rel","upper","os",]-simMultiRFX3TplCi["dCr1Rel","lower","os",], xlab="CI width 1,540 patients", ylab="CI width 10,000 patients")
+abline(0,0.5)
+
 #' # R session
 #' This document was written entirely in R with markdown annotation. It was compiled with `knitr::spin()` [@Xie2015] and `pandoc` using the `rmarkdown` package [@Allaire2015]:
 #+ compile, eval=FALSE
