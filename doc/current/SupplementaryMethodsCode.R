@@ -2893,7 +2893,7 @@ MultiRFX5 <- function(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXP
 	## Step 1: Compute KM survival curves and log hazard
 	getS <- function(coxRFX, data, max.x=5000) {		
 		if(!is.null(coxRFX$na.action)) coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
-		data <- as.matrix(data[,match(colnames(coxRFX$Z),colnames(data))])
+		data <- as.matrix(data[,match(colnames(coxRFX$Z),colnames(data)), drop=FALSE])
 		r <- PredictRiskMissing(coxRFX, data, var="var2")
 		H0 <- basehaz(coxRFX, centered = FALSE)
 		hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
@@ -3024,7 +3024,7 @@ fiveStageCV <- sapply(1:10, function(foo){ ## repeat 10 times, ie. 100 fits
 								rfxNrm <- CoxRFX(nrdData[nrdData$index %in% whichTrain, names(crGroups)], Surv(nrdData$time1, nrdData$time2, nrdData$status)[nrdData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 								rfxNrm$coefficients["transplantRel"] <- 0
 #prsData$time1[!is.na(prsData$time1)] <- 0
-								rfxPrs <-  CoxRFX(prdData[prdData$index %in% whichTrain, names(crGroups)], Surv(prdData$time2 - prdData$time1, prdData$status)[prdData$index %in% whichTrain], groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
+								rfxPrs <-  CoxRFX(prdData[prdData$index %in% whichTrain, names(crGroups)], Surv(prdData$time1, prdData$time2, prdData$status)[prdData$index %in% whichTrain], groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
 								rfxCir <-  CoxRFX(relData[relData$index %in% whichTrain, names(crGroups)], Surv(relData$time1, relData$time2, relData$status)[relData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 								rfxCir$coefficients["transplantRel"] <- 0
 								rfxCr <- CoxRFX(osData[whichTrain, names(crGroups)], Surv(cr[,1], cr[,2]==2)[whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
@@ -3048,6 +3048,7 @@ any(is.na(fiveStageCV))
 
 #' #### Supplementary Figure 3
 #' Concordance
+#+ rfxOsCv, cache=TRUE
 cvFold <- 10
 cOs <- sapply(1:10, function(foo){
 			set.seed(foo)
@@ -3117,7 +3118,7 @@ fiveStageCVeach <- mclapply(1:cvFold, function(i){
 			rfxNrm <- CoxRFX(nrdData[nrdData$index %in% whichTrain, names(crGroups)], Surv(nrdData$time1, nrdData$time2, nrdData$status)[nrdData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 			rfxNrm$coefficients["transplantRel"] <- 0
 #prsData$time1[!is.na(prsData$time1)] <- 0
-			rfxPrs <-  CoxRFX(prdData[prdData$index %in% whichTrain, names(crGroups)], Surv(prdData$time2 - prdData$time1, prdData$status)[prdData$index %in% whichTrain], groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
+			rfxPrs <-  CoxRFX(prdData[prdData$index %in% whichTrain, names(crGroups)], Surv(prdData$time1, prdData$time2, prdData$status)[prdData$index %in% whichTrain], groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
 			rfxCir <-  CoxRFX(relData[relData$index %in% whichTrain, names(crGroups)], Surv(relData$time1, relData$time2, relData$status)[relData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 			rfxCir$coefficients["transplantRel"] <- 0
 			rfxCr <- CoxRFX(osData[whichTrain, names(crGroups)], Surv(cr[,1], cr[,2]==2)[whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
