@@ -3229,31 +3229,17 @@ multiRfx5Cv <- unlist(mclapply(1:nrow(data), function(i){
 survConcordance(os ~ multiRfx5Cv)
 
 #' With genetic imputation
+read_chunk('../../code/imputation.R', labels="imputationMultiRfx")
+#+ imputationMultiRfx, eval=FALSE
+
+#' Collect data
 #+ multiRfx5CvImputed, cache=TRUE
-multiRfx5CvImputed <- mclapply(1:nrow(data), function(i){
-					e <- new.env()
-					t <- try(load(paste0("../../code/loo/",i,".RData"), env=e))
-					if(class(t)=="try-error") return(NA)
-					else {
-						whichTrain <<- (1:nrow(data))[-i]
-						dMiss <- sapply(c(0,seq_along(genes)), function(g){
-									na.genes <- if(g==0) genes else genes[-(1:g)]
-									if(length(na.genes)==0) na.genes <- "FOO42"
-									d <- data[i,, drop=FALSE]
-									d[grepl(paste(na.genes, collapse="|"), colnames(d))] <- NA
-									d
-								})
-													
-						xx <- 0:2000
-						coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(prdData, time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index])[prdData$index %in% whichTrain,]) 
-						tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1])))						
-						
-						coxphOs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))[osData$index %in% whichTrain,]) 
-						tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time0=xx[-1])))	
-						
-						multiRfx5 <- MultiRFX5(e$rfxEs, e$rfxCr, e$rfxNrs, e$rfxRel, e$rfxPrs, dMiss, tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)[3*365,,]
-					}
-				}, mc.cores=10)
+multiRfx5CvImputed <- sapply(mclapply(1:nrow(data), function(i){
+			e <- new.env()
+			t <- try(load(paste0("../../code/imputed/",i,".RData"), env=e))
+			if(class(t)=="try-error") return(rep(NA, length(genes)+1))
+			else colSums(e$multiRfx5[3*365,1:3,])
+		}, mc.cores=10), I)
 
 #' # Simulations
 #' 
