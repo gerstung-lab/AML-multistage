@@ -3,10 +3,10 @@ library(mg14)
 library(CoxHD)
 library(Rcpp)
 
-jobIndex <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
+i <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
 
 cvIdx <- 1:nrow(dataFrame)
-whichTrain <- which(cvIdx != jobIndex)
+whichTrain <- which(cvIdx != i)
 
 e <- new.env()
 t <- try(load(paste0("loo/",i,".RData"), env=e))
