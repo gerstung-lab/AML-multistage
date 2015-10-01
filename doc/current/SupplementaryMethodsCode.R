@@ -3203,7 +3203,8 @@ imputedRiskCv <- do.call("abind", c(mclapply(1:cvFold, function(i){
 
 
 
-#+ imputationGenesPlot, fig.width=8, fig.height=3
+#+ imputationGenesPlot, fig.width=5, fig.height=2.5
+par(mfrow=c(3,3,3,1))
 imputedCCv <- sapply(dimnames(imputedRiskCv)[[3]], function(i) as.numeric(survConcordance(osTD ~ imputedRiskCv[,1,i])[c("concordance","std.err")]))
 x <- 0:ncol(imputedCCv)-.5
 plot(x, c(imputedCCv[1,], imputedCCv[1,ncol(imputedCCv)]), type="s", xaxt="n", xlab="", ylab="Concordance", ylim=range(imputedCCv[1,]) + c(-1,1)*imputedCCv[2,1])
@@ -3227,6 +3228,7 @@ multiRfx5Cv <- unlist(mclapply(1:nrow(data), function(i){
 					                       else sum(e$multiRfx5[3*365,1:3,1])
 					               }, mc.cores=10))
 survConcordance(os ~ multiRfx5Cv)
+ape(1-multiRfx5Cv, os, 3*365)
 
 #' With genetic imputation
 read_chunk('../../code/imputation.R', labels="imputationMultiRfx")
@@ -3240,6 +3242,28 @@ multiRfx5CvImputed <- sapply(mclapply(1:nrow(data), function(i){
 			if(class(t)=="try-error") return(rep(NA, length(genes)+1))
 			else colSums(e$multiRfx5Imputed[3*365,1:3,])
 		}, mc.cores=10), I)
+
+#+ multiRfx5CvImputedPlot, cache=TRUE, fig.width=5, fig.height=2.5
+par(mar=c(3,3,3,1))
+multiRfx5CvImputedC <- sapply(1:nrow(multiRfx5CvImputed), function(i) as.numeric(survConcordance(os ~ multiRfx5CvImputed[i,])[c('concordance','std.err')]))					
+x <- 0:ncol(multiRfx5CvImputedC)-.5
+plot(x, c(multiRfx5CvImputedC[1,], multiRfx5CvImputedC[1,ncol(multiRfx5CvImputedC)]), type="s", xaxt="n", xlab="", ylab="Concordance", ylim=range(multiRfx5CvImputedC[1,]) + c(-1,1)*multiRfx5CvImputedC[2,1])
+polygon(c(rep(x,each=2)[-c(1, 2*length(x))],rep(rev(x), each=2)[-c(1, 2*length(x))]), c(rep(multiRfx5CvImputedC[1,]+multiRfx5CvImputedC[2,], each=2), rep(rev(multiRfx5CvImputedC[1,]-multiRfx5CvImputedC[2,]), each=2)), border=NA, col="#00000044")
+mtext(dimnames(imputedRiskCv)[[3]], side=1, at=1:ncol(multiRfx5CvImputedC), las=2, font=3, cex=.9)
+abline(v=seq(0,50,10), lty=3)
+abline(h=seq(0.68,0.73,0.01), lty=3)
+axis(side=3)
+
+par(mar=c(3,3,3,1))
+multiRfx5CvImputedApe <- sapply(1:nrow(multiRfx5CvImputed), function(i) ape(1-multiRfx5CvImputed[i,], os, 3*365))					
+x <- 0:ncol(multiRfx5CvImputedApe)-.5
+for(i in 1:4){
+	plot(x, c(multiRfx5CvImputedApe[i,], multiRfx5CvImputedApe[i,ncol(multiRfx5CvImputedApe)]), type="s", xaxt="n", xlab="", ylab=rownames(multiRfx5CvImputedApe)[i], col=set1[i])
+	mtext(dimnames(imputedRiskCv)[[3]], side=1, at=1:ncol(multiRfx5CvImputedApe), las=2, font=3, cex=.9)
+	abline(v=seq(0,50,10), lty=3)
+	abline(h=axTicks(side=2), lty=3)
+	axis(side=3)
+}
 
 #' # Simulations
 #' 
