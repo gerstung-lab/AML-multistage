@@ -3238,7 +3238,7 @@ multiRfx5CvImputed <- sapply(mclapply(1:nrow(data), function(i){
 			e <- new.env()
 			t <- try(load(paste0("../../code/imputed/",i,".RData"), env=e))
 			if(class(t)=="try-error") return(rep(NA, length(genes)+1))
-			else colSums(e$multiRfx5[3*365,1:3,])
+			else colSums(e$multiRfx5Imputed[3*365,1:3,])
 		}, mc.cores=10), I)
 
 #' # Simulations
