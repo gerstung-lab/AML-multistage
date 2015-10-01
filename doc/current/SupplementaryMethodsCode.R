@@ -3204,12 +3204,56 @@ imputedRiskCv <- do.call("abind", c(mclapply(1:cvFold, function(i){
 
 
 #+ imputationGenesPlot, fig.width=8, fig.height=3
-imputedCCv <- sapply(dimnames(imputedRiskCv)[[3]], function(i) as.data.frame(survConcordance(osTD ~ imputedRiskCv[,1,i])[c("concordance","std.err")]))
-plot(seq_along(imputedCCv)-1.5, imputedCCv, type="s", xaxt="n", xlab="", ylab="Concordance")
-mtext(dimnames(imputedRiskCv)[[3]], side=1, at=seq_along(imputedCCv), las=2, font=3, cex=.9)
+imputedCCv <- sapply(dimnames(imputedRiskCv)[[3]], function(i) as.numeric(survConcordance(osTD ~ imputedRiskCv[,1,i])[c("concordance","std.err")]))
+x <- 0:ncol(imputedCCv)-.5
+plot(x, c(imputedCCv[1,], imputedCCv[1,ncol(imputedCCv)]), type="s", xaxt="n", xlab="", ylab="Concordance", ylim=range(imputedCCv[1,]) + c(-1,1)*imputedCCv[2,1])
+polygon(c(rep(x,each=2)[-c(1, 2*length(x))],rep(rev(x), each=2)[-c(1, 2*length(x))]), c(rep(imputedCCv[1,]+imputedCCv[2,], each=2), rep(rev(imputedCCv[1,]-imputedCCv[2,]), each=2)), border=NA, col="#00000044")
+mtext(dimnames(imputedRiskCv)[[3]], side=1, at=1:ncol(imputedCCv), las=2, font=3, cex=.9)
 abline(v=seq(0,50,10), lty=3)
 abline(h=seq(0.68,0.73,0.01), lty=3)
 axis(side=3)
+
+#' Multistage LOO
+#' The following code is run on the cluster
+read_chunk('../../code/leaveOneOut.R', labels="leaveOneOut")
+#+ leaveOneOut, eval=FALSE
+
+#' Multistage model
+#+ multiRfx5Cv, cache=TRUE
+multiRfx5Cv <- unlist(mclapply(1:nrow(data), function(i){
+					                       e <- new.env()
+					                       t <- try(load(paste0("../../code/loo/",i,".RData"), env=e))
+					                       if(class(t)=="try-error") return(NA)
+					                       else sum(e$multiRfx5[3*365,1:3,1])
+					               }, mc.cores=10))
+survConcordance(os ~ multiRfx5Cv)
+
+#' With genetic imputation
+#+ multiRfx5CvImputed, cache=TRUE
+multiRfx5CvImputed <- mclapply(1:nrow(data), function(i){
+					e <- new.env()
+					t <- try(load(paste0("../../code/loo/",i,".RData"), env=e))
+					if(class(t)=="try-error") return(NA)
+					else {
+						whichTrain <<- (1:nrow(data))[-i]
+						dMiss <- sapply(c(0,seq_along(genes)), function(g){
+									na.genes <- if(g==0) genes else genes[-(1:g)]
+									if(length(na.genes)==0) na.genes <- "FOO42"
+									d <- data[i,, drop=FALSE]
+									d[grepl(paste(na.genes, collapse="|"), colnames(d))] <- NA
+									d
+								})
+													
+						xx <- 0:2000
+						coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(prdData, time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index])[prdData$index %in% whichTrain,]) 
+						tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1])))						
+						
+						coxphOs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))[osData$index %in% whichTrain,]) 
+						tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time0=xx[-1])))	
+						
+						multiRfx5 <- MultiRFX5(e$rfxEs, e$rfxCr, e$rfxNrs, e$rfxRel, e$rfxPrs, dMiss, tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)[3*365,,]
+					}
+				}, mc.cores=10)
 
 #' # Simulations
 #' 
