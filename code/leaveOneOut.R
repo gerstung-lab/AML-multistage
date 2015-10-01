@@ -1,8 +1,3 @@
-# TODO: Add comment
-# 
-# Author: mg14
-###############################################################################
-
 load("loo.RData")
 library(mg14)
 library(CoxHD)
