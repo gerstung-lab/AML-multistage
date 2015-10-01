@@ -15,13 +15,13 @@ if(class(t)=="try-error"){
 	stop() 
 }else{
 	whichTrain <<- (1:nrow(data))[-i]
-	dMiss <- sapply(c(0,seq_along(genes)), function(g){
+	dMiss <- do.call("rbind", lapply(c(0,seq_along(genes)), function(g){
 				na.genes <- if(g==0) genes else genes[-(1:g)]
 				if(length(na.genes)==0) na.genes <- "FOO42"
 				d <- data[i,, drop=FALSE]
 				d[grepl(paste(na.genes, collapse="|"), colnames(d))] <- NA
 				d
-			})
+			}))
 	
 	xx <- 0:2000
 	coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(prdData, time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index])[prdData$index %in% whichTrain,]) 
