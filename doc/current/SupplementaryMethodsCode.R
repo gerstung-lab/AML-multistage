@@ -3167,6 +3167,49 @@ for(i in c(2,3,5,6,8,9)){
 	#text(x=at, y=rep(0.1, 5), round(fiveStagePredictedTpl[w,6,i],2))
 }
 
+
+#' #### Imputation in case of missing genes
+#' For RFX model on OS
+#+ imputationGenes, cache=TRUE
+w <- WaldTest(coxRFXFitOsTDGGc)
+o <- order(w$p.value[groups[whichRFXOsTDGG] %in% c("Genetics","GeneGene")])
+genes <- unique(sub("_.+","",unlist(strsplit(names(whichRFXOsTDGG[groups[whichRFXOsTDGG]%in% c("Genetics","GeneGene")])[o],":"))))
+
+cvFold <- 1540
+foo <- 42
+set.seed(foo)
+cvIdx <- 1:cvFold #sample(1:nrow(dataFrame)%% cvFold +1 ) ## sample 1/10
+
+m <- unlist(sapply(1:cvFold, function(i) which(tplSplitOs %in% which(cvIdx==i))))
+o <- order(m)
+
+imputedRiskCv <- do.call("abind", c(mclapply(1:cvFold, function(i){
+							whichTrain <- which(cvIdx != i)
+							ix <- tplSplitOs %in% whichTrain
+							cRfx <- CoxRFX(dataFrameOsTD[ix,whichRFXOsTDGG], osTD[ix], groups[whichRFXOsTDGG], which.mu=mainGroups) ## allow only the main groups to have mean different from zero.. 
+							
+							imputedRisk <- sapply(mclapply(c(0,seq_along(genes)), function(i){
+												na.genes <- if(i==0) genes else genes[-(1:i)]
+												if(length(na.genes)==0) na.genes <- "FOO42"
+												d <- dataFrameOsTD[,whichRFXOsTDGG]
+												d[grepl(paste(na.genes, collapse="|"), colnames(d))] <- NA
+												p <- PredictRiskMissing(cRfx, d[!ix,,drop=FALSE])
+											}, mc.cores=1), I, simplify="array")
+							dimnames(imputedRisk)[[3]] <- c("None",genes)
+							return(imputedRisk)
+							
+						}, mc.cores=10), along=1))[o,,]
+
+
+
+#+ imputationGenesPlot, fig.width=8, fig.height=3
+imputedCCv <- sapply(dimnames(imputedRiskCv)[[3]], function(i) as.data.frame(survConcordance(osTD ~ imputedRiskCv[,1,i])[c("concordance","std.err")]))
+plot(seq_along(imputedCCv)-1.5, imputedCCv, type="s", xaxt="n", xlab="", ylab="Concordance")
+mtext(dimnames(imputedRiskCv)[[3]], side=1, at=seq_along(imputedCCv), las=2, font=3, cex=.9)
+abline(v=seq(0,50,10), lty=3)
+abline(h=seq(0.68,0.73,0.01), lty=3)
+axis(side=3)
+
 #' # Simulations
 #' 
 #' We use simulations to assess different properties of our risk modelling approach.
