@@ -3066,7 +3066,6 @@ survConcordance(os ~ rfx5Loo[6,])
 #+ fiveStageCVplot, fig.width=2.5, fig.height=2.5
 multiRfx5C <- sapply(seq_along(times), function(i) survConcordance(os ~ colSums(multiRfx5Loo[i,1:3,]))$concordance[1])
 plot(times, multiRfx5C, type='l', xlab="Time", ylab="Concordance", ylim=c(0.65, 0.73))
-lines(x, rowMeans(c[1,,]), lwd=2)
 abline(h=survConcordance(os ~ rfx5Loo[6,])$concordance, col=brewer.pal(3,"Set1")[1], lwd=2)
 legend("bottomright",c("RFX OS","RFX Multistage"), col=c(2,1), lty=1, bty="n")
 
