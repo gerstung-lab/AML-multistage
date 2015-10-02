@@ -3013,134 +3013,65 @@ for(i in 1:5)
 plot(summary(survfit(coxRFXFitOsTDGGc), i*365)$surv^ exp(coxRFXFitOsTDGGc$linear.predictors[1:1540]), 1-rowSums(aperm(fiveStagePredicted[,1:3,], c(3,1,2)), dim=2)[,365*3],
 		xlab="Survival RFX OS", ylab="Survival RFX Multistage", main=paste(i, "years"))
 
-#' #### 10x10-fold cross-validation of 5-state RFX model
-#+ fiveStageCV, cache=TRUE
-cvFold <- 10
-fiveStageCV <- sapply(1:10, function(foo){ ## repeat 10 times, ie. 100 fits
-			set.seed(foo)
-			cvIdx <- sample(1:nrow(dataFrame)%% 10 +1 ) ## sample 1/10
-			fvStgCV <- Reduce("rbind", mclapply(1:cvFold, function(i){
-								whichTrain <- which(cvIdx != i)
-								rfxNrm <- CoxRFX(nrdData[nrdData$index %in% whichTrain, names(crGroups)], Surv(nrdData$time1, nrdData$time2, nrdData$status)[nrdData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
-								rfxNrm$coefficients["transplantRel"] <- 0
-#prsData$time1[!is.na(prsData$time1)] <- 0
-								rfxPrs <-  CoxRFX(prdData[prdData$index %in% whichTrain, names(crGroups)], Surv(prdData$time1, prdData$time2, prdData$status)[prdData$index %in% whichTrain], groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
-								rfxCir <-  CoxRFX(relData[relData$index %in% whichTrain, names(crGroups)], Surv(relData$time1, relData$time2, relData$status)[relData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
-								rfxCir$coefficients["transplantRel"] <- 0
-								rfxCr <- CoxRFX(osData[whichTrain, names(crGroups)], Surv(cr[,1], cr[,2]==2)[whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
-								rfxEs <- CoxRFX(osData[whichTrain, names(crGroups)], Surv(cr[,1], cr[,2]==1)[whichTrain], groups=crGroups, which.mu = NULL)
-								
-								coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(prdData, time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index])[prdData$index %in% whichTrain,]) 
-								tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1])))						
-								
-								coxphOs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))[osData$index %in% whichTrain,]) 
-								tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time0=xx[-1])))	
-								foo <- MultiRFX5(rfxEs, rfxCr, rfxNrm, rfxCir, rfxPrs, data[cvIdx == i,], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)
-								rowSums(aperm(foo[,1:3,], c(3,1,2)), dim=2)
-							}, mc.cores=cvFold))
-			
-			m <- sapply(1:cvFold, function(i) which(cvIdx==i))
-			o <- order(m)
-			return(fvStgCV[o,])
-		}, simplify="array")
 
-any(is.na(fiveStageCV))
+#' #### Leave-one-out cross-validation
+#' The following code is run on the cluster
+read_chunk('../../code/leaveOneOut.R', labels="leaveOneOut")
+#+ leaveOneOut, eval=FALSE
+
+#' Multistage model
+#+ multiRfx5Loo, cache=TRUE
+times <- round(seq(0,5,0.05)*365)
+multiRfx5Loo <- sapply(mclapply(1:nrow(data), function(i){
+					e <- new.env()
+					t <- try(load(paste0("../../code/loo/",i,".RData"), env=e))
+					if(class(t)=="try-error") rep(NA, length(times))
+					else e$multiRfx5[times+1,,1]
+				}, mc.cores=6), I, simplify="array")
+
+#' Error OS
+survConcordance(os ~ colSums(multiRfx5Loo[times == 3*365,1:3,]))
+ape(1-colSums(multiRfx5Loo[times == 3*365,1:3,]), os, 3*365)
+
+#' For each transition, including OS
+#+ multiRfx5Loo, cache=TRUE
+rfx5Loo <- sapply(mclapply(1:nrow(data), function(i){
+					e <- new.env()
+					t <- try(load(paste0("../../code/loo/",i,".RData"), env=e))
+					if(class(t)=="try-error") rep(NA, length(times))
+					else {
+						cvIdx <- 1:nrow(dataFrame)
+						whichTrain <<- which(cvIdx != i)
+						pNrs <- predict(e$rfxNrs, newdata=data[cvIdx==i,])
+						pRel <- predict(e$rfxRel, newdata=data[cvIdx==i,])
+						pPrs <- predict(e$rfxPrs, newdata=data[cvIdx==i,])
+						pCr <- predict(e$rfxCr, newdata=data[cvIdx==i,])
+						pEs <- predict(e$rfxEs, newdata=data[cvIdx==i,])
+						pOs <- predict(e$rfxOs, newdata=dataFrame[cvIdx==i,])
+						c(pCr, pEs, pNrs, pRel, pPrs, pOs)
+					}
+				}, mc.cores=6), I, simplify="array")
+
+colnames(rfx5Loo) <- rownames(data)
+survConcordance(Surv(nrdData$time1, nrdData$time2, nrdData$status) ~ rfx5Loo[3,nrdData$index])
+survConcordance(Surv(prdData$time1, prdData$time2, prdData$status) ~ rfx5Loo[5,rownames(prdData)[prdData$index]])
+survConcordance(Surv(relData$time1, relData$time2, relData$status) ~ rfx5Loo[4,relData$index])
+survConcordance(Surv(cr[,1], cr[,2]==2) ~ rfx5Loo[1,])
+survConcordance(Surv(cr[,1], cr[,2]==1) ~ rfx5Loo[2,])
+survConcordance(os ~ rfx5Loo[6,])
+
 
 #' #### Supplementary Figure 3
-#' Concordance
-#+ rfxOsCv, cache=TRUE
-cvFold <- 10
-cOs <- sapply(1:10, function(foo){
-			set.seed(foo)
-			cvIdx <- sample(1:nrow(dataFrame)%% 10 +1 ) ## sample 1/10
-			
-			osCV <- Reduce("c", mclapply(1:cvFold, function(i){
-								whichTrain <- which(cvIdx != i)
-								ix <- tplSplitOs %in% whichTrain
-								fit <- CoxRFX(dataFrameOsTD[ix,whichRFXOsTDGG], osTD[ix], groups[whichRFXOsTDGG], which.mu=mainGroups) ## allow only the main groups to have mean different from zero.. 
-								predict(fit, newdata=dataFrameOsTD[!ix,])
-							}, mc.cores=cvFold))
-			
-			m <- unlist(sapply(1:cvFold, function(i) which(tplSplitOs %in% which(cvIdx==i))))
-			o <- order(m)
-			c <- survConcordance(osTD ~ osCV[o])
-		})
 
 #+ fiveStageCVplot, fig.width=2.5, fig.height=2.5
-x <- seq(1,2000,10)
-c <- sapply(1:10, function(j) sapply(x, function(i) {c <- survConcordance(os ~ fiveStageCV[,i,j]); c(c$concordance, c$std.err)}), simplify='array')
-plot(x, rowMeans(c[1,,]), type='l', xlab="Time", ylab="Concordance", ylim=c(0.65, 0.73))
-for(j in 1:10) lines(x, c[1,,j], col='grey')
+multiRfx5C <- sapply(seq_along(times), function(i) survConcordance(os ~ colSums(multiRfx5Loo[i,1:3,]))$concordance[1])
+plot(times, multiRfx5C, type='l', xlab="Time", ylab="Concordance", ylim=c(0.65, 0.73))
 lines(x, rowMeans(c[1,,]), lwd=2)
-c <- mean(unlist(cOs[1,]))
-abline(h=unlist(cOs[1,]), col='#FBB4AE')
-abline(h=c, col=brewer.pal(3,"Set1")[1], lwd=2)
-legend("bottomright",c("RFX OS","RFX Multistage"), col=c(2,1), lty=1, bty="n")
-
-#' Area under the ROC curve
-#+ fiveStageCVauc, cache=TRUE, fig.width=2.5, fig.height=2.5
-x <- seq(1,2000,10)
-cvFold <- 10
-aOs <- sapply(1:10, function(foo){
-			set.seed(foo)
-			cvIdx <- sample(1:nrow(dataFrame)%% 10 +1 ) ## sample 1/10
-			
-			osCV <- Reduce("c", mclapply(1:cvFold, function(i){
-								whichTrain <- which(cvIdx != i)
-								ix <- tplSplitOs %in% whichTrain
-								fit <- CoxRFX(dataFrameOsTD[ix,whichRFXOsTDGG], osTD[ix], groups[whichRFXOsTDGG], which.mu=mainGroups) ## allow only the main groups to have mean different from zero.. 
-								predict(fit, newdata=dataFrame[-whichTrain,])
-							}, mc.cores=cvFold))
-			
-			m <- sapply(1:cvFold, function(i) which(cvIdx==i))
-			o <- order(m)
-			c <- AUC.uno(os, os, osCV[o], x)
-		})
-
-a <- sapply(1:10, function(j) sapply(x, function(i) {w <- !is.na(fiveStageCV[,i,j]); c <- AUC.uno(os[w], os[w], fiveStageCV[w,i+1,j], i)$auc}), simplify='array')
-plot(x, rowMeans(a), type='l', xlab="Time", ylab="AUC")
-for(j in 1:10) lines(x, a[,j], col='grey')
-lines(x, rowMeans(a[,]), lwd=2)
-o <- as.data.frame(aOs[1,])
-for(j in 1:10) lines(x, o[,j], col='#FBB4AE')
-lines(x, rowMeans(o), col="red", lwd=2)
-lines(x, rowMeans(a), lwd=2)
+abline(h=survConcordance(os ~ rfx5Loo[6,])$concordance, col=brewer.pal(3,"Set1")[1], lwd=2)
 legend("bottomright",c("RFX OS","RFX Multistage"), col=c(2,1), lty=1, bty="n")
 
 
-#' Each event type
-#+ fiveStageCVeach, cache=TRUE
-set.seed(42)
-cvFold <- 10
-cvIdx <- sample(1:nrow(dataFrame)%% 10 +1 ) ## sample 1/10
-fiveStageCVeach <- mclapply(1:cvFold, function(i){
-			whichTrain <- which(cvIdx != i)
-			rfxNrm <- CoxRFX(nrdData[nrdData$index %in% whichTrain, names(crGroups)], Surv(nrdData$time1, nrdData$time2, nrdData$status)[nrdData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
-			rfxNrm$coefficients["transplantRel"] <- 0
-#prsData$time1[!is.na(prsData$time1)] <- 0
-			rfxPrs <-  CoxRFX(prdData[prdData$index %in% whichTrain, names(crGroups)], Surv(prdData$time1, prdData$time2, prdData$status)[prdData$index %in% whichTrain], groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
-			rfxCir <-  CoxRFX(relData[relData$index %in% whichTrain, names(crGroups)], Surv(relData$time1, relData$time2, relData$status)[relData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
-			rfxCir$coefficients["transplantRel"] <- 0
-			rfxCr <- CoxRFX(osData[whichTrain, names(crGroups)], Surv(cr[,1], cr[,2]==2)[whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
-			rfxEs <- CoxRFX(osData[whichTrain, names(crGroups)], Surv(cr[,1], cr[,2]==1)[whichTrain], groups=crGroups, which.mu = NULL)
-			
-			list( nrm=predict(rfxNrm, newdata=nrdData[!nrdData$index %in% whichTrain, names(crGroups)]),
-					prs=predict(rfxPrs, newdata=prdData[!prdData$index %in% whichTrain, names(crGroups)]),
-					cir=predict(rfxCir, newdata=relData[!relData$index %in% whichTrain, names(crGroups)]),
-					cr=predict(rfxCr, newdata=osData[which(cvIdx==i), names(crGroups)]),
-					es=predict(rfxEs, newdata=osData[which(cvIdx==i), names(crGroups)])
-			)
-		}, mc.cores=cvFold)
 
-f <- function(l,m){
-	lapply(1:length(l), function(i) c(l[[i]],m[[i]]))
-}
-fiveStageCVeach <- Reduce("f", fiveStageCVeach)
-survConcordance(Surv(nrdData$time1, nrdData$time2, nrdData$status)[order(rownames(nrdData))] ~ fiveStageCVeach[[1]][order(names(fiveStageCVeach[[1]]))])
-survConcordance(Surv(prdData$time1, prdData$time2, prdData$status)[order(rownames(prdData))] ~ fiveStageCVeach[[2]][order(names(fiveStageCVeach[[2]]))])
-survConcordance(Surv(relData$time1, relData$time2, relData$status)[order(rownames(relData))] ~ fiveStageCVeach[[3]][order(names(fiveStageCVeach[[3]]))])
-survConcordance(Surv(cr[,1], cr[,2]==2) ~ fiveStageCVeach[[4]][order(names(fiveStageCVeach[[4]]))])
-survConcordance(Surv(cr[,1], cr[,2]==1) ~ fiveStageCVeach[[5]][order(names(fiveStageCVeach[[5]]))])
 
 
 #' #### Figure 4b-e, Supplementary Figure 4
@@ -3214,23 +3145,8 @@ abline(v=seq(0,50,10), lty=3)
 abline(h=seq(0.68,0.73,0.01), lty=3)
 axis(side=3)
 
-#' Multistage LOO
-#' The following code is run on the cluster
-read_chunk('../../code/leaveOneOut.R', labels="leaveOneOut")
-#+ leaveOneOut, eval=FALSE
 
-#' Multistage model
-#+ multiRfx5Cv, cache=TRUE
-multiRfx5Cv <- unlist(mclapply(1:nrow(data), function(i){
-					                       e <- new.env()
-					                       t <- try(load(paste0("../../code/loo/",i,".RData"), env=e))
-					                       if(class(t)=="try-error") return(NA)
-					                       else sum(e$multiRfx5[3*365,1:3,1])
-					               }, mc.cores=10))
-survConcordance(os ~ multiRfx5Cv)
-ape(1-multiRfx5Cv, os, 3*365)
-
-#' With genetic imputation
+#' Genetic imputation multi stage
 read_chunk('../../code/imputation.R', labels="imputationMultiRfx")
 #+ imputationMultiRfx, eval=FALSE
 
