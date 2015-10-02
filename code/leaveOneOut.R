@@ -26,7 +26,7 @@ coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.f
 tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1])))						
 
 coxphOs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))[osData$index %in% whichTrain,]) 
-exp(pmin(predict(coxphOs, newdata=data.frame(time0=500)),predict(coxphOs, newdata=data.frame(time0=xx[-1])))) ## cap predictions at induction length 500 days.
+tdOsBaseline <- exp(pmin(predict(coxphOs, newdata=data.frame(time0=500)),predict(coxphOs, newdata=data.frame(time0=xx[-1])))) ## cap predictions at induction length 500 days.
 multiRfx5 <- MultiRFX5(rfxEs, rfxCr, rfxNrs, rfxRel, rfxPrs, data[cvIdx == jobIndex,,drop=FALSE], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)
 
 save(rfxEs, rfxCr, rfxEs, rfxNrs, rfxPrs, rfxRel, rfxOs, multiRfx5, file=paste0("loo/",jobIndex,".RData"))

@@ -1,3 +1,5 @@
+#save(genes, file="genesImputation.RData")
+
 load("loo.RData")
 load("genesImputation.RData")
 library(mg14)
@@ -28,7 +30,7 @@ if(class(t)=="try-error"){
 	tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1])))						
 	
 	coxphOs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))[osData$index %in% whichTrain,]) 
-	tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time0=xx[-1])))	
+	tdOsBaseline <- exp(pmin(predict(coxphOs, newdata=data.frame(time0=500)),predict(coxphOs, newdata=data.frame(time0=xx[-1])))) ## cap predictions at induction length 500 days.
 	
 	multiRfx5Imputed <- MultiRFX5(e$rfxEs, e$rfxCr, e$rfxNrs, e$rfxRel, e$rfxPrs, dMiss, tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)
 	save(multiRfx5Imputed, file=paste0("imputed/",i,".RData"))
