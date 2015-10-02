@@ -3034,7 +3034,7 @@ survConcordance(os ~ colSums(multiRfx5Loo[times == 3*365,1:3,]))
 ape(1-colSums(multiRfx5Loo[times == 3*365,1:3,]), os, 3*365)
 
 #' For each transition, including OS
-#+ multiRfx5Loo, cache=TRUE
+#+ rfx5Loo, cache=TRUE
 rfx5Loo <- sapply(mclapply(1:nrow(data), function(i){
 					e <- new.env()
 					t <- try(load(paste0("../../code/loo/",i,".RData"), env=e))
