@@ -3139,7 +3139,7 @@ imputedCCv <- sapply(dimnames(imputedRiskCv)[[3]], function(i) as.numeric(survCo
 x <- 0:ncol(imputedCCv)-.5
 plot(x, c(imputedCCv[1,], imputedCCv[1,ncol(imputedCCv)]), type="s", xaxt="n", xlab="", ylab="Concordance", ylim=range(imputedCCv[1,]) + c(-1,1)*imputedCCv[2,1])
 polygon(c(rep(x,each=2)[-c(1, 2*length(x))],rep(rev(x), each=2)[-c(1, 2*length(x))]), c(rep(imputedCCv[1,]+imputedCCv[2,], each=2), rep(rev(imputedCCv[1,]-imputedCCv[2,]), each=2)), border=NA, col="#00000044")
-mtext(dimnames(imputedRiskCv)[[3]], side=1, at=1:ncol(imputedCCv), las=2, font=3, cex=.9)
+mtext(dimnames(imputedRiskCv)[[3]], side=1, at=1:ncol(imputedCCv)-1, las=2, font=3, cex=.9)
 abline(v=seq(0,50,10), lty=3)
 abline(h=seq(0.68,0.73,0.01), lty=3)
 axis(side=3)
@@ -3164,7 +3164,7 @@ multiRfx5CvImputedC <- sapply(1:nrow(multiRfx5CvImputed), function(i) as.numeric
 x <- 0:ncol(multiRfx5CvImputedC)-.5
 plot(x, c(multiRfx5CvImputedC[1,], multiRfx5CvImputedC[1,ncol(multiRfx5CvImputedC)]), type="s", xaxt="n", xlab="", ylab="Concordance", ylim=range(multiRfx5CvImputedC[1,]) + c(-1,1)*multiRfx5CvImputedC[2,1])
 polygon(c(rep(x,each=2)[-c(1, 2*length(x))],rep(rev(x), each=2)[-c(1, 2*length(x))]), c(rep(multiRfx5CvImputedC[1,]+multiRfx5CvImputedC[2,], each=2), rep(rev(multiRfx5CvImputedC[1,]-multiRfx5CvImputedC[2,]), each=2)), border=NA, col="#00000044")
-mtext(dimnames(imputedRiskCv)[[3]], side=1, at=1:ncol(multiRfx5CvImputedC), las=2, font=3, cex=.9)
+mtext(dimnames(imputedRiskCv)[[3]], side=1, at=1:ncol(multiRfx5CvImputedC)-1, las=2, font=3, cex=.9)
 abline(v=seq(0,50,10), lty=3)
 abline(h=seq(0.68,0.73,0.01), lty=3)
 axis(side=3)
@@ -3174,7 +3174,7 @@ multiRfx5CvImputedApe <- sapply(1:nrow(multiRfx5CvImputed), function(i) ape(1-mu
 x <- 0:ncol(multiRfx5CvImputedApe)-.5
 for(i in 1:4){
 	plot(x, c(multiRfx5CvImputedApe[i,], multiRfx5CvImputedApe[i,ncol(multiRfx5CvImputedApe)]), type="s", xaxt="n", xlab="", ylab=rownames(multiRfx5CvImputedApe)[i], col=set1[i])
-	mtext(dimnames(imputedRiskCv)[[3]], side=1, at=1:ncol(multiRfx5CvImputedApe), las=2, font=3, cex=.9)
+	mtext(dimnames(imputedRiskCv)[[3]], side=1, at=1:ncol(multiRfx5CvImputedApe)-1, las=2, font=3, cex=.9)
 	abline(v=seq(0,50,10), lty=3)
 	abline(h=axTicks(side=2), lty=3)
 	axis(side=3)
