@@ -3134,7 +3134,7 @@ imputedRiskCv <- do.call("abind", c(mclapply(1:cvFold, function(i){
 
 
 #+ imputationGenesPlot, fig.width=5, fig.height=2.5
-par(mfrow=c(3,3,3,1))
+par(mar=c(3,3,3,1))
 imputedCCv <- sapply(dimnames(imputedRiskCv)[[3]], function(i) as.numeric(survConcordance(osTD ~ imputedRiskCv[,1,i])[c("concordance","std.err")]))
 x <- 0:ncol(imputedCCv)-.5
 plot(x, c(imputedCCv[1,], imputedCCv[1,ncol(imputedCCv)]), type="s", xaxt="n", xlab="", ylab="Concordance", ylim=range(imputedCCv[1,]) + c(-1,1)*imputedCCv[2,1])
