@@ -2976,36 +2976,13 @@ lineStage <- function(CR_date, Recurrence_date, Date_LF, ERDate, Status, y=0, co
 }
 
 
-#' Average of all multistage predictions, not the precise agreement with overall survival.
+#' Average of all multistage predictions, note the precise agreement with overall survival.
 #+ fiveStagePredictedAvg, fig.width=3, fig.height=2.5
 pastel1 <- brewer.pal(9, "Pastel1")
 par(mfrow=c(1,1), mar=c(3,3,1,1), cex=1)
 sedimentPlot(-rowMeans(fiveStagePredicted[,1:5,], dims=2), y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"))
 lines(survfit(Surv(OS, Status) ~ 1, data=clinicalData))
 
-#' #### Figure 3d
-#' In order of risk constellation plots
-#+ fiveStagePredictedHilbert, fig.width=12, fig.height=12
-set.seed(42)
-s <- sample(nrow(dataFrame),nStars^2) #1:(nStars^2)
-library(HilbertVis)
-nStars <- 32
-l <- "coxRFXFitOsTDGGc"
-t <- os#get(l)$surv
-p <- PartialRisk(get(l),  newZ=dataFrame[, colnames(get(l)$Z)])
-p <- p[,colnames(p)!="Nuisance"]
-locations <- hilbertCurve(log2(nStars))+1 
-mat <- matrix(order(locations[,1], locations[,2]), ncol=nStars)
-h <- hclust(dist(p[s,]))
-layout(mat[nStars:1,])
-par(mar=c(0,0,0,0),+.5, bty="n")
-for(i in 1:nStars^2){
-	sedimentPlot(-fiveStagePredicted[seq(1,2001,200),1:5,s[h$order[i]]], x=seq(1,2001,200),y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"), xlab="time",ylab="fraction", xaxt="n", yaxt="n")
-	lines(x=seq(1,2001,200), y=1-rowSums(fiveStagePredicted[seq(1,2001,200),1:3,s[h$order[i]]]), lwd=2)
-	i <- s[h$order[i]]
-	lineStage(clinicalData$CR_date[i], clinicalData$Recurrence_date[i], clinicalData$Date_LF[i], clinicalData$ERDate[i], clinicalData$Status[i], col=c(brewer.pal(8,"Dark2")[8], set1[c(4:5,1:3)]), lwd=2, pch.trans=NA, y=0.05)
-	
-}
 
 #' Multistage predictions v overall survival
 #+ HRFXvRFX
@@ -3033,7 +3010,37 @@ multiRfx5Loo <- sapply(mclapply(1:nrow(data), function(i){
 survConcordance(os ~ colSums(multiRfx5Loo[times == 3*365,1:3,]))
 ape(1-colSums(multiRfx5Loo[times == 3*365,1:3,]), os, 3*365)
 
-#' For each transition, including OS
+
+#' #### Figure 3d
+#' In order of risk constellation plots
+#+ fiveStagePredictedHilbert, fig.width=12, fig.height=12
+set.seed(42)
+s <- sample(nrow(dataFrame),nStars^2) #1:(nStars^2)
+library(HilbertVis)
+nStars <- 32
+l <- "coxRFXFitOsTDGGc"
+t <- os#get(l)$surv
+p <- PartialRisk(get(l),  newZ=dataFrame[, colnames(get(l)$Z)])
+p <- p[,colnames(p)!="Nuisance"]
+locations <- hilbertCurve(log2(nStars))+1 
+mat <- matrix(order(locations[,1], locations[,2]), ncol=nStars)
+h <- hclust(dist(p[s,]))
+layout(mat[nStars:1,])
+par(mar=c(0,0,0,0),+.5, bty="n")
+for(i in 1:nStars^2){ # Fitted predictions
+	sedimentPlot(-fiveStagePredicted[seq(1,2001,200),1:5,s[h$order[i]]], x=seq(1,2001,200),y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"), xlab="time",ylab="fraction", xaxt="n", yaxt="n")
+	lines(x=seq(1,2001,200), y=1-rowSums(fiveStagePredicted[seq(1,2001,200),1:3,s[h$order[i]]]), lwd=2)
+	i <- s[h$order[i]]
+	lineStage(clinicalData$CR_date[i], clinicalData$Recurrence_date[i], clinicalData$Date_LF[i], clinicalData$ERDate[i], clinicalData$Status[i], col=c(brewer.pal(8,"Dark2")[8], set1[c(4:5,1:3)]), lwd=2, pch.trans=NA, y=0.05)	
+}
+for(i in 1:nStars^2){ # Leave-one-out predictions
+	sedimentPlot(-multiRfx5Loo[seq(1,length(times),5),1:5,s[h$order[i]]], x=times[seq(1,length(times),5)],y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"), xlab="time",ylab="fraction", xaxt="n", yaxt="n")
+	lines(x=times[seq(1,length(times),5)], y=1-rowSums(multiRfx5Loo[seq(1,length(times),5),1:3,s[h$order[i]]]), lwd=2)
+	i <- s[h$order[i]]
+	lineStage(clinicalData$CR_date[i], clinicalData$Recurrence_date[i], clinicalData$Date_LF[i], clinicalData$ERDate[i], clinicalData$Status[i], col=c(brewer.pal(8,"Dark2")[8], set1[c(4:5,1:3)]), lwd=2, pch.trans=NA, y=0.05)	
+}
+
+#' #### Comparison with RFX
 #+ rfx5Loo, cache=TRUE
 rfx5Loo <- sapply(mclapply(1:nrow(data), function(i){
 					e <- new.env()
@@ -3062,16 +3069,27 @@ survConcordance(os ~ rfx5Loo[6,])
 
 
 #' #### Supplementary Figure 3
-
-#+ fiveStageCVplot, fig.width=2.5, fig.height=2.5
+#' Plots of concordance and absolute prediction measures
+#+ errorsMultiRfxOsLoo, fig.width=2.5, fig.height=2.5
 multiRfx5C <- sapply(seq_along(times), function(i) survConcordance(os ~ colSums(multiRfx5Loo[i,1:3,]))$concordance[1])
-plot(times, multiRfx5C, type='l', xlab="Time", ylab="Concordance", ylim=c(0.65, 0.73))
-abline(h=survConcordance(os ~ rfx5Loo[6,])$concordance, col=brewer.pal(3,"Set1")[1], lwd=2)
-legend("bottomright",c("RFX OS","RFX Multistage"), col=c(2,1), lty=1, bty="n")
+plot(times, multiRfx5C, type='l', xlab="Time", ylab="Concordance", ylim=c(0.65, 0.73), col=set1[1])
+abline(h=survConcordance(os ~ rfx5Loo[6,])$concordance, col=set1[2], lwd=2)
+legend("bottomright",c("RFX OS","RFX Multistage"), col=set1[1:2], lty=1, bty="n")
 
+a <- sapply(times, function(t) ape(1-colSums(multiRfx5Loo[times == t,1:3,]), os, t))
+s <- summary(survfit(coxRFXFitOsTDGGc), times=times)
+b <- sapply(times, function(t) ape(s$surv[times==t]^exp(rfx5Loo[6,]), os, t))
+for(i in 1:4){
+	plot(times, a[i,], type='l', xlab="time", ylab=rownames(a)[i], col=set1[1])
+	lines(times, b[i,], col=set1[2])
+	legend("bottomright",c("RFX OS","RFX Multistage"), col=set1[1:2], lty=1, bty="n")
+}
 
-
-
+#' Figure of predicted survival for 100 patients, comparing multistage and OS predictions
+#+ survivalMultiRfxOsLoo, fig.width=2.5, fig.height=2.5
+plot(s$surv^exp(rfx5Loo[6,1]), 1-rowSums(multiRfx5Loo[,1:3,1]), type='l', xlim=c(0,1), ylim=c(0,1), col='grey', xlab="Predicted survival RFX", ylab="Pedicted survival Multistage")
+for(i in 2:100)
+	lines(s$surv^exp(rfx5Loo[6,i]), 1-rowSums(multiRfx5Loo[,1:3,i]), col='grey')
 
 #' #### Figure 4b-e, Supplementary Figure 4
 #' With and without TPL
