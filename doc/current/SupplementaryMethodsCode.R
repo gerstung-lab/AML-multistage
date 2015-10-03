@@ -3776,6 +3776,37 @@ plot(multiRFX3TplCi["dCr1Rel","hat","os",] , simMultiRFX3TplCi["dCr1Rel","hat","
 plot(multiRFX3TplCi["dCr1Rel","upper","os",] - multiRFX3TplCi["dCr1Rel","lower","os",], simMultiRFX3TplCi["dCr1Rel","upper","os",]-simMultiRFX3TplCi["dCr1Rel","lower","os",], xlab="CI width 1,540 patients", ylab="CI width 10,000 patients")
 abline(0,0.5)
 
+#' #### Figure 4d
+#' Benefit v number of allografts in CR1, revisited
+#+ survNallo10000
+par(bty="L")
+o <- order(-multiRFX3TplCi["dCr1Rel","hat","os",] + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0), na.last=NA)
+s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplCi["cr1","hat","os",o[1:i]], multiRFX3TplCi["rel","hat","os",o[-(1:i)]]), na.rm=TRUE))
+plot(seq_along(s)/length(s), s, type='l', xlab="Fraction of allografts in CR1", ylab="Survival of eligible patients 3yrs after CR", col=set1[1], lty=0, xaxs="i", yaxs="i")
+n <- c(5,10,15,20,25,30)
+u <- par("usr")
+mtext( at=(u[4] - s[1])*n, text=n,side=3, line=0)
+mtext( at=s[1]+u[2]/n, text=n,side=4, line=0)
+for(i in seq_along(n)) abline(s[1], 1/n[i], col='grey', lty=3)
+lines(seq_along(s)/length(s), s, type='l',col=set1[1], lty=3)
+s <- rowMeans(sapply(1:10, function(foo){ set.seed(foo)
+					o <- order(-multiRFX3TplCi["dCr1Rel","hat","os",] + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0) + rnorm(1540,sd=(multiRFX3TplCi["dCr1Rel","upper","os",]-multiRFX3TplCi["dCr1Rel","lower","os",])/4), na.last=NA)
+					s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplCi["cr1","hat","os",o[1:i]], multiRFX3TplCi["rel","hat","os",o[-(1:i)]]), na.rm=TRUE))
+				}))
+lines(seq_along(s)/length(s), s, type='l',col=set1[1], lty=1)
+w <- max(which(abs(s-s[1] - 1/10 * seq_along(s)/length(s))<1e-5))
+points(w/length(s), s[w], pch=19, col=set1[1])
+s <- rowMeans(sapply(1:10, function(foo){ set.seed(foo)
+					o <- order(-multiRFX3TplCi["dCr1Rel","hat","os",] + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0) + rnorm(1540,sd=(simMultiRFX3TplCi["dCr1Rel","upper","os",]-multiRFX3TplCi["dCr1Rel","lower","os",])/4), na.last=NA)
+					s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplCi["cr1","hat","os",o[1:i]], multiRFX3TplCi["rel","hat","os",o[-(1:i)]]), na.rm=TRUE))
+				}))
+lines(seq_along(s)/length(s), s, type='l',col=set1[1], lty=2)
+p <- order(na.zero(c(1,4,2,3)[clinicalData$M_Risk])  + dataFrame$AOD_10/20 + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0), na.last=NA)
+e <- sapply(seq_along(p), function(i) mean(c(multiRFX3Tpl[p[1:i],2], multiRFX3Tpl[p[-(1:i)],3]), na.rm=TRUE)) 
+lines(seq_along(e)/length(e), e, type='l', col=set1[2])
+legend("bottomright", c("Personalised risk", "Idealised","10,000 patients","1,540 patients", "Standard risk","ELN and age"),  col=set1[c(NA,1,1,1,NA,2)],lty=c(NA,3,2,1,NA,1), bty="n", text.font=c(2,1,1,1,2,1))
+
+
 #' # R session
 #' This document was written entirely in R with markdown annotation. It was compiled with `knitr::spin()` [@Xie2015] and `pandoc` using the `rmarkdown` package [@Allaire2015]:
 #+ compile, eval=FALSE
