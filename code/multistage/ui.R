@@ -6,7 +6,7 @@
 
 library(shiny)
 library(CoxHD)
-load("predictTest.RData", envir=globalenv())
+load("multistage.RData", envir=globalenv())
 #data <- coxRFXCirTD$Z
 
 
