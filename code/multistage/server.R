@@ -8,7 +8,7 @@ library(shiny)
 library(RColorBrewer)
 library(CoxHD)
 library(Rcpp)
-load("predictTest.RData", envir=globalenv())
+load("multistage.RData", envir=globalenv())
 cr <<- cr
 set1 <- brewer.pal(8, "Set1")
 pastel1 <- brewer.pal(8, "Pastel1")
@@ -262,13 +262,14 @@ shinyServer(function(input, output) {
 				s <- survfit(surv~1)
 				splinefun(s$time, s$surv, method="monoH.FC")
 			}
-			prsP <- survPredict(Surv(prdData$time2-prdData$time1, prdData$status))(x) # Baseline Prs (measured from relapse)
-			coxphPrs <- coxph(Surv(time2-time1, status)~ pspline(time1, df=10), data=prdData) # PRS baseline with spline-based dep on CR length)
-			tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time1=x[-1])))	
+			prsP <- survPredict(Surv(prdData$time1, prdData$time2, prdData$status))(x) # Baseline Prs (measured from relapse)
 
-			coxphOs <- coxph(Surv(time2-time1, status)~ pspline(cr[osData$index,1], df=10), data=osData) # PRS baseline with spline-based dep on CR length)
-			tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time1=x[-1])))	
+			coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(prdData, time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index])) 
+			tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=x[-1]))) ## Hazard (function of CR length)	
 			
+			coxphOs <- coxph(Surv(time1,time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))) 
+			tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time0=x[-1])))	 ## Hazard (function of induction length), only for OS (could do CIR,NRM,PRS seperately)
+						
 			# CR adjustments to obtain absolute probabilities
 			crAdjust <- function(x, y, time=x$x) {
 				xadj <- .crAdjust(x$inc, y$inc, time)
