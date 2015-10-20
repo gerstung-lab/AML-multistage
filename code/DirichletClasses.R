@@ -247,6 +247,8 @@ image(x=rep(ncol(logPInt),2)+c(2,3), y=(2:3) +0.5, z=matrix(1), col=brewer.pal(3
 mtext(side=4, at=3:1, c("P > 0.05", "FDR < 0.1", "FWER < 0.05"), cex=.66, line=0.2)
 t <- c(0,table(geneToClass))
 s <- cumsum(t)+.5
+abline(h=s[-length(s)], col=col, lty=3)
+abline(v=s[-length(s)], col=col, lty=3)
 rect(s[-1],s[-1], s[-length(s)], s[-length(s)], border=col)
 
 
@@ -355,7 +357,10 @@ curatedClass <- c$ReductionClass
 names(curatedClass) <- c$Sample
 rm(c)
 
-table(dpClass, curatedClass)
+library(clue)
+t <- table(dpClass, curatedClass)
+s <- solve_LSAP(t, maximum=TRUE)
+t[,c(s, setdiff(1:ncol(t),s))]
 
 #' ### Associations
 
@@ -493,6 +498,14 @@ barplot(rbind(a,100-a), ylab="Explained variance (%)", names=rep("",2), ylim=c(0
 segments(b,(v-c(mse0[1]-mse0[2],mse1[1]-mse1[2]))*100/v,b,(v-c(mse0[1]+mse0[2], mse1[1]+mse1[2]))*100/v)
 rotatedLabel(b, labels=c("subtypes","subtypes+genomics"))
 title(main="HB")
+
+oddsPlot <- function(t){
+	plot(x=rep(1:2, ncol(t)), t[], ylab="Number of cases", xlab= names(dimnames(t))[1], xaxt="n", log='y')
+	mtext(side=1,at=c(1,2), text=paste0(rownames(t), ", n=", rowSums(t)), las=1, pch=16)
+	segments(1,t[1,],2, t[2,])
+	p <- sapply(1:ncol(t), function(i) {f <- fisher.test(cbind(rowSums(t[,-i]), t[,i])); c(p.value=f$p.value, OR=f$estimate[1], f$conf.int)})
+	mtext(side=4, at=t[2,], text=paste0(colnames(t), ", OR=", format(p[2,],digits=1), "(", apply(round(p[3:4,],2),2,paste, collapse="-"),")", sig2star(p[1,])))
+}
 
 #' #### Splenomegaly
 #+ Splenomegaly_bar, fig.width=1.5
