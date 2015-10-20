@@ -1795,7 +1795,7 @@ cr <- Surv(c, factor(pmin(2 * (!is.na(clinicalData$CR_date))+os[,2],2), levels=0
 coxRFXCrTD <- CoxRFX(osData[1:1540, names(crGroups)], Surv(cr[,1], cr[,2]==2), groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 coxRFXNcdTD <- CoxRFX(osData[1:1540, names(crGroups)], Surv(cr[,1], cr[,2]==1), groups=crGroups, which.mu = NULL)
 
-#save(coxRFXRelTD, coxRFXNrdTD, coxRFXPrdTD, coxRFXOsCR, coxRFXNcdTD, coxRFXCrTD, cr, nrdData, relData, prdData, osData, crGroups, data, file="../../code/predict/predictTest.RData")
+#save(coxRFXRelTD, coxRFXNrdTD, coxRFXPrdTD, coxRFXOsCR, coxRFXNcdTD, coxRFXCrTD, cr, nrdData, relData, prdData, osData, crGroups, data, clinicalData, file="../../code/multistage/multistage.RData")
 
 #' ### Variance components
 #+ allVarComp, fig.width=6, fig.height=4
