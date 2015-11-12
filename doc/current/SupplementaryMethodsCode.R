@@ -3144,24 +3144,40 @@ for(i in 2:100)
 #' With and without TPL
 #+ threePatientsAllo, fig.width=3, fig.height=2.5
 xmax=2000
-fiveStagePredictedTpl <- MultiRFX5(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, allDataTpl[grep("PD11104a|PD8314a|PD11080a", rownames(allDataTpl)),], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=xmax)
+patients <- c("PD11104a","PD8314a","PD9227a")
+fiveStagePredictedTplLoo <- sapply(patients, function(pd){
+			e <- new.env()
+			i <- which(rownames(dataFrame)==pd)
+			load(paste0("../../code/loo/",i,".RData"), env=e)
+
+			cvIdx <- 1:nrow(dataFrame)
+			whichTrain <<- which(cvIdx != i)
+			xx <- 0:2000
+			coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(prdData, time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index])[prdData$index %in% whichTrain,]) 
+			tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1])))						
+			
+			coxphOs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))[osData$index %in% whichTrain,]) 
+			tdOsBaseline <- exp(pmin(predict(coxphOs, newdata=data.frame(time0=500)),predict(coxphOs, newdata=data.frame(time0=xx[-1])))) ## cap predictions at induction length 500 days.
+			m <- MultiRFX5(e$rfxEs, e$rfxCr, e$rfxNrs, e$rfxRel, e$rfxPrs, allDataTpl[grep(pd, rownames(allDataTpl)),], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)			
+		}, simplify="array")
 #par(mfrow=c(2,2))
 par(mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0)) 
 w <- seq(1,2001,10)
 at <- ceiling(1:5 * 365.5)
 x <- (w-1)/365.25
-for(i in c(2,3,5,6,8,9)){
-	sedimentPlot(-fiveStagePredictedTpl[w,6:8,i],x=x, y0=1, y1=0,  col=pastel1[c(2:3,5,4)], xlab="Years from CR",ylab="Probability", xaxs='i', yaxs='i')
-	o <- 1-rowSums(fiveStagePredictedTpl[w,6:7,i])
+for(pd in patients)
+	for(i in c(2,3)){
+	sedimentPlot(-fiveStagePredictedTplLoo[w,6:8,i,pd],x=x, y0=1, y1=0,  col=pastel1[c(2:3,5,4)], xlab="Years from CR",ylab="Probability", xaxs='i', yaxs='i')
+	o <- 1-rowSums(fiveStagePredictedTplLoo[w,6:7,i,pd])
 	abline(v=c(1:5), col="white", lty=3)
 	abline(h=seq(0.2,0.8,0.2), col="white", lty=3)
 	lines(x,o, lwd=2)
-	lines(x,o ^ exp(qnorm(0.975) * fiveStagePredictedTpl[w,9,i]))
-	lines(x,o ^ exp(-qnorm(0.975) * fiveStagePredictedTpl[w,9,i]))
+	lines(x,o ^ exp(qnorm(0.975) * fiveStagePredictedTplLoo[w,9,i,pd]))
+	lines(x,o ^ exp(-qnorm(0.975) * fiveStagePredictedTplLoo[w,9,i,pd]))
 	text(x=rep(0,3), c(0.1,0.2,0.3), c("rel./al.", "rel./death", "n.r./death") )
-	text(x=1:5, y=rep(0.3, 5), round(fiveStagePredictedTpl[at,6,i],2))
-	text(x=1:5, y=rep(0.2, 5), round(fiveStagePredictedTpl[at,7,i],2))
-	text(x=1:5, y=rep(0.1, 5), round(fiveStagePredictedTpl[at,8,i],2))
+	text(x=1:5, y=rep(0.3, 5), round(fiveStagePredictedTplLoo[at,6,i,pd],2))
+	text(x=1:5, y=rep(0.2, 5), round(fiveStagePredictedTplLoo[at,7,i,pd],2))
+	text(x=1:5, y=rep(0.1, 5), round(fiveStagePredictedTplLoo[at,8,i,pd],2))
 	#text(x=at, y=rep(0.1, 5), round(fiveStagePredictedTpl[w,6,i],2))
 }
 
