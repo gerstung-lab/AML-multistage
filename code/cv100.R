@@ -4,7 +4,7 @@ library(CoxHD)
 library(Rcpp)
 library(randomForestSRC)
 
-#save(dataFrame, nrdData, crGroups, mainGroups, prdData, relData, prdData, osData, cr, dataFrameOsTD, dataFrame, osTD, tplSplitOs, groups, data, whichRFXOsTDGG, mainIdxOs, clinicalData, MultiRFX5, os,  file="../../code/cv100.RData")
+#save(dataFrame, nrdData, crGroups, mainGroups, prdData, relData, prdData, osData, cr, dataFrameOsTD, dataFrame, osTD, tplSplitOs, groups, data, whichRFXOsTDGG, mainIdxOs, clinicalData, MultiRFX5, os, scope, file="../../code/cv100.RData")
 
 jobIndex <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
 
@@ -31,6 +31,7 @@ multiRfx5 <- MultiRFX5(rfxEs, rfxCr, rfxNrs, rfxRel, rfxPrs, data[trainIdx,,drop
 
 # Static models (other)
 c <- coxph(os[trainIdx] ~ 1, data=dataFrame[trainIdx,mainIdxOs])
+scope <- c("Genetics","CNA","Treatment","Fusions") ## For CPSS
 scopeStep <- as.formula(paste("os[trainIdx] ~", paste(colnames(dataFrame)[mainIdxOs], collapse="+")))
 coxBICOs <- step(c, scope=scopeStep, k = log(sum(trainIdx)), trace=0)
 coxAICOs <- step(coxBICOs, scope=scopeStep, k = 2, trace=0)
