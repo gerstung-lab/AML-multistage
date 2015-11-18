@@ -4,12 +4,13 @@ library(CoxHD)
 library(Rcpp)
 library(randomForestSRC)
 
-#save(dataFrame, nrdData, crGroups, mainGroups, prdData, relData, prdData, osData, cr, dataFrameOsTD, dataFrame, osTD, tplSplitOs, groups, data, whichRFXOsTDGG, mainIdxOs, clinicalData, MultiRFX5, os, scope, file="../../code/cv100.RData")
+#save(dataFrame, nrdData, crGroups, mainGroups, prdData, relData, prdData, osData, cr, dataFrameOsTD, dataFrame, osTD, tplSplitOs, groups, data, whichRFXOsTDGG, mainIdxOs, clinicalData, MultiRFX5, os, mainIdxOsTD, scope, file="../../code/cv100.RData")
 
 jobIndex <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
 
 set.seed(jobIndex)
-trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+splits <- sample(1:nrow(dataFrame)%%5 +1 )
+trainIdx <- splits!=1 ## sample 1/5
 
 # Multi-stage model
 whichTrain <- which(trainIdx)
@@ -43,7 +44,7 @@ coxRFXOsGGc$Z <- NULL
 rForestOsTrain <- rfsrc(Surv(time, status) ~.,data= cbind(time = os[,1], status = os[,2], dataFrame[,mainIdxOs])[trainIdx,], ntree=100, importance="none")
 
 # Time-dependent models
-trainIdxTD <- sample(1:nrow(dataFrame)%%5 +1 )[tplSplitOs]!=1 ## sample 1/5
+trainIdxTD <- splits[tplSplitOs]!=1 ## sample 1/5
 c <- coxph(osTD[trainIdxTD] ~ 1, data=dataFrameOsTD[trainIdxTD,mainIdxOsTD])
 scopeStep <- as.formula(paste("osTD[trainIdx] ~", paste(colnames(dataFrameOsTD)[mainIdxOsTD], collapse="+")))
 coxBICOsTD <- step(c, scope=scopeStep, k = log(sum(trainIdxTD)), trace=0)
