@@ -2,8 +2,9 @@ load("cv100.RData")
 library(mg14)
 library(CoxHD)
 library(Rcpp)
+library(randomForestSRC)
 
-#save(dataFrame, nrdData, crGroups, mainGroups, prdData, relData, prdData, osData, cr, dataFrameOsTD, osTD, tplSplitOs, groups, data, whichRFXOsTDGG, clinicalData, MultiRFX5,  file="../../code/cv100.RData")
+#save(dataFrame, nrdData, crGroups, mainGroups, prdData, relData, prdData, osData, cr, dataFrameOsTD, osTD, tplSplitOs, groups, data, whichRFXOsTDGG, mainIdxOs, clinicalData, MultiRFX5,  file="../../code/cv100.RData")
 
 jobIndex <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
 
