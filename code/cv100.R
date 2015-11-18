@@ -4,7 +4,7 @@ library(CoxHD)
 library(Rcpp)
 library(randomForestSRC)
 
-#save(dataFrame, nrdData, crGroups, mainGroups, prdData, relData, prdData, osData, cr, dataFrameOsTD, osTD, tplSplitOs, groups, data, whichRFXOsTDGG, mainIdxOs, clinicalData, MultiRFX5,  file="../../code/cv100.RData")
+#save(dataFrame, nrdData, crGroups, mainGroups, prdData, relData, prdData, osData, cr, dataFrameOsTD, dataFrame, osTD, tplSplitOs, groups, data, whichRFXOsTDGG, mainIdxOs, clinicalData, MultiRFX5, os,  file="../../code/cv100.RData")
 
 jobIndex <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
 
@@ -27,7 +27,7 @@ coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.f
 tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1])))						
 coxphOs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))[osData$index %in% whichTrain,]) 
 tdOsBaseline <- exp(pmin(predict(coxphOs, newdata=data.frame(time0=500)),predict(coxphOs, newdata=data.frame(time0=xx[-1])))) ## cap predictions at induction length 500 days.
-multiRfx5 <- MultiRFX5(rfxEs, rfxCr, rfxNrs, rfxRel, rfxPrs, data[cvIdx == jobIndex,,drop=FALSE], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)
+multiRfx5 <- MultiRFX5(rfxEs, rfxCr, rfxNrs, rfxRel, rfxPrs, data[trainIdx,,drop=FALSE], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)
 
 # Static models (other)
 c <- coxph(os[trainIdx] ~ 1, data=dataFrame[trainIdx,mainIdxOs])
