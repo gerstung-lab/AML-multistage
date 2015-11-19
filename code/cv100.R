@@ -56,7 +56,7 @@ tdOsBaseline <- exp(pmin(predict(coxphOs, newdata=data.frame(time0=500)),predict
 dataTD <- data[tplSplitOs, ]
 dataTD$transplantCR1[1:nrow(data)] <- 0
 dataTD$transplantRel[1:nrow(data)] <- 0
-multiRfx5 <- MultiRFX5(e$rfxEs, e$rfxCr, e$rfxNrs, e$rfxRel, e$rfxPrs, dataTD[!trainIdxTD,], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)
+multiRfx5 <- MultiRFX5(rfxEs, rfxCr, rfxNrs, rfxRel, rfxPrs, dataTD[!trainIdxTD,], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)
 
 save(rfxEs, rfxCr, rfxEs, rfxNrs, rfxPrs, rfxRel, rfxOs, multiRfx5, coxBICOs, coxBICOsTD, coxAICOs, coxAICOsTD, coxCPSSOs, coxRFXOs, coxRFXOsTD, coxRFXOsGGc, coxRFXOsTDGGc, rForestOsTrain, file=paste0("cv100/",jobIndex,".RData"))
 
