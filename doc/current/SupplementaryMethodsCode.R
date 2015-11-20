@@ -105,7 +105,7 @@ my_png <-  function(file, width, height, pointsize=12, ...) {
 #' Load a few libraries - see end of document for a full list of libraries and their versions.
 library(CoxHD)
 library(mg14)
-set1 <- brewer.pal(8, "Set1")
+set1 <- brewer.pal(9, "Set1")
 
 #' ### Raw data
 #' Load clinical data
@@ -2445,7 +2445,7 @@ legend("bottomright",c("RFX OS","RFX Multistage"), col=set1[1:2], lty=1, bty="n"
 a <- sapply(times, function(t) ape(1-colSums(multiRfx5Loo[times == t,1:3,]), os, t))
 s <- summary(survfit(coxRFXFitOsTDGGc), times=times)
 b <- sapply(times, function(t) ape(s$surv[times==t]^exp(rfx5Loo[6,]), os, t))
-e <- sapply(times, function(t) ape(s[times==t], os, t))
+e <- sapply(times, function(t) ape(s$surv[times==t], os, t))
 for(i in 1:4){
 	plot(times/365.25, e[i,], type='l', xlab="Time (yr)", ylab=rownames(a)[i], col=set1[9])
 	lines(times/365.25, a[i,], col=set1[1])
