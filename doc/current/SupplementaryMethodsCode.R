@@ -2915,7 +2915,7 @@ allModelsCvTdPredictions <- mclapply(1:replicates, function(foo) try({
 							}))
 			pred <- cbind(pred, mRFX1yr=colSums(e$multiRfx5[365,1:3,]), mRFX3yr=colSums(e$multiRfx5[3*365,1:3,]), mRFX5yr=colSums(e$multiRfx5[5*365,1:3,]))
 			return(pred)
-		}), mc.cores=10)
+		}), mc.cores=4)
 
 #' Harrel's C
 #+ allModelsCvTd-C
