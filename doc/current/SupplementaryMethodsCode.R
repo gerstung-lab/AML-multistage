@@ -2891,9 +2891,8 @@ legend(par("usr")[1],1.5, fill=set1[c(3,2,4,1,5,7)][1:ncol(allModelsCvRfxC)], le
 #' administered after diagnosis.
 
 #' The subsequent code is executed on our LSF cluster for 100 replicates
-#+ allModelsCVTDCode
-read_chunk('../../code/cv100.R', labels="cv100")
-#+ cv100, eval=FALSE
+read_chunk('../../code/cv100.R', labels="allModelsCVTDCode")
+#+ allModelsCVTDCode, eval=FALSE
 
 
 #' Gathering results and computing predictions
