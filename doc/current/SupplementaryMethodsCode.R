@@ -26,13 +26,13 @@
 #' 
 #' |Group        |   p|Variables                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 #' |:------------|---:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-#' |Fusion genes           |   7|t_MLL, inv3_t3_3, t_9_22, t_15_17, t_8_21, inv16_t16_16, t_6_9                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+#' |Fusion genes           |   8|t_MLL, inv3_t3_3, t_9_22, t_15_17, t_8_21, inv16_t16_16, t_6_9, t_9_11, t_v_11                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 #' |CNA          |  18|minus5_5q, minus7, minus7q, abn7other, plus8_8q, minus9q, mono12_12p_abn12p, plus13, mono17_17p_abn17p, minus18_18q, minus20_20q, plus21, plus22, minusY, abn3q_other, plus11_11q, mono4_4q_abn4q, complex                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 #' |Genetics     |  58|ASXL1, ATRX, BCOR, BRAF, CBL, CBLB, CDKN2A, CREBBP, CUX1, DNMT3A, EP300, ETV6, EZH2, FBXW7, GATA2, GNAS, IDH1, IKZF1, JAK2, KDM5A, KDM6A, KIT, KRAS, MLL, MLL2, MLL3, MLL5, MPL, MYC, NF1, NPM1, NRAS, PHF6, PRPF40B, PTEN, PTPN11, RAD21, RB1, RUNX1, SF1, SF3A1, SF3B1, SFRS2, SH2B3, STAG2, TET2, TP53, U2AF1, U2AF2, WT1, ZRSR2, CEBPA_mono, CEBPA_bi, FLT3_ITD, FLT3_TKD, FLT3_other, IDH2_p172, IDH2_p140                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 #' |Gene:Gene product terms     | 126|BCOR:DNMT3A, ASXL1:EZH2, DNMT3A:IDH1, DNMT3A:KRAS, DNMT3A:MLL, IDH1:MLL, DNMT3A:MYC, DNMT3A:NF1, CBL:NPM1, DNMT3A:NPM1, GATA2:NPM1, IDH1:NPM1, KIT:NPM1, KRAS:NPM1, MYC:NPM1, NF1:NPM1, ASXL1:NRAS, BCOR:NRAS, DNMT3A:NRAS, EZH2:NRAS, GATA2:NRAS, IDH1:NRAS, KIT:NRAS, KRAS:NRAS, MLL:NRAS, NPM1:NRAS, NPM1:PHF6, DNMT3A:PTPN11, IDH1:PTPN11, KRAS:PTPN11, NPM1:PTPN11, NRAS:PTPN11, DNMT3A:RAD21, NPM1:RAD21, NRAS:RAD21, PTPN11:RAD21, ASXL1:RUNX1, BCOR:RUNX1, DNMT3A:RUNX1, EZH2:RUNX1, IDH1:RUNX1, MLL:RUNX1, NRAS:RUNX1, PHF6:RUNX1, NRAS:SF3B1, ASXL1:SFRS2, DNMT3A:SFRS2, IDH1:SFRS2, NPM1:SFRS2, NRAS:SFRS2, RUNX1:SFRS2, ASXL1:STAG2, DNMT3A:STAG2, EZH2:STAG2, MLL:STAG2, NPM1:STAG2, NRAS:STAG2, RUNX1:STAG2, SFRS2:STAG2, ASXL1:TET2, DNMT3A:TET2, KIT:TET2, MLL:TET2, NPM1:TET2, NRAS:TET2, PTPN11:TET2, RUNX1:TET2, SFRS2:TET2, STAG2:TET2, DNMT3A:TP53, NRAS:TP53, NRAS:U2AF1, NPM1:WT1, NRAS:WT1, DNMT3A:CEBPA_mono, NPM1:CEBPA_mono, TET2:CEBPA_mono, GATA2:CEBPA_bi, NRAS:CEBPA_bi, WT1:CEBPA_bi, DNMT3A:FLT3_ITD, EZH2:FLT3_ITD, IDH1:FLT3_ITD, MLL:FLT3_ITD, MYC:FLT3_ITD, NPM1:FLT3_ITD, NRAS:FLT3_ITD, PHF6:FLT3_ITD, PTPN11:FLT3_ITD, RAD21:FLT3_ITD, RUNX1:FLT3_ITD, STAG2:FLT3_ITD, TET2:FLT3_ITD, WT1:FLT3_ITD, CEBPA_mono:FLT3_ITD, CEBPA_bi:FLT3_ITD, DNMT3A:FLT3_TKD, IDH1:FLT3_TKD, MLL:FLT3_TKD, NPM1:FLT3_TKD, NRAS:FLT3_TKD, RAD21:FLT3_TKD, RUNX1:FLT3_TKD, TET2:FLT3_TKD, WT1:FLT3_TKD, FLT3_ITD:FLT3_TKD, DNMT3A:FLT3_other, NPM1:FLT3_other, NRAS:FLT3_other, PTPN11:FLT3_other, RUNX1:FLT3_other, TET2:FLT3_other, FLT3_ITD:FLT3_other, DNMT3A:IDH2_p172, ASXL1:IDH2_p140, DNMT3A:IDH2_p140, MLL:IDH2_p140, NPM1:IDH2_p140, NRAS:IDH2_p140, PTPN11:IDH2_p140, RUNX1:IDH2_p140, SFRS2:IDH2_p140, STAG2:IDH2_p140, FLT3_ITD:IDH2_p140, FLT3_TKD:IDH2_p140, NPM1:FLT3_ITD:DNMT3A |
 #' |Clinical     |  11|Performance_ECOG, BM_Blasts_100, PB_Blasts_100, wbc_100, LDH_1000, HB_10, platelet_100, Splenomegaly, oAML, sAML, tAML                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 #' |Demographics |   2|AOD_10, gender                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-#' |Treatment    |   3|ATRA, VPA, TPL_os                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+#' |Treatment    |   4|ATRA, VPA, TPL_os, TPL_rel                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 #' |Nuisance     |   4|AMLHD98A, AMLHD98B, Date_1000, MissingCyto                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 #' 
 #' Table: Table 1. Variables 
@@ -48,7 +48,7 @@
 #' Fusion genes, Copy number alterations, Genetics and Gene:Gene interactions were encoded as 0 (absent) and 1 (present) based on the same annotation as in [@PapaemmanuilSM2015]. 
 #' A gene was considered mutated and encoded as 1 if it contained at least one oncogenic mutation, and 0 otherwise. In addition, we used the following rules:
 #' 
-#' * For _CEBPA_we additionally differentiated mono- and bi-allelic lesions. 
+#' * For _CEBPA_ we additionally differentiated mono- and bi-allelic lesions. 
 #' * For _FLT3_ we distinguished between ITD, TKD and other mutations. 
 #' * For _IDH2_ we separately encoded  p172 and p140 point mutations.
 #' 
@@ -526,7 +526,7 @@ names(colGroups) <- levels(groups)[order(toupper(levels(groups)))]
 PlotVarianceComponents(coxRFXFitOsTDGGc, col=colGroups)
 title("Risk contributions OS (time-dep)")
 
-#' ### Confidence intervals
+#' ### Confidence intervals and significance tests
 #' Estimate confidence intervals by parametric bootstrap and compare with Wald Test. Note that the usual sample with replacement 
 #' yields inconsistencies for the interaction terms due to the overdispersed correlations.
 #' The theoretical description of the survival time simulation is given in section [survival](#survival).
@@ -572,7 +572,7 @@ abline(h=qchisq(c(0.95,0.99,0.999), 1, lower.tail=TRUE), lty=c(1,2,3))
 #' The plot indicates a good agreement of the variance estimate `var2`, see [section 2.1.4.](#Analytical-confidence-intervals-of-individual-parameters). Knowing the distribution
 #' of the variance allows us to compute a Wald test of the coefficients.
 
-#' #### Supplementary Table 1
+#' #### Supplementary Table S1
 #' Table with significance
 #+ parBootTable, results='asis'
 library(DT)
@@ -602,7 +602,6 @@ addDataFrame(waldOut,
 		rownamesStyle = CellStyle(wb) + Font(wb, isBold=TRUE)
 )
 
-#' #### Figure 1c
 #' Volcano plot
 #+ volcanoGGc, fig.width=3, fig.height=3
 par(mar=c(3,3,1,1)+.1,  bty="n", mgp=c(2,.5,0))
@@ -646,7 +645,7 @@ points(VarianceComponents(coxRFXFitOsTDGGc),  pch=19)
 rm(parBoot)
 
 #' ### Risk constellation plots
-#' #### Figure 2a
+#' #### Supplementary Figure S3A
 #' Plot of log hazard v outcome
 #+ logHazOutcome, fig.width=3, fig.height=2
 par(mar=c(3,3,3,1), mgp=c(2,.5,0))
@@ -664,7 +663,7 @@ image(x=q/max(q)*500, y=c(u[4]-(u[4]-u[3])/20, u[4]), matrix(1:10), col= (brewer
 axis(side=3, at=pretty(q/365)/max(q)*365*500, labels=pretty(q/365))
 lines(ksmooth(seq_along(o),t[o,2]==0, bandwidth=50))
 
-#' #### Figure 2c
+#' #### Supplementary Figure S3C
 #' Risk constellation plots using the `stars()` function
 #+ stars, fig.width=12, fig.height=12
 set.seed(42)
@@ -687,7 +686,7 @@ symbols(locations[,1], locations[,2], circles=rep(.5,(nStars^2)), inches=FALSE, 
 title(main=l)
 
 
-#' #### Figure 2b
+#' #### Supplementary Figure S3B
 #' Randomly select 5 patients according to their genotype/outcome
 #+ patientStars, fig.width=4, fig.height=3
 patients <- c(
@@ -716,688 +715,6 @@ par(xpd=NA)
 text(locations[,1], locations[,2]+1,labels=paste(gsub(";","\n",genotype[patients]),l, paste(round(os[patients,1],2), osYr[patients,2]), sep="\n"), pos=3)
 
 
-
-#' # Cross-validation
-#' 
-#' We used cross-validation to evaluate the performance of different modelling strategies. The idea is to split the data
-#' into a training and a test set; the model is fitted on the training part and its prognostic accuracy evaluated on the test set.
-#' 
-#' 
-#' ## Random cross validation
-#' We have randomly split the data 100 times 80% training data and 20% validation data. For each split, we 
-#' evaluated the following metrics:
-#' 
-#' * Concordance,  defined as the probability that the survival times of two individuals are concordant to the ranking of their risk [@HarrellSM1996],
-#' implemented in `survival::survConcordance()` 
-#' * Area under the receiver-operating characteristic curve (AUC), a measure of the correct classification into dead and alive at
-#' a given time [@UnoJOTASA2007], implemented in `survAUC::auc.Uno()`.
-#' * Brier score, an absolute measure of the prediction error [@GerdsBJ2006], implemented in `survAUC::predErr()`.
-#' * A generalised coefficient of explained variation $R^2$  [@NagelkerkeB1991,@OQuigleySM2005] , implemented as `survAUC::OXS()`.
-#' 
-#'  The latter three algorithms are implemented in the `survAUC` `R` package [@Potapov2012].
-#' 
-#' ## Inter-trial
-#' 
-#' The data comprised patients from three different trials - AMLSG07/04 (n=740), AMLHD98A (n=627), and AMLHD98B (n=173).
-#' In addition to randomly splitting the data into training and test partitions, we trained the model on all three combinations of 2 trials and
-#' evaluated the prognostic accuracy on the third trial. This situation is more challenging as there may 
-#' be some systematic differences between the trials, but it can also be expected to more closely mimic the situation of predicting a novel cohort.
-#' 
-#' 
-#' ## TCGA
-#' 
-#' As an additional and independent evaluation cohort, we downloaded data from the cancer genome atlas (TCGA) [@TCGANEJM2013]. 
-#' We downloaded variant calls from exome sequencing and cytogenetic data for n=200 and annotated oncogenic mutations as described in our companion paper.
-#' Overall survival was available for n=186 patients. For missing prognostic variables, we use a [covariance-based imputation](#covariance-based-imputation), with
-#' a covariance matrix derived from our original data set (n=1,540). We note that there was no data available for allografts.
-#' 
-#' ## Code
-
-#' ### Systematic cross-validation
-#' 
-#' #### Static models
-#+allModelsCV, cache=TRUE, cache.lazy=FALSE
-library(rpart)
-library(randomForestSRC)
-replicates <- 100 ## number of replicates
-scope <- c("Genetics","CNA","Treatment","Fusions") ## For CPSS
-scopeStep <- as.formula(paste("os ~", paste(colnames(dataFrame)[mainIdxOs& osIdx], collapse="+"))) ## For AIC&BIC
-allModelsCV <- mclapply(1:replicates, function(foo){
-			set.seed(foo)
-			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
-			c <- coxph(os[trainIdx] ~ 1, data=dataFrame[trainIdx,mainIdxOs])
-			scopeStep <- as.formula(paste("os[trainIdx] ~", paste(colnames(dataFrame)[mainIdxOs], collapse="+")))
-			coxBICOsTrain <- step(c, scope=scopeStep, k = log(sum(trainIdx)), trace=0)
-			coxAICOsTrain <- step(coxBICOsTrain, scope=scopeStep, k = 2, trace=0)
-			coxCPSSOsTrain <- CoxCPSSInteractions(dataFrame[!is.na(os) & trainIdx, mainIdxOs], na.omit(os[trainIdx]), bootstrap.samples=50, scope = which(groups %in% scope))
-			coxRFXOsTrain <- CoxRFX(dataFrame[trainIdx,mainIdxOs], os[trainIdx], groups=groups[mainIdxOs])
-			coxRFXOsTrain$Z <- NULL
-			coxRFXOsGGc <- CoxRFX(dataFrame[trainIdx,whichRFXOsGG], os[trainIdx], groups=groups[whichRFXOsGG], which.mu=mainGroups)
-			coxRFXOsGGc$Z <- NULL
-			rForestOsTrain <- rfsrc(Surv(time, status) ~.,data= cbind(time = os[,1], status = os[,2], dataFrame[,mainIdxOs])[trainIdx,], ntree=100, importance="none")
-			return(list(
-							BIC=coxBICOsTrain,
-							AIC=coxAICOsTrain,
-							CPSS=coxCPSSOsTrain,
-							RFX=coxRFXOsTrain,
-							RFXgg=coxRFXOsGGc,
-							rForest=rForestOsTrain
-					))
-		}, mc.cores=10)
-
-#' Compute predictions for all model fits
-#' 
-#+ allModelsCvPredictions, cache=TRUE
-predictAllModels <- function(x, newdata){
-	if("rfsrc" %in% class(x)){
-		predict(x, newdata, importance="none")$predicted
-	}else{
-		predict(x, newdata)
-	}
-}
-
-allModelsCvPredictions <- mclapply(seq_along(allModelsCV), function(foo){
-			set.seed(foo)
-			x <- allModelsCV[[foo]]
-			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
-			cbind(ELN=c(4,1,3,2)[clinicalData$M_Risk[!trainIdx]],
-					sapply(x, function(y){
-								predictAllModels(y, newdata=dataFrame[!trainIdx,])
-							}))
-		}, mc.cores=10)
-
-colModels <- c("#888888", set1[c(2,1,4,3,5,7)])
-
-#' Harrel's C
-#+ allModelsCv-C
-foo <- 1
-allModelsCvC <- sapply(allModelsCvPredictions, function(x){
-			set.seed(foo)
-			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
-			foo <<- foo +1		
-			apply(x, 2 , function(p){						
-						survConcordance(osYr[!trainIdx,] ~ p)$concordance
-					})
-		})
-apply(allModelsCvC,1,quantile)
-
-#+ allModelsCvBoxplot, fig.width=2, fig.height=1.5
-par(mar=c(3,3,1,1),bty="n", mgp=c(2,.5,0), las=2)
-r <- sapply(as.data.frame(lapply(as.data.frame(t(apply(-allModelsCvC,2,rank))),factor, levels=1:7)),table)
-o <- order(apply(allModelsCvC,1,median))
-boxplot(t(allModelsCvC[o,]), notch=TRUE, ylab="Concordance", staplewex=0, lty=1, pch=16, xaxt="n")
-rotatedLabel(1:7, rep(par("usr")[3],7), rownames(allModelsCvC)[o])
-
-#+ allModelsCvRank, fig.width=2, fig.height=1.5
-par(mar=c(3,3,3,1), xpd=NA, las=2, mgp=c(2,.5,0))
-barplot(r[,o]/replicates, col=c(set1[c(3,2,4,1,5,7)],"grey"), ylab="Fraction", names.arg=rep("",ncol(r))) -> b
-rotatedLabel(b, rep(par("usr")[3],6), colnames(allModelsCvC)[o])
-legend(par("usr")[1],1.5, fill=c(set1[c(3,2,4,1,5,7)],"grey"), legend=1:6, bty="n", border=NA, horiz=TRUE, title="Rank")
-
-#' #### Supplementary Figure 1
-#' Brier scores
-#+ allModelsCv-Brier, cache=TRUE
-library(survAUC)
-foo <- 1
-allModelsCvBrier<- sapply(allModelsCV, function(x){
-			set.seed(foo)
-			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
-			foo <<- foo +1		
-			sapply(x, function(y){
-						p <- predictAllModels(y, newdata=dataFrame)
-						a <- predErr(Surv.rsp = osYr[trainIdx,], Surv.rsp.new = osYr[!trainIdx,], lp=p[trainIdx], lpnew = p[!trainIdx], times= c(90,365,1000)/365, type="brier")$error
-					})
-		})
-apply(allModelsCvBrier,1,quantile)
-rownames(allModelsCvBrier) <- paste(rep(names(allModelsCV[[1]]), each=3), rep(c(90,365,1000), length(allModelsCV[[1]])))
-boxplot(t(allModelsCvBrier)[,rep(0:5*3, 3) + rep(1:3, each=6)],notch=TRUE, ylab="Brier score", border=rep(colModels[-1],3), las=2, lty=1, pch=16, staplewex=0)
-
-
-#' GHCI
-#+ allModelsCv-GHCI, cache=TRUE
-allModelsCvGHCI<- sapply(allModelsCvPredictions, function(x){
-			apply(x[,2:6], 2 , function(p){
-						p <- GHCI(lpnew = na.omit(p))
-					})
-		})
-apply(allModelsCvGHCI,1,quantile)
-boxplot(t(allModelsCvGHCI),notch=TRUE, ylab="GH C", border=colModels[2:6], las=2, lty=1, pch=16, staplewex=0)
-
-
-#' OXS R2 estimates
-#+ allModelsCv-OXS, cache=TRUE
-foo <- 1
-allModelsCvOXS <- sapply(allModelsCvPredictions, function(x){
-			set.seed(foo)
-			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
-			foo <<- foo +1		
-			apply(x[,2:6], 2 , function(p){						
-						a <- OXS(osYr[!trainIdx,], p, rep(0,length(p)))
-					})
-		})
-apply(allModelsCvOXS,1,quantile)
-boxplot(t(allModelsCvOXS), ylim=c(0,0.5), notch=TRUE, ylab="OXS R2", border=colModels[2:6], las=2, lty=1, pch=16, staplewex=0)
-
-#' Nagelk R2 estimates
-#+ allModelsCv-Nagelk, cache=TRUE
-foo <- 1
-allModelsCvNagelk <- sapply(allModelsCvPredictions, function(x){
-			set.seed(foo)
-			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
-			foo <<- foo +1		
-			apply(x[,2:6], 2 , function(p){						
-						a <- Nagelk(osYr[!trainIdx,], p, rep(0,length(p)))
-					})
-		})
-apply(allModelsCvNagelk,1,quantile)
-boxplot(t(allModelsCvNagelk), ylim=c(0,0.4), notch=TRUE, ylab="Nagelk's R2", border=colModels[2:6], las=2, lty=1, pch=16, staplewex=0)
-
-#' UnoC
-#+ allModelsCv-UnoC, cache=TRUE
-foo <- 1
-allModelsCvUnoC<- sapply(allModelsCvPredictions, function(x){
-			set.seed(foo)
-			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
-			foo <<- foo +1		
-			apply(x,2, function(p){
-						a <- UnoC(Surv.rsp = osYr[trainIdx,], Surv.rsp.new = osYr[!trainIdx,][!is.na(p)],  lpnew = na.omit(p), time=5)
-					})
-		})
-apply(allModelsCvUnoC,1,quantile)
-boxplot(t(allModelsCvUnoC), notch=TRUE,  ylab="Uno's C", border=colModels, lty=1, pch=16, staplewex=0)
-
-#' AUC UNO
-#+ allModelsCv-AUCuno, cache=TRUE
-t <- seq(0.1,5,0.1) #times
-allModelsCvAuc <- sapply(seq_along(allModelsCvPredictions), function(foo){
-			set.seed(foo)
-			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
-			apply(allModelsCvPredictions[[foo]], 2, function(p){
-						AUC.uno(osYr[trainIdx,], osYr[!trainIdx, ][!is.na(p)], scale(na.omit(p)), t)$auc
-					})
-		})
-allModelsCvAuc <- array(allModelsCvAuc, dim=c(length(t),ncol(allModelsCvPredictions[[1]]),length(allModelsCvPredictions)))
-plot(NA,NA, xlab="Years",ylab="AUC", xlim=range(t), ylim=c(0.5,0.8))
-for(i in 1:dim(allModelsCvAuc)[2]){
-	lines(t,rowMeans(allModelsCvAuc, dims=2)[,i], type='l', new=i==1, col=colModels[i])
-}
-legend("bottomright", colnames(allModelsCvPredictions[[1]]), bty="n", lty=1, col=colModels)
-
-
-#' Wisdom of the crowds?
-foo <- 1
-allModelsCvCKraut <- sapply(allModelsCvPredictions, function(x){
-			set.seed(foo)
-			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
-			foo <<- foo +1		
-			r <- rowMeans(apply(x, 2 , rank))
-			survConcordance(osYr[!trainIdx,] ~ r)$concordance
-		})
-quantile(allModelsCvCKraut)
-boxplot(cbind(t(allModelsCvC),allModelsCvCKraut), notch=TRUE, ylab="Concordance", border=c(colModels,1), las=2, lty=1, pch=16, staplewex=0)
-
-ranks <- apply(apply(-cbind(t(allModelsCvC),kraut=allModelsCvCKraut),1,rank, ties.method="random"),1,function(x) table(factor(x, levels=1:8)))
-ranks <- ranks[,order(1:8 %*% ranks)]
-
-#' Clean up.. 
-rm(allModelsCV)
-
-#' #### Time-dep models
-
-#+ allModelsCVTD, cache=TRUE
-replicates <- 100 ## number of replicates
-allModelsCVTD <- mclapply(1:replicates, function(foo){
-			set.seed(foo)
-			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )[tplSplitOs]!=1 ## sample 1/5
-			c <- coxph(osTD[trainIdx] ~ 1, data=dataFrameOsTD[trainIdx,mainIdxOsTD])
-			scopeStep <- as.formula(paste("osTD[trainIdx] ~", paste(colnames(dataFrameOsTD)[mainIdxOsTD], collapse="+")))
-			coxBICOsTrain <- step(c, scope=scopeStep, k = log(sum(trainIdx)), trace=0)
-			coxAICOsTrain <- step(coxBICOsTrain, scope=scopeStep, k = 2, trace=0)
-			coxRFXOsTrain <- CoxRFX(dataFrameOsTD[trainIdx,mainIdxOsTD], osTD[trainIdx], groups=groups[mainIdxOsTD])
-			coxRFXOsTrain$Z <- NULL
-			coxRFXOsGGc <- CoxRFX(dataFrameOsTD[trainIdx,whichRFXOsTDGG], osTD[trainIdx], groups=groups[whichRFXOsTDGG], which.mu=mainGroups)
-			coxRFXOsGGc$Z <- NULL
-			
-			return(list(
-							BIC=coxBICOsTrain,
-							AIC=coxAICOsTrain,
-							RFX=coxRFXOsTrain,
-							RFXgg=coxRFXOsGGc							))
-		}, mc.cores=6)
-
-
-#' All predictions
-#+ allModelsCvTdPredictions, cache=TRUE
-allModelsCvTdPredictions <- mclapply(seq_along(allModelsCVTD), function(foo){
-			set.seed(foo)
-			x <- allModelsCVTD[[foo]]
-			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )[tplSplitOs]!=1
-			cbind(ELN=c(4,1,3,2)[clinicalData$M_Risk[tplSplitOs][!trainIdx]],
-					sapply(x, function(y){
-								predictAllModels(y, newdata=dataFrameOsTD[!trainIdx,])
-							}))
-		}, mc.cores=10)
-
-#' Harrel's C
-#+ allModelsCvTd-C
-foo <- 1
-allModelsCvTdC <- sapply(allModelsCvTdPredictions, function(x){
-			set.seed(foo)
-			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )[tplSplitOs]!=1 ## sample 1/5
-			foo <<- foo +1		
-			apply(x, 2 , function(p){						
-						survConcordance(osYrTD[!trainIdx,] ~ p)$concordance
-					})
-		})
-apply(allModelsCvTdC,1,quantile)
-
-
-#+ allModelsCvTdCBoxplot, fig.width=1.5, fig.height=1.5
-par(mar=c(3,3,1,1),bty="n", mgp=c(2,.5,0), las=2)
-r <- sapply(as.data.frame(lapply(as.data.frame(t(apply(-allModelsCvTdC,2,rank))),factor, levels=1:6)),table)
-o <- order(apply(allModelsCvTdC,1,median))
-boxplot(t(allModelsCvTdC[o,]), notch=TRUE, ylab="Concordance", staplewex=0, lty=1, pch=16, xaxt="n")
-rotatedLabel(1:nrow(allModelsCvTdC), rep(par("usr")[3],nrow(allModelsCvTdC)), rownames(allModelsCvTdC)[o])
-
-#+ allModelsCvTdCRank, fig.width=1.5, fig.height=1.5
-par(mar=c(3,3,3,1), xpd=NA, las=2, mgp=c(2,.5,0))
-barplot(r[,o]/replicates, col=set1[c(3,2,4,1,5,7)][1:ncol(allModelsCvTdC)], ylab="Fraction", names.arg=rep("",ncol(r))) -> b
-rotatedLabel(b, rep(par("usr")[3],ncol(allModelsCvTdC)), colnames(allModelsCvTdC)[o])
-legend(par("usr")[1],1.5, fill=set1[c(3,2,4,1,5,7)][1:nrow(allModelsCvTdC)], legend=1:nrow(allModelsCvTdC), bty="n", border=NA, horiz=TRUE, title="Rank")
-
-#' #### Different RFX models
-#' Here we assess RFX models with interaction terms for different variable categories.
-#+ allModelsCvRfx, cache=TRUE
-replicates <- 100 ## number of replicates
-allModelsCvRfxC <- do.call("rbind",mclapply(1:100, function(foo){
-					set.seed(foo)
-					trainIdx <- sample(1:nrow(dataFrameOsTD)%%5 +1 )[tplSplitOs]!=1 ## sample 1/5
-					coxRFXOsMain <- CoxRFX(dataFrameOsTD[trainIdx,mainIdxOsTD], osTD[trainIdx], groups=groups[mainIdxOsTD])
-					coxRFXOsGG <- CoxRFX(dataFrameOsTD[trainIdx,whichRFXOsTDGG], osTD[trainIdx], groups=groups[whichRFXOsTDGG])
-					coxRFXOsGGc <- CoxRFX(dataFrameOsTD[trainIdx,whichRFXOsTDGG], osTD[trainIdx], groups=groups[whichRFXOsTDGG], which.mu=mainGroups)
-					coxRFXOsAll <- CoxRFX(dataFrameOsTD[trainIdx,whichRFXOsTD], osTD[trainIdx], groups=groups[whichRFXOsTD])
-					coxRFXOsAllc <- CoxRFX(dataFrameOsTD[trainIdx,whichRFXOsTD], osTD[trainIdx], groups=groups[whichRFXOsTD], which.mu=mainGroups)
-					return(c(
-									Main=survConcordance(osTD[!trainIdx]~as.matrix(dataFrameOsTD[!trainIdx,mainIdxOsTD]) %*% coef(coxRFXOsMain))$concordance,
-									GeneGene=survConcordance(osTD[!trainIdx]~as.matrix(dataFrameOsTD[!trainIdx,whichRFXOsTDGG]) %*% coef(coxRFXOsGG))$concordance,
-									GeneGeneCentred=survConcordance(osTD[!trainIdx]~as.matrix(dataFrameOsTD[!trainIdx,whichRFXOsTDGG]) %*% coef(coxRFXOsGGc))$concordance,
-									AllInt=survConcordance(osTD[!trainIdx]~as.matrix(dataFrameOsTD[!trainIdx,whichRFXOsTD]) %*% coef(coxRFXOsAll))$concordance,	
-									AllIntCentred=survConcordance(osTD[!trainIdx]~as.matrix(dataFrameOsTD[!trainIdx,whichRFXOsTD]) %*% coef(coxRFXOsAllc))$concordance	
-							))
-				}, mc.cores=10))
-colnames(allModelsCvRfxC) <- sub(".concordant","",colnames(allModelsCvRfxC))
-
-#' #### Supplementary Figure 2
-
-#+ allModelsCvRfxBoxplot, fig.width=2, fig.height=1.5
-par(mar=c(3,3,1,1),bty="n", mgp=c(2,.5,0), las=2)
-r <- sapply(as.data.frame(lapply(as.data.frame(round(t(apply(-allModelsCvRfxC,1,rank)))),factor, levels=1:6)),table)
-o <- order(colMeans(allModelsCvRfxC))
-boxplot(allModelsCvRfxC[,o], notch=TRUE, ylab="Concordance", staplewex=0, lty=1, pch=16, xaxt="n")
-rotatedLabel(1:ncol(allModelsCvRfxC), rep(par("usr")[3],ncol(allModelsCvRfxC)), colnames(allModelsCvRfxC)[o])
-
-#+ allModelsCvRfxRank, fig.width=2, fig.height=1.5
-par(mar=c(3,3,3,1), xpd=NA, las=2, mgp=c(2,.5,0))
-barplot(r[,o]/replicates, col=set1[c(3,2,4,1,5,7)][1:ncol(allModelsCvRfxC)], ylab="Fraction", names.arg=rep("",ncol(r))) -> b
-rotatedLabel(b, rep(par("usr")[3],ncol(allModelsCvRfxC)), colnames(allModelsCvRfxC)[o])
-legend(par("usr")[1],1.5, fill=set1[c(3,2,4,1,5,7)][1:ncol(allModelsCvRfxC)], legend=1:ncol(allModelsCvRfxC), bty="n", border=NA, horiz=TRUE, title="Rank")
-
-
-
-#' ### Inter-study CV
-#+ allModelsTrial, cache=TRUE
-allModelsTrial <- mclapply(levels(clinicalData$Study), function(foo){
-			#set.seed(foo)
-			trainIdx <- clinicalData$Study != foo 
-			c <- coxph(os[trainIdx] ~ 1, data=dataFrame[trainIdx,mainIdxOs])
-			scopeStep <- as.formula(paste("os[trainIdx] ~", paste(colnames(dataFrame)[mainIdxOs], collapse="+")))
-			coxBICOsTrain <- step(c, scope=scopeStep, k = log(sum(trainIdx)), trace=0)
-			coxAICOsTrain <- step(coxBICOsTrain, scope=scopeStep, k = 2, trace=0)
-			coxCPSSOsTrain <- CoxCPSSInteractions(dataFrame[!is.na(os) & trainIdx, mainIdxOs], na.omit(os[trainIdx]), bootstrap.samples=50, scope = which(groups %in% scope))
-			w <- colnames(dataFrame[mainIdxOs])
-			w <- setdiff(w, names(which(colSums(dataFrame[trainIdx,w])==0)))
-			coxRFXOsTrain <- CoxRFX(dataFrame[trainIdx,w], os[trainIdx], groups=groups[w], nu = if(foo=="AMLSG0704") 1 else 0) # add prior for 0704 (just one group member)
-			coxRFXOsTrain$Z <- NULL
-			w <- whichRFXOsGG
-			w <- setdiff(w, which(colSums(dataFrame[trainIdx,w])==0))
-			coxRFXOsGGc <- CoxRFX(dataFrame[trainIdx,w], os[trainIdx], groups=groups[w], which.mu=mainGroups, nu = if(foo=="AMLSG0704") 1 else 0)
-			coxRFXOsGGc$Z <- NULL
-			rForestOsTrain <- rfsrc(Surv(time, status) ~.,data= cbind(time = os[,1], status = os[,2], dataFrame[,mainIdxOs])[trainIdx,], ntree=100, importance="none")
-			return(list(
-							BIC=coxBICOsTrain,
-							AIC=coxAICOsTrain,
-							CPSS=coxCPSSOsTrain,
-							RFX=coxRFXOsTrain,
-							RFXgg=coxRFXOsGGc,
-							rForest=rForestOsTrain
-					))
-		}, mc.cores=3)
-names(allModelsTrial) <- levels(clinicalData$Study)
-
-allModelsTrialPredictions <- mclapply(names(allModelsTrial), function(foo){
-			x <- allModelsTrial[[foo]]
-			trainIdx <- clinicalData$Study != foo
-			cbind(ELN=c(4,1,3,2)[clinicalData$M_Risk[!trainIdx]],
-					sapply(x, function(y){
-								predictAllModels(y, newdata=dataFrame[!trainIdx,])
-							}))
-		}, mc.cores=10)
-names(allModelsTrialPredictions) <- names(allModelsTrial)
-
-allModelsTrialC <- sapply(names(allModelsTrial), function(foo){
-			trainIdx <- clinicalData$Study != foo
-			apply(allModelsTrialPredictions[[foo]], 2 , function(p){						
-						unlist( survConcordance(osYr[!trainIdx,] ~ p)[c("concordance","std.err")])
-					})
-		}, simplify="array")
-
-allModelsTrialC
-
-#' #### Time-dependent
-#+ allModelsTrialTD, cache=TRUE
-allModelsTrialTD <- mclapply(levels(clinicalData$Study), function(foo){
-			#set.seed(foo)
-			trainIdx <- clinicalData$Study != foo 
-			c <- coxph(osTD[trainIdx] ~ 1, data=dataFrameOsTD[trainIdx,mainIdxOsTD])
-			scopeStep <- as.formula(paste("osTD[trainIdx] ~", paste(colnames(dataFrameOsTD)[mainIdxOsTD], collapse="+")))
-			coxBICOsTrain <- step(c, scope=scopeStep, k = log(sum(trainIdx)), trace=0)
-			coxAICOsTrain <- step(coxBICOsTrain, scope=scopeStep, k = 2, trace=0)
-			coxRFXOsTrain <- CoxRFX(dataFrameOsTD[trainIdx,mainIdxOsTD], osTD[trainIdx], groups=groups[mainIdxOsTD], nu = if(foo=="AMLSG0704") 1 else 0)
-			coxRFXOsTrain$Z <- NULL
-			coxRFXOsGGc <- CoxRFX(dataFrameOsTD[trainIdx,whichRFXOsTDGG], osTD[trainIdx], groups=groups[whichRFXOsTDGG], which.mu=mainGroups, nu = if(foo=="AMLSG0704") 1 else 0)
-			coxRFXOsGGc$Z <- NULL
-			
-			return(list(
-							BIC=coxBICOsTrain,
-							AIC=coxAICOsTrain,
-							RFX=coxRFXOsTrain,
-							RFXgg=coxRFXOsGGc							))
-		}, mc.cores=3)
-names(allModelsTrialTD) <- levels(clinicalData$Study)
-
-allModelsTrialTdPredictions <- mclapply(names(allModelsTrialTD), function(foo){
-			x <- allModelsTrialTD[[foo]]
-			trainIdx <- clinicalData$Study != foo
-			cbind(ELN=c(4,1,3,2)[clinicalData$M_Risk[!trainIdx]],
-					sapply(x, function(y){
-								predictAllModels(y, newdata=dataFrame[!trainIdx,])
-							}))
-		}, mc.cores=3)
-names(allModelsTrialTdPredictions) <- names(allModelsTrialTD)
-
-allModelsTrialTdC <- sapply(names(allModelsTrialTD), function(foo){
-			trainIdx <- clinicalData$Study != foo
-			apply(allModelsTrialTdPredictions[[foo]], 2 , function(p){						
-						unlist( survConcordance(osYr[!trainIdx,] ~ p)[c("concordance","std.err")])
-					})
-		}, simplify="array")
-
-allModelsTrialTdC
-
-#' ### TCGA validation
-#' 
-#' #### Fit models
-#' Fit a single tree [@Therneau2014A] and a random forest model [@IshwaranTAAS2008].
-#+ tree, fig.width=3, fig.height=3
-library(rpart)
-library(randomForestSRC)
-tree <- rpart(os ~ ., data=dataFrame[mainIdxOs & osIdx])
-plot(tree)
-text(tree)
-survConcordance(na.omit(os)~predict(tree))
-
-#' Random forest
-#+ rForest, cache=TRUE
-rForest <- rfsrc(Surv(time, status) ~.,data= cbind(time = os[,1], status = os[,2], dataFrame[,mainIdxOs & osIdx]), ntree=100)
-boxplot(rForest$importance ~ droplevels(groups[mainIdxOs & osIdx]), border= colGroups[mainGroups], staplewex=0, pch=16, cex=0.75, ylab="RSF importance", lty=1, xaxt="n")
-rotatedLabel(labels=mainGroups)
-rForestVimp <- sapply(mainGroups, function(g) vimp(rForest, colnames(dataFrame)[which(groups==g)]))
-
-survConcordance(na.omit(os)~predict(rForest, importance="none")$predicted)
-
-#' Complementary pairs stability selection with interaction terms
-#+ CoxCPSSIntOs, cache=TRUE
-set.seed(42)
-coxCPSSIntOs <- CoxCPSSInteractions(dataFrame[!is.na(os),groups %in% mainGroups & osIdx], na.omit(os), bootstrap.samples=50, scope = which(groups %in% scope))
-selectedIntOs <- names(which(coxCPSSIntOs$Pi > 0.8))
-coxCPSSIntOs
-
-#' Stepwise model selection by BIC
-#+ coxBIC, cache=TRUE, warning=FALSE
-c <- coxph(os ~ 1, data=dataFrame[,mainIdxOs & osIdx])
-scopeStep <- as.formula(paste("os ~", paste(colnames(dataFrame)[mainIdxOs& osIdx], collapse="+")))
-coxBICOs <- step(c, scope=scopeStep, k = log(sum(trainIdx)), trace=0)
-summary(coxBICOs)
-
-#' With AIC
-#+ coxAIC, cache=TRUE, warning=FALSE
-coxAICOs <- step(c, scope= scopeStep, k = 2, trace=0)
-summary(coxAICOs)
-
-#' Time-dep AIC and BIC, including allografts
-#+ coxBICosTD, cache=TRUE, warning=FALSE
-c <- coxph(osTD ~ 1, data=dataFrameOsTD[mainIdxOsTD])
-scopeStep <- as.formula(paste("osTD ~", paste(colnames(dataFrameOsTD)[mainIdxOsTD], collapse="+")))
-coxBICOsTD <- step(c, scope=scopeStep, k = log(nrow(dataFrame)), trace=0)
-coxAICOsTD <- step(coxBICOsTD, scope=scopeStep, k = 2, trace=0)
-
-
-#' #### TCGA data
-#' Load data
-tcgaClinical <- read.table("../../data/TCGA_clin.txt", sep="\t", header=TRUE)
-tcgaGenetic <- read.table("../../data/TCGA_gen.txt", sep="\t", header=TRUE)
-tcgaGenetic$TCGA_ID <- factor(as.character(tcgaGenetic$TCGA_ID), levels = levels(tcgaClinical$TCGA_ID))
-g <- as.character(tcgaGenetic$Hugo_Symbol)
-g[tcgaGenetic$Hugo_Symbol=="FLT3" & tcgaGenetic$Variant_Type == 'INS'] <- "FLT3_ITD"
-g[tcgaGenetic$Hugo_Symbol=="FLT3" & tcgaGenetic$Variant_Type == 'SNP'] <- "FLT3_TKD"
-tcgaMutation <- (table(tcgaGenetic$TCGA_ID,g)) + 0
-t <- data.frame(tcgaMutation[,]>0, CEBPA_mono = tcgaMutation[,"CEBPA"]==1,CEBPA_bi = tcgaMutation[,"CEBPA"]>1,tcgaClinical[,-c(1,2,4,5,6,13,25)], MakeInteger(tcgaClinical$TypeAML)) + 0
-w <- grep("_10+$",colnames(dataFrame), value=TRUE)
-f <- as.numeric(sub(".+_","",w))
-n <- sub("_10+","",w)
-f <- f[n %in% colnames(tcgaClinical)]
-n <- n[n %in% colnames(tcgaClinical)]
-t[n] <- t[n] / rep(f, each=nrow(t))
-colnames(t)[match(n,colnames(t))] <- paste(n,f,sep="_")
-rm(w,n,f,g)
-
-tcgaData <- dataFrame[1:nrow(t),]
-tcgaData[,] <- NA
-w <- intersect(names(t), names(tcgaData))
-tcgaData[w] <- t[w]
-tcgaData$TPL_os <- NA
-tcgaData[groups=="Genetics"][is.na(tcgaData[groups=="Genetics"])] <- 0
-rm(t,w)
-tcgaSurvival <- Surv(tcgaClinical$OS/365, tcgaClinical$Status)
-
-#' Plot mutation frequencies
-#+ tcgaFreq, fig.width=2.5, fig.height=2.5
-plot(colMeans(dataFrame[groups=="Genetics"])[colnames(tcgaMutation)], colMeans(tcgaMutation))
-text(colMeans(dataFrame[groups=="Genetics"])[colnames(tcgaMutation)], colMeans(tcgaMutation), colnames(tcgaMutation))
-cor(colMeans(dataFrame[groups=="Genetics"])[colnames(tcgaMutation)], colMeans(tcgaMutation), use='c')
-
-#' NPM1 survival
-plot(survfit(tcgaSurvival ~ NPM1, data=tcgaData), col=set1[1:2])
-lines(survfit(osYr ~ NPM1, data=dataFrame), col=set1, lty=3,mark=NA)
-legend("topright", col=c(set1[1:2],"black","black"), c("NPM1 wt", "NPM1 mut","TCGA","AML"), lty=c(1,1,1,3), bty='n')
-
-#' #### Analyse risk
-#' CoxRFX model and covariance-based imputation
-tcgaRiskRFXOs <- PredictRiskMissing(coxRFXFitOsTDGGc, tcgaData[whichRFXOsTDGG])
-survConcordance(tcgaSurvival ~ tcgaRiskRFXOs[,1])
-
-#' CPSS model
-tcgaDataImputed <- as.data.frame(ImputeMissing(dataFrame[mainIdxOs], newX=tcgaData[mainIdxOs]))
-tcgaRiskCPSSOs <- predict(coxCPSSIntOs, newdata=tcgaDataImputed)
-survConcordance(tcgaSurvival ~ tcgaRiskCPSSOs)
-
-#' Blind imputation (mean only)
-f <- function(X) {X <- sapply(X, poorMansImpute);X[is.na(X)] <- 0; X}
-survConcordance(tcgaSurvival ~ predict(coxCPSSIntOs, newdata=as.data.frame(f(tcgaData[mainIdxOs]))))
-
-#' Cytogenetic risk
-survConcordance(tcgaSurvival ~ c(3,1,2)[tcgaClinical$C_Risk])
-
-#' PINA score [@PastoreJCO2014] for NK AML.
-PINAOs <- function(X){
-	coef <- c( NPM1=-1.2,
-			FLT3_ITD=-.26,
-			`NPM1:FLT3_ITD`=.89,
-			CEBPA_bi=-1.3,
-			wbc_log10=.57,
-			age=0.044,
-			ecog24=.4)
-	x <- cbind(X[,colnames(X) %in% names(coef)], wbc_log10 = log10(100*1e3*pmax(X[,"wbc_100"], 0.001)), age = X[,"AOD_10"]*10, ecog24 = X[,"Performance_ECOG"]>=2)
-	risk <- as.matrix(x[,names(coef)]) %*% coef
-	group <- cut(risk, c(min(risk), 4,5.4, max(risk)), labels = c("low","int","high"))
-	return(data.frame(risk, group))
-}
-pinaOs <- PINAOs(dataFrame)
-
-#+ PINAos, fig.width=3, fig.height=2.5
-nkIdx <- clinicalData$NK == 1
-plot(survfit(os[nkIdx] ~ pinaOs[nkIdx,2]), col=rev(set1[1:3]))
-survConcordance(os[nkIdx] ~ pinaOs[nkIdx,1])
-
-#' Compared to CPSS (AML data)
-survConcordance(os[nkIdx] ~ predict(coxCPSSIntOs, newdata=dataFrame)[nkIdx])
-
-#' And on TCGA data
-tcgaPinaOs <- PINAOs(cbind(tcgaDataImputed, `NPM1:FLT3_ITD` = tcgaDataImputed[,"NPM1"]*tcgaDataImputed[,"FLT3_ITD"]))
-tcgaNkIdx <- tcgaClinical$karyotype == "Normal"
-survConcordance(tcgaSurvival[tcgaNkIdx] ~ tcgaPinaOs[tcgaNkIdx,1])
-survConcordance(tcgaSurvival[tcgaNkIdx] ~ tcgaRiskCPSSOs[tcgaNkIdx])
-
-
-#' ELN score [@DohnerB2010]
-ELN <- function(X, nkIdx){
-	factor(ifelse(X$inv3_t3_3==1 | X$t_6_9==1 | X$minus5_5q==1 | X$mono17_17p_abn17p==1 | X$minus7==1 | X$complex==1 | X$t_v_11==1,
-					"Adverse",
-					ifelse(X$t_15_17==1 | X$t_8_21==1 | X$inv16_t16_16==1 | ((X$CEBPA_bi==1 |  X$CEBPA_mono==1 | (X$NPM1==1 & X$FLT3_ITD==0)) & nkIdx),
-							"Favorable",
-							ifelse(nkIdx & (X$FLT3_ITD==1 | X$NPM1==0 & X$FLT3_ITD==0), 
-									"Inter-1", "Inter-2"))), levels=rev(c("Adverse","Inter-1","Inter-2","Favorable")))
-}
-
-table(clinicalData$M_Risk, ELN(dataFrame, nkIdx))
-
-#' Other models
-tcgaRisk <- data.frame(
-		#stdRisk = c(3,1,2)[tcgaClinical$C_Risk],
-		ELN = as.numeric(ELN(tcgaDataImputed, tcgaNkIdx)),
-		tree = predict(tree, newdata=tcgaDataImputed),
-		rForest = predict(rForest, newdata = tcgaDataImputed, importance="none")$predicted,
-		PINAos = tcgaPinaOs[,1],
-		coxRFX = tcgaRiskRFXOs[,1],
-		coxBIC = predict(coxBICOs, newdata=tcgaDataImputed),
-		coxAIC = predict(coxAICOs, newdata=tcgaDataImputed),
-		coxCPSS = tcgaRiskCPSSOs
-)
-
-#' Concordance of all models
-#+ concordanceTCGA, fig.width=3, fig.height=2.5
-tcgaConcordance <- sapply(tcgaRisk, function(x) {c <- survConcordance(tcgaSurvival ~ x); c(c$concordance, c$std.err)})
-tcgaConcordance
-o <- order(tcgaConcordance[1,])
-barplot(tcgaConcordance[1,o], border=NA, col= set1[-6], las=2, xaxt="n", ylab="Concordance", ylim=c(0.5,0.75), xpd=FALSE) -> b
-segments(b,tcgaConcordance[1,o]-tcgaConcordance[2,o],b,tcgaConcordance[1,o]+tcgaConcordance[2,o])
-rotatedLabel(b, rep(0.49,length(b)), colnames(tcgaConcordance)[o], srt=45)
-
-#' AUC of all models
-#+ aucTCGA, fig.width=3, fig.height=2.5
-library(survAUC)
-library(survivalROC)
-tcgaAUC <- sapply(tcgaRisk, function(x) AUC.uno(na.omit(os), tcgaSurvival[!is.na(x) & !is.na(tcgaSurvival)], scale(x)[!is.na(tcgaSurvival) &! is.na(x)], c(90,365,1000)/365)$auc)
-tcgaAUCi <- sapply(tcgaRisk, function(x) AUC.uno(na.omit(os), tcgaSurvival[!is.na(x) & !is.na(tcgaSurvival)], scale(x)[!is.na(tcgaSurvival) &! is.na(x)], sort(na.omit(tcgaSurvival[,1])))$iauc)
-o <- order(colMeans(tcgaAUC))
-barplot(tcgaAUC[,o], border=1, col= rep(c("grey",set1[-6]),each=3), las=2, xaxt="n", ylab="AUC", beside=TRUE, density=c(NA, 48,24), ylim=c(0.5,0.85), xpd=FALSE) -> b
-legend("topleft", bty="n", c("3mo","1yr","3yr"), fill='black', density=c(NA, 48,24))
-rotatedLabel(b[seq(3, length(b), 3)], rep(0.49,length(tcgaRisk)), names(tcgaRisk)[o], srt=45)
-
-#' KM curves for four risk categories (quartiles)
-#+ kmTCGA, fig.width=3, fig.height=2.5
-risk <- cut(tcgaRiskRFXOs[,1], quantile(tcgaRiskRFXOs[,1]), labels=c("1st Q","2nd Q","3rd Q","4th Q"))
-s <- survfit(tcgaSurvival ~ risk)
-plot(s, col=set1[c(3,2,4,1)], mark=NA, xlab="Years", ylab="Survival")
-legend("topright", bty="n", rownames(summary(s)$table), col=set1[c(3,2,4,1)], lty=1)
-
-#' Distribution of risk v cytogenic categories
-#+ riskTCGA, fig.width=3, fig.height=2.5
-risk <- tcgaRiskRFXOs[,1] - mean(tcgaRiskRFXOs[,1])
-x <- seq(from=-4,to=4, l=512)
-r <- sapply(levels(tcgaClinical$C_Risk)[c(2,3,1)], function(r){
-			i <- tcgaClinical$C_Risk==r
-			d <- density(na.omit(risk[i]), from=-4,to=4)$y * mean(i, na.rm=TRUE)
-		})
-par(mar=c(4,4,3,4)+.1, bty="n")
-plot(exp(x),rowSums(r), type='l', lty=0,xlab="Hazard", ylab="Prop. patients", log='x', ylim=c(0,.55))
-for(i in 1:3)
-	polygon(exp(c(x, rev(x))), c(rowSums(r[,1:i, drop=FALSE]), rev(rowSums(cbind(0,r)[,1:i, drop=FALSE]))), col=set1[c(3,2,1)][i], border=NA)
-
-H0 <- basehaz(coxph(tcgaSurvival ~ risk), centered=TRUE)
-hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
-invHazardDist <- splinefun(H0$hazard, H0$time, method="monoH.FC")
-l <- c(0.1,.5,.9)#c(0.1,0.25,.5,.75,.9)
-for(i in seq_along(l))
-	lines(exp(x), pmax(0,invHazardDist(-log(l[i]) /exp(x) ))/10000*365, col='black', lty=c(2,1,2)[i])
-axis(side=4, at=seq(0,.5,0.1), labels=seq(0,.5,.1)*10000*365)
-mtext(side=4, "Time", line=2.5)
-mtext(side=3, at = -log(l)/hazardDist(par("usr")[4]*10000*365), text=paste(100*l, "% survive", sep=""))
-legend("topright", levels(tcgaClinical$C_Risk)[c(2,3,1)], fill=set1[c(3,2,1)], bty="n", title="M risk")
-
-#' TCGA concordance time-dependent models
-tcgaDataTdImputed <- as.data.frame(ImputeMissing(dataFrame[mainIdxOsTD], newX=tcgaData[mainIdxOsTD]))
-tcgaRiskTD <- data.frame(
-		coxBICTD = predict(coxBICOsTD, newdata=tcgaDataTdImputed),
-		coxAICTD = predict(coxAICOsTD, newdata=tcgaDataTdImputed),
-		coxRFXTD = PredictRiskMissing(coxRFXFitOsTDGGc, tcgaData)[,1]
-)
-tcgaConcordanceTD <- sapply(tcgaRiskTD, function(x) unlist(survConcordance(tcgaSurvival ~ x)[c("concordance","std.err")]))
-
-#' #### Figure 1b
-#' Here we generate the overview shown in Figure 1b.
-#+ concordanceCvTcga, fig.width=3.5, fig.height=2.5
-library(abind)
-par(mar=c(3,3.5,.5,.5),bty="n", mgp=c(2.5,.5,0), las=2,  lend=1, xpd=FALSE)
-o <- c(1,7,2,3,4,6)
-x <- rbind(allModelsCvC[o,], allModelsCvTdC[-c(1,4),])
-col <- brewer.pal(4,"Pastel1")
-#boxplot(t(x[o,]), notch=TRUE, ylab="Concordance", staplewex=0, lty=1, pch=16, xaxt="n", border="white", ylim=c(0.5,0.75), boxwex=.5)
-bplot <- function(x, at=1:ncol(x),..., ylim=range(x), xlab="", col="black", col.lines="grey"){
-	y <- apply(x,2,fivenum)
-	plot(at,y[3,], pch=NA, ..., ylim=ylim, xlab="", xaxt="n")
-	segments(at,y[1,],at,y[5,], col=col.lines, lwd=2)
-	segments(at,y[2,],at,y[4,], col=col.lines, lwd=4)
-	points(at,y[3,], pch=15, col=col)
-}
-s <- .2 #space
-a <- c(1:6, 7:9+.5)
-bplot(t(x), at=a-1.5*s,ylab="Concordance", ylim=c(0.5,0.75), xlim=range(a)+c(-.5,.5))
-abline(h=seq(.5,.75,.05), col="lightgrey")
-par(xpd=NA)
-t <- tcgaConcordance[,c(1,3,6,7,8,5)]
-z <- abind(abind(TCGA=t, allModelsTrialC[,o,]), abind(TCGA=tcgaConcordanceTD, allModelsTrialTdC[,-c(1,4),]), along=2)
-m <- sapply(1:ncol(z),function(i){
-			err <- 1 / sum(1/z[2,i,]^2)
-			avg <- sum(z[1,i,] /z[2,i,]^2) * err
-			c(avg,sqrt(err))})
-#segments(1:6+s/2,m[1,]-m[2,],1:6+s/2,m[1,]+m[2,], lwd=2, col="#00000044")
-#points(m[1,], pch=19, cex=1.5)
-#segments(a-s/2,t[1,]-t[2,],a-s/2,t[1,]+t[2,], col=paste0(col[1],"FF"), lwd=2)
-#points(a-s/2,t[1,], col=col[1], pch=16, cex=1)
-i <- 0; for(n in dimnames(z)[[3]]) { i<-i+1;
-	segments(a -s +s/2*i, z[1,,n] -  z[2,,n],a -s +s/2*i, z[1,,n]+ z[2,,n], col=paste0(col[i],"FF"), lwd=2)
-	points(a -s +s/2*i, z[1,,n], col=col[i], pch=16, cex=1)
-}
-segments(a -3/4*s, m[1,],a+s*5/4,m[1,], lwd=3)
-rotatedLabel(a, labels= rownames(x))
-legend("bottomright", 
-		c(
-				"random CV 4/5 x100", 
-				paste0("TCGA, (n=",nrow(na.omit(tcgaSurvival)),")"),
-				paste0(dimnames(allModelsTrialC)[[3]]," (n=",table(clinicalData$Study),")"),
-				"average"), 
-		lty=c(1,1), bg="white", col=c("grey",col[1:4], "black"), pch=c(15,16,16,16,16,16,NA))
 
  
 #' # Multistage modelling
@@ -2042,8 +1359,8 @@ allData$transplantRel[!allData$index %in% w] <- 0
 multiRFX3 <-  MultiRFX3(coxRFXNrdTD = coxRFXNrdTD, coxRFXPrdTD = coxRFXPrdTD, coxRFXRelTD = coxRFXRelTD, data=allData, x=3*365, prdData=prdData)
 
 
-#' ### Model assessment
-#' #### Random cross-validation
+#' #### Model assessment
+#' ##### Random cross-validation
 #+concordanceCIRcv, cache=TRUE
 replicates <- 100 ## number of replicates
 concordanceCIRcv <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups), function(g){ 
@@ -2158,7 +1475,7 @@ concordanceCIRcvVar <- lapply(list(crGroups[crGroups %in% mainGroups], crGroups)
 for(i in 1:4)
 {cat(rownames(concordanceCIRcvTrain[[2]])[i],"\n"); print(summary(data.frame(harrel=t(concordanceCIRcvTrain[[2]][i,1:2,]) , var=t(concordanceCIRcvVar[[2]][i,1:2,]))))}
 
-#' #### Cross-validation across trials
+#' ##### Cross-validation across trials
 #+ concordanceCIRcvTrial, cache=TRUE
 concordanceCIRcvTrial <- mclapply(list(crGroups[crGroups %in% mainGroups], crGroups), function(g){ 
 			mclapply(levels(clinicalData$Study), function(study){
@@ -2208,7 +1525,7 @@ concordanceCIRcvTrial <- mclapply(list(crGroups[crGroups %in% mainGroups], crGro
 dotplot(sapply(concordanceCIRcvTrial[[1]], `[[` , "C")[4:6,])
 dotplot(sapply(concordanceCIRcvTrial[[2]], `[[` , "C")[4:6,])
 
-#' #### Test for TPL:Age interactions
+#' ##### Test for TPL:Age interactions
 #+tplAge
 # CIR
 c <- coxph(Surv(time1,time2,status)~transplantCR1*AOD_10, data=relData)
@@ -2305,7 +1622,7 @@ boxplot(t(absoluteErrorsCIRcv[[2]][,1,]), main="Training")
 summary(t(absoluteErrorsCIRcv[[2]][,2,]))
 boxplot(t(absoluteErrorsCIRcv[[2]][,2,]), main="Test")
 
-#' #### KM curves after remission
+#' ##### KM curves after remission
 riskCol=set1[c(1,3,4,2)]
 names(riskCol) <- levels(clinicalData$M_Risk)
 
@@ -2410,7 +1727,7 @@ for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 	legend("bottomright", lty=c(1,3), bty="n", c("no TPL","TPL"), col=riskCol[l])
 }
 
-#' #### Risk factors of relapse and survival
+#' ##### Risk factors of relapse and survival
 p <- lapply(levels(clinicalData$M_Risk), function(l) {
 			w <- which(clinicalData$M_Risk==l)
 			q <- cut(riskOsCR[w], quantile(riskOsCR[w], seq(0,1,.33)), include.lowest=TRUE, labels=c("T1","T2","T3"))
@@ -2487,7 +1804,7 @@ par(mar=c(2,2,0,2))
 barplot(matrix(diff(quantile(relData$time2[m], na.rm=T, seq(0,1,0.1))), ncol=1)/365.25, col=brewer.pal(11,"RdBu")[-6], horiz=TRUE, border=NA, xlim=c(0,20))
 
 
-#' ### Allografts
+#' #### Allogeneic hematopoietic stem cell transplants
 #' Create a data.frame with all possibilities for allografts - none, CR1, after relapse.
 #+survivalTpl, cache=TRUE
 w <- sort(unique(osData$index[which(quantileRiskOsCR==3 & clinicalData$M_Risk[osData$index]=="Favorable")]))
@@ -2650,7 +1967,6 @@ set.seed(42)
 multiRFX3TplCi <- MultiRFX3TplCi(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=200, prsData=prsData) ## others with 200
 dimnames(multiRFX3TplCi)[[4]] <- rownames(dataFrame)
 
-#' #### Figure 4f
 #' The figure shows the mortality reduction of allograft CR1 v none, allograft in Rel v none, and CR1 v Relapse.
 #+mortalityReduction, fig.width=3.5, fig.height=2.5
 set.seed(42)
@@ -2741,7 +2057,6 @@ e <- sapply(seq_along(p), function(i) mean(c(multiRFX3Tpl[p[1:i],2], f*multiRFX3
 lines(seq_along(e)/length(e), e, type='l', col=set1[2])
 legend("bottomright", c("Personalised risk", "ELN and age"), lty=1, col=set1, bty="n")
 
-#' #### Figure 4d
 #' Consider fraction of patients relapsing with salvage allograft as well
 r <- 1+multiRFX3TplCi[1:2,1,"aar",] - multiRFX3TplCi[1:2,1,"rs",] ## Relapse probabilities
 a <- sapply(seq_along(o), function(i) mean(c(r[2,o[1:i]], r[1,o[-(1:i)]]), na.rm=TRUE)) # Personalised
@@ -2819,6 +2134,8 @@ lines(h$x, y)
 segments(x,e[2,],x,e[3,])
 #rug(d, col="#00000022")
 abline(0,1, lty=3)
+
+
 
 #' #### Figure 4b
 #' Violins plot of the predicted survival gain
@@ -3128,10 +2445,12 @@ legend("bottomright",c("RFX OS","RFX Multistage"), col=set1[1:2], lty=1, bty="n"
 a <- sapply(times, function(t) ape(1-colSums(multiRfx5Loo[times == t,1:3,]), os, t))
 s <- summary(survfit(coxRFXFitOsTDGGc), times=times)
 b <- sapply(times, function(t) ape(s$surv[times==t]^exp(rfx5Loo[6,]), os, t))
+e <- sapply(times, function(t) ape(s[times==t], os, t))
 for(i in 1:4){
-	plot(times, a[i,], type='l', xlab="time", ylab=rownames(a)[i], col=set1[1])
-	lines(times, b[i,], col=set1[2])
-	legend("bottomright",c("RFX OS","RFX Multistage"), col=set1[1:2], lty=1, bty="n")
+	plot(times/365.25, e[i,], type='l', xlab="Time (yr)", ylab=rownames(a)[i], col=set1[9])
+	lines(times/365.25, a[i,], col=set1[1])
+	lines(times/365.25, b[i,], col=set1[2])
+	legend("bottomright",c("Kaplan-Meier","RFX OS","RFX Multistage"), col=set1[c(9,1:2)], lty=1, bty="n")
 }
 
 #' Figure of predicted survival for 100 patients, comparing multistage and OS predictions
@@ -3181,8 +2500,46 @@ for(pd in patients)
 	#text(x=at, y=rep(0.1, 5), round(fiveStagePredictedTpl[w,6,i],2))
 }
 
+#' #### Three patients with numerical CI's and LOO
+patients <- c("PD11104a","PD8314a","PD9227a")
+threePatientTplCiLoo <- sapply(patients, function(pd){
+			e <- new.env()
+			i <- which(rownames(dataFrame)==pd)
+			set.seed(i)
+			load(paste0("../../code/loo/",i,".RData"), env=e)			
+			multiRFX3TplCi <- MultiRFX3TplCi(e$rfxNrs, e$rfxRel, e$rfxPrs, data=data[i,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=200, prsData=prsData[prsData$index!=i,]) ## others with 200
+		}, simplify="array")
 
-#' #### Imputation in case of missing genes
+
+#' #### Figure 4a
+#' The figure shows the mortality reduction of allograft CR1 v none, allograft in Rel v none, and CR1 v Relapse, for LOO predictions similar to above.
+#+mortalityReductionLoo, fig.width=3.5, fig.height=2.5
+par(mar=c(3,3,1,3), las=2, mgp=c(2,.5,0), bty="n")
+benefit <- multiRFX3LOO[,2]-multiRFX3LOO[,3]
+absrisk <- multiRFX3LOO[,1]
+s <- clinicalData$AOD < 60 & !is.na(clinicalData$CR_date)#sample(1:1540,100)
+x <- 1-absrisk
+y <- benefit
+plot(x[s], y[s], pch=NA, ylab="Mortality reduction from allograft", xlab="3yr mortality with standard chemo", col=riskCol[clinicalData$M_Risk], cex=.8, las=1, ylim=range(benefit))
+abline(h=seq(-.1,.3,.1), col='grey', lty=3)
+abline(v=seq(.2,.9,0.2), col='grey', lty=3)
+points(x[s], y[s], pch=16,  col=riskCol[clinicalData$M_Risk[s]], cex=.8)
+segments(1-threePatientTplCiLoo["none","lower","os",1,patients], threePatientTplCiLoo["dCr1Rel","hat","os",1,patients],1-threePatientTplCiLoo["none","upper","os",1,patients],threePatientTplCiLoo["dCr1Rel","hat","os",1,patients])
+segments(1-threePatientTplCiLoo["none","hat","os",1,patients], threePatientTplCiLoo["dCr1Rel","lower","os",1,patients],1-threePatientTplCiLoo["none","hat","os",1,patients], threePatientTplCiLoo["dCr1Rel","upper","os",1,patients])
+xn <- seq(0,1,0.01)
+p <- predict(loess(y~x, data=data.frame(x=x[s], y=y[s])), newdata=data.frame(x=xn), se=TRUE)
+yn <- c(p$fit + 2*p$se.fit,rev(p$fit - 2*p$se.fit))
+polygon(c(xn, rev(xn))[!is.na(yn)],yn[!is.na(yn)], border=NA, col="#00000044", lwd=1)
+lines(xn,p$fit, col='black', lwd=2)
+legend("topleft", pch=c(16,16,16,16,NA),lty=c(NA,NA,NA,NA,1), col=c(riskCol[c(2,4,3,1)],1),fill=c(NA,NA,NA,NA,"grey"), border=NA, c(names(riskCol)[c(2,4,3,1)],"loess average"), box.lty=0)
+n <- c(100,50,20,10,5,4,3)
+axis(side=4, at=1/n, labels=n, las=1)
+mtext("Number needed to treat", side=4, at=.2, line=2, las=0)
+axis(side=4, at=-1/n, labels=n, las=1)
+mtext("Number needed to harm", side=4, at=-.1, line=2, las=0)
+
+
+#' #### Imputation of missing genes
 #' For RFX model on OS
 #+ imputationGenes, cache=TRUE
 w <- WaldTest(coxRFXFitOsTDGGc)
@@ -3264,6 +2621,755 @@ for(i in 1:4){
 	abline(h=axTicks(side=2), lty=3)
 	axis(side=3)
 }
+
+
+#' # Model comparison
+#' 
+#' We used cross-validation to evaluate the performance of different modelling strategies. The idea is to split the data
+#' into a training and a test set; the model is fitted on the training part and its prognostic accuracy evaluated on the test set.
+#' 
+#' 
+#' ## Random cross validation
+#' We have randomly split the data 100 times 80% training data and 20% validation data. For each split, we 
+#' evaluated the following metrics:
+#' 
+#' * Concordance,  defined as the probability that the survival times of two individuals are concordant to the ranking of their risk [@HarrellSM1996],
+#' implemented in `survival::survConcordance()` 
+#' * Area under the receiver-operating characteristic curve (AUC), a measure of the correct classification into dead and alive at
+#' a given time [@UnoJOTASA2007], implemented in `survAUC::auc.Uno()`.
+#' * Brier score, an absolute measure of the prediction error [@GerdsBJ2006], implemented in `survAUC::predErr()`.
+#' * A generalised coefficient of explained variation $R^2$  [@NagelkerkeB1991,@OQuigleySM2005] , implemented as `survAUC::OXS()`.
+#' 
+#'  The latter three algorithms are implemented in the `survAUC` `R` package [@Potapov2012].
+#' 
+#' ## Inter-trial
+#' 
+#' The data comprised patients from three different trials - AMLSG07/04 (n=740), AMLHD98A (n=627), and AMLHD98B (n=173).
+#' In addition to randomly splitting the data into training and test partitions, we trained the model on all three combinations of 2 trials and
+#' evaluated the prognostic accuracy on the third trial. This situation is more challenging as there may 
+#' be some systematic differences between the trials, but it can also be expected to more closely mimic the situation of predicting a novel cohort.
+#' 
+#' 
+#' ## TCGA
+#' 
+#' As an additional and independent evaluation cohort, we downloaded data from the cancer genome atlas (TCGA) [@TCGANEJM2013]. 
+#' We downloaded variant calls from exome sequencing and cytogenetic data for n=200 and annotated oncogenic mutations as described in our companion paper.
+#' Overall survival was available for n=186 patients. For missing prognostic variables, we use a [covariance-based imputation](#covariance-based-imputation), with
+#' a covariance matrix derived from our original data set (n=1,540). We note that there was no data available for allografts.
+#' 
+#' ## Code
+
+#' ### Systematic cross-validation
+#' 
+#' #### Static models
+#+allModelsCV, cache=TRUE, cache.lazy=FALSE
+library(rpart)
+library(randomForestSRC)
+replicates <- 100 ## number of replicates
+scope <- c("Genetics","CNA","Treatment","Fusions") ## For CPSS
+scopeStep <- as.formula(paste("os ~", paste(colnames(dataFrame)[mainIdxOs& osIdx], collapse="+"))) ## For AIC&BIC
+allModelsCV <- mclapply(1:replicates, function(foo){
+			set.seed(foo)
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			c <- coxph(os[trainIdx] ~ 1, data=dataFrame[trainIdx,mainIdxOs])
+			scopeStep <- as.formula(paste("os[trainIdx] ~", paste(colnames(dataFrame)[mainIdxOs], collapse="+")))
+			coxBICOsTrain <- step(c, scope=scopeStep, k = log(sum(trainIdx)), trace=0)
+			coxAICOsTrain <- step(coxBICOsTrain, scope=scopeStep, k = 2, trace=0)
+			coxCPSSOsTrain <- CoxCPSSInteractions(dataFrame[!is.na(os) & trainIdx, mainIdxOs], na.omit(os[trainIdx]), bootstrap.samples=50, scope = which(groups %in% scope))
+			coxRFXOsTrain <- CoxRFX(dataFrame[trainIdx,mainIdxOs], os[trainIdx], groups=groups[mainIdxOs])
+			coxRFXOsTrain$Z <- NULL
+			coxRFXOsGGc <- CoxRFX(dataFrame[trainIdx,whichRFXOsGG], os[trainIdx], groups=groups[whichRFXOsGG], which.mu=mainGroups)
+			coxRFXOsGGc$Z <- NULL
+			rForestOsTrain <- rfsrc(Surv(time, status) ~.,data= cbind(time = os[,1], status = os[,2], dataFrame[,mainIdxOs])[trainIdx,], ntree=100, importance="none")
+			return(list(
+							BIC=coxBICOsTrain,
+							AIC=coxAICOsTrain,
+							CPSS=coxCPSSOsTrain,
+							RFX=coxRFXOsTrain,
+							RFXgg=coxRFXOsGGc,
+							rForest=rForestOsTrain
+					))
+		}, mc.cores=10)
+
+#' Compute predictions for all model fits
+#' 
+#+ allModelsCvPredictions, cache=TRUE
+predictAllModels <- function(x, newdata){
+	if("rfsrc" %in% class(x)){
+		predict(x, newdata, importance="none")$predicted
+	}else{
+		predict(x, newdata)
+	}
+}
+
+allModelsCvPredictions <- mclapply(seq_along(allModelsCV), function(foo){
+			set.seed(foo)
+			x <- allModelsCV[[foo]]
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			cbind(ELN=c(4,1,3,2)[clinicalData$M_Risk[!trainIdx]],
+					sapply(x, function(y){
+								predictAllModels(y, newdata=dataFrame[!trainIdx,])
+							}))
+		}, mc.cores=10)
+
+colModels <- c("#888888", set1[c(2,1,4,3,5,7)])
+
+#' Harrel's C
+#+ allModelsCv-C
+foo <- 1
+allModelsCvC <- sapply(allModelsCvPredictions, function(x){
+			set.seed(foo)
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			foo <<- foo +1		
+			apply(x, 2 , function(p){						
+						survConcordance(osYr[!trainIdx,] ~ p)$concordance
+					})
+		})
+apply(allModelsCvC,1,quantile)
+
+#+ allModelsCvBoxplot, fig.width=2, fig.height=1.5
+par(mar=c(3,3,1,1),bty="n", mgp=c(2,.5,0), las=2)
+r <- sapply(as.data.frame(lapply(as.data.frame(t(apply(-allModelsCvC,2,rank))),factor, levels=1:7)),table)
+o <- order(apply(allModelsCvC,1,median))
+boxplot(t(allModelsCvC[o,]), notch=TRUE, ylab="Concordance", staplewex=0, lty=1, pch=16, xaxt="n")
+rotatedLabel(1:7, rep(par("usr")[3],7), rownames(allModelsCvC)[o])
+
+#+ allModelsCvRank, fig.width=2, fig.height=1.5
+par(mar=c(3,3,3,1), xpd=NA, las=2, mgp=c(2,.5,0))
+barplot(r[,o]/replicates, col=c(set1[c(3,2,4,1,5,7)],"grey"), ylab="Fraction", names.arg=rep("",ncol(r))) -> b
+rotatedLabel(b, rep(par("usr")[3],6), colnames(allModelsCvC)[o])
+legend(par("usr")[1],1.5, fill=c(set1[c(3,2,4,1,5,7)],"grey"), legend=1:6, bty="n", border=NA, horiz=TRUE, title="Rank")
+
+#' #### Supplementary Figure S1B
+#' Brier scores
+#+ allModelsCv-Brier, cache=TRUE
+library(survAUC)
+foo <- 1
+allModelsCvBrier<- sapply(allModelsCV, function(x){
+			set.seed(foo)
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			foo <<- foo +1		
+			sapply(x, function(y){
+						p <- predictAllModels(y, newdata=dataFrame)
+						a <- predErr(Surv.rsp = osYr[trainIdx,], Surv.rsp.new = osYr[!trainIdx,], lp=p[trainIdx], lpnew = p[!trainIdx], times= c(90,365,1000)/365, type="brier")$error
+					})
+		})
+apply(allModelsCvBrier,1,quantile)
+rownames(allModelsCvBrier) <- paste(rep(names(allModelsCV[[1]]), each=3), rep(c(90,365,1000), length(allModelsCV[[1]])))
+boxplot(t(allModelsCvBrier)[,rep(0:5*3, 3) + rep(1:3, each=6)],notch=TRUE, ylab="Brier score", border=rep(colModels[-1],3), las=2, lty=1, pch=16, staplewex=0)
+
+
+#' GHCI
+#+ allModelsCv-GHCI, cache=TRUE
+allModelsCvGHCI<- sapply(allModelsCvPredictions, function(x){
+			apply(x[,2:6], 2 , function(p){
+						p <- GHCI(lpnew = na.omit(p))
+					})
+		})
+apply(allModelsCvGHCI,1,quantile)
+boxplot(t(allModelsCvGHCI),notch=TRUE, ylab="GH C", border=colModels[2:6], las=2, lty=1, pch=16, staplewex=0)
+
+
+#' OXS R2 estimates
+#+ allModelsCv-OXS, cache=TRUE
+foo <- 1
+allModelsCvOXS <- sapply(allModelsCvPredictions, function(x){
+			set.seed(foo)
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			foo <<- foo +1		
+			apply(x[,2:6], 2 , function(p){						
+						a <- OXS(osYr[!trainIdx,], p, rep(0,length(p)))
+					})
+		})
+apply(allModelsCvOXS,1,quantile)
+boxplot(t(allModelsCvOXS), ylim=c(0,0.5), notch=TRUE, ylab="OXS R2", border=colModels[2:6], las=2, lty=1, pch=16, staplewex=0)
+
+#' Nagelk R2 estimates
+#+ allModelsCv-Nagelk, cache=TRUE
+foo <- 1
+allModelsCvNagelk <- sapply(allModelsCvPredictions, function(x){
+			set.seed(foo)
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			foo <<- foo +1		
+			apply(x[,2:6], 2 , function(p){						
+						a <- Nagelk(osYr[!trainIdx,], p, rep(0,length(p)))
+					})
+		})
+apply(allModelsCvNagelk,1,quantile)
+boxplot(t(allModelsCvNagelk), ylim=c(0,0.4), notch=TRUE, ylab="Nagelk's R2", border=colModels[2:6], las=2, lty=1, pch=16, staplewex=0)
+
+#' UnoC
+#+ allModelsCv-UnoC, cache=TRUE
+foo <- 1
+allModelsCvUnoC<- sapply(allModelsCvPredictions, function(x){
+			set.seed(foo)
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			foo <<- foo +1		
+			apply(x,2, function(p){
+						a <- UnoC(Surv.rsp = osYr[trainIdx,], Surv.rsp.new = osYr[!trainIdx,][!is.na(p)],  lpnew = na.omit(p), time=5)
+					})
+		})
+apply(allModelsCvUnoC,1,quantile)
+boxplot(t(allModelsCvUnoC), notch=TRUE,  ylab="Uno's C", border=colModels, lty=1, pch=16, staplewex=0)
+
+#' AUC UNO
+#+ allModelsCv-AUCuno, cache=TRUE
+t <- seq(0.1,5,0.1) #times
+allModelsCvAuc <- sapply(seq_along(allModelsCvPredictions), function(foo){
+			set.seed(foo)
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			apply(allModelsCvPredictions[[foo]], 2, function(p){
+						AUC.uno(osYr[trainIdx,], osYr[!trainIdx, ][!is.na(p)], scale(na.omit(p)), t)$auc
+					})
+		})
+allModelsCvAuc <- array(allModelsCvAuc, dim=c(length(t),ncol(allModelsCvPredictions[[1]]),length(allModelsCvPredictions)))
+plot(NA,NA, xlab="Years",ylab="AUC", xlim=range(t), ylim=c(0.5,0.8))
+for(i in 1:dim(allModelsCvAuc)[2]){
+	lines(t,rowMeans(allModelsCvAuc, dims=2)[,i], type='l', new=i==1, col=colModels[i])
+}
+legend("bottomright", colnames(allModelsCvPredictions[[1]]), bty="n", lty=1, col=colModels)
+
+
+#' Wisdom of the crowds?
+foo <- 1
+allModelsCvCCrowd <- sapply(allModelsCvPredictions, function(x){
+			set.seed(foo)
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )!=1 ## sample 1/5
+			foo <<- foo +1		
+			r <- rowMeans(apply(x, 2 , rank))
+			survConcordance(osYr[!trainIdx,] ~ r)$concordance
+		})
+quantile(allModelsCvCCrowd)
+boxplot(cbind(t(allModelsCvC),allModelsCvCCrowd), notch=TRUE, ylab="Concordance", border=c(colModels,1), las=2, lty=1, pch=16, staplewex=0)
+
+ranks <- apply(apply(-cbind(t(allModelsCvC),kraut=allModelsCvCCrowd),1,rank, ties.method="random"),1,function(x) table(factor(x, levels=1:8)))
+ranks <- ranks[,order(1:8 %*% ranks)]
+
+#' Clean up.. 
+rm(allModelsCV)
+
+#' #### Different RFX models
+#' Here we assess RFX models with interaction terms for different variable categories.
+#+ allModelsCvRfx, cache=TRUE
+replicates <- 100 ## number of replicates
+allModelsCvRfxC <- do.call("rbind",mclapply(1:100, function(foo){
+					set.seed(foo)
+					trainIdx <- sample(1:nrow(dataFrameOsTD)%%5 +1 )[tplSplitOs]!=1 ## sample 1/5
+					coxRFXOsMain <- CoxRFX(dataFrameOsTD[trainIdx,mainIdxOsTD], osTD[trainIdx], groups=groups[mainIdxOsTD])
+					coxRFXOsGG <- CoxRFX(dataFrameOsTD[trainIdx,whichRFXOsTDGG], osTD[trainIdx], groups=groups[whichRFXOsTDGG])
+					coxRFXOsGGc <- CoxRFX(dataFrameOsTD[trainIdx,whichRFXOsTDGG], osTD[trainIdx], groups=groups[whichRFXOsTDGG], which.mu=mainGroups)
+					coxRFXOsAll <- CoxRFX(dataFrameOsTD[trainIdx,whichRFXOsTD], osTD[trainIdx], groups=groups[whichRFXOsTD])
+					coxRFXOsAllc <- CoxRFX(dataFrameOsTD[trainIdx,whichRFXOsTD], osTD[trainIdx], groups=groups[whichRFXOsTD], which.mu=mainGroups)
+					return(c(
+									Main=survConcordance(osTD[!trainIdx]~as.matrix(dataFrameOsTD[!trainIdx,mainIdxOsTD]) %*% coef(coxRFXOsMain))$concordance,
+									GeneGene=survConcordance(osTD[!trainIdx]~as.matrix(dataFrameOsTD[!trainIdx,whichRFXOsTDGG]) %*% coef(coxRFXOsGG))$concordance,
+									GeneGeneCentred=survConcordance(osTD[!trainIdx]~as.matrix(dataFrameOsTD[!trainIdx,whichRFXOsTDGG]) %*% coef(coxRFXOsGGc))$concordance,
+									AllInt=survConcordance(osTD[!trainIdx]~as.matrix(dataFrameOsTD[!trainIdx,whichRFXOsTD]) %*% coef(coxRFXOsAll))$concordance,	
+									AllIntCentred=survConcordance(osTD[!trainIdx]~as.matrix(dataFrameOsTD[!trainIdx,whichRFXOsTD]) %*% coef(coxRFXOsAllc))$concordance	
+							))
+				}, mc.cores=10))
+colnames(allModelsCvRfxC) <- sub(".concordant","",colnames(allModelsCvRfxC))
+
+#' #### Supplementary Figure 2
+
+#+ allModelsCvRfxBoxplot, fig.width=2, fig.height=1.5
+par(mar=c(3,3,1,1),bty="n", mgp=c(2,.5,0), las=2)
+r <- sapply(as.data.frame(lapply(as.data.frame(round(t(apply(-allModelsCvRfxC,1,rank)))),factor, levels=1:6)),table)
+o <- order(colMeans(allModelsCvRfxC))
+boxplot(allModelsCvRfxC[,o], notch=TRUE, ylab="Concordance", staplewex=0, lty=1, pch=16, xaxt="n")
+rotatedLabel(1:ncol(allModelsCvRfxC), rep(par("usr")[3],ncol(allModelsCvRfxC)), colnames(allModelsCvRfxC)[o])
+
+#+ allModelsCvRfxRank, fig.width=2, fig.height=1.5
+par(mar=c(3,3,3,1), xpd=NA, las=2, mgp=c(2,.5,0))
+barplot(r[,o]/replicates, col=set1[c(3,2,4,1,5,7)][1:ncol(allModelsCvRfxC)], ylab="Fraction", names.arg=rep("",ncol(r))) -> b
+rotatedLabel(b, rep(par("usr")[3],ncol(allModelsCvRfxC)), colnames(allModelsCvRfxC)[o])
+legend(par("usr")[1],1.5, fill=set1[c(3,2,4,1,5,7)][1:ncol(allModelsCvRfxC)], legend=1:ncol(allModelsCvRfxC), bty="n", border=NA, horiz=TRUE, title="Rank")
+
+#' #### Time-dependent models
+#' The following models allow for quantifying the effect of a time-dependent covariate, such as a bone marrow transplant, which is typically
+#' administered after diagnosis.
+
+#' The subsequent code is executed on our LSF cluster for 100 replicates
+#+ allModelsCVTDCode
+read_chunk('../../code/cv100.R', labels="cv100")
+#+ cv100, eval=FALSE
+
+
+#' Gathering results and computing predictions
+#+ allModelsCvTdPredictions, cache=TRUE
+replicates <- 100
+allModelsCvTdPredictions <- mclapply(1:replicates, function(foo) try({
+			e <- new.env()
+			load(paste0("../../code/cv100/",foo,".RData"), envir=e)
+			set.seed(foo)
+			x <- list(
+					BIC=e$coxBICOsTD,
+					AIC=e$coxAICOsTD,
+					RFX=e$coxRFXOsTD,
+					RFXgg=e$coxRFXOsTDGGc
+			)
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )[tplSplitOs]!=1 ## sample 1/5
+			pred <- cbind(ELN=c(4,1,3,2)[clinicalData$M_Risk[tplSplitOs][!trainIdx]],
+					sapply(x, function(y){
+								predictAllModels(y, newdata=dataFrameOsTD[!trainIdx,])
+							}))
+			pred <- cbind(pred, mRFX1yr=colSums(e$multiRfx5[365,1:3,]), mRFX3yr=colSums(e$multiRfx5[3*365,1:3,]), mRFX5yr=colSums(e$multiRfx5[5*365,1:3,]))
+			return(pred)
+		}), mc.cores=10)
+
+#' Harrel's C
+#+ allModelsCvTd-C
+allModelsCvTdC <- sapply(1:replicates, function(foo){
+			x <- allModelsCvTdPredictions[[foo]] 
+			set.seed(foo)
+			trainIdx <- sample(1:nrow(dataFrame)%%5 +1 )[tplSplitOs]!=1 ## sample 1/5
+			apply(x, 2 , function(p){						
+						survConcordance(osYrTD[!trainIdx,] ~ p)$concordance
+					})
+		})
+apply(allModelsCvTdC,1,quantile)
+
+
+#+ allModelsCvTdCBoxplot, fig.width=1.5, fig.height=1.5
+par(mar=c(3,3,1,1),bty="n", mgp=c(2,.5,0), las=2)
+r <- sapply(as.data.frame(lapply(as.data.frame(t(apply(-allModelsCvTdC,2,rank))),factor, levels=1:nrow(allModelsCvTdC))),table)
+o <- order(apply(allModelsCvTdC,1,median))
+boxplot(t(allModelsCvTdC[o,]), notch=TRUE, ylab="Concordance", staplewex=0, lty=1, pch=16, xaxt="n")
+rotatedLabel(1:nrow(allModelsCvTdC), rep(par("usr")[3],nrow(allModelsCvTdC)), rownames(allModelsCvTdC)[o])
+
+#+ allModelsCvTdCRank, fig.width=1.5, fig.height=1.5
+par(mar=c(3,3,3,1), xpd=NA, las=2, mgp=c(2,.5,0))
+clr <- brewer.pal(nrow(allModelsCvTdC),"PiYG")#set1[c(3,2,4,1,5,7)]
+barplot(r[,o]/replicates, col=clr[1:ncol(allModelsCvTdC)], ylab="Fraction", names.arg=rep("",ncol(r))) -> b
+rotatedLabel(b, rep(par("usr")[3],ncol(allModelsCvTdC)), colnames(allModelsCvTdC)[o])
+legend(par("usr")[1],1.5, fill=clr[1:nrow(allModelsCvTdC)], legend=1:nrow(allModelsCvTdC), bty="n", border=NA, horiz=TRUE, title="Rank")
+
+
+
+#' ### Inter-study CV
+#+ allModelsTrial, cache=TRUE
+allModelsTrial <- mclapply(levels(clinicalData$Study), function(foo){
+			#set.seed(foo)
+			trainIdx <- clinicalData$Study != foo 
+			c <- coxph(os[trainIdx] ~ 1, data=dataFrame[trainIdx,mainIdxOs])
+			scopeStep <- as.formula(paste("os[trainIdx] ~", paste(colnames(dataFrame)[mainIdxOs], collapse="+")))
+			coxBICOsTrain <- step(c, scope=scopeStep, k = log(sum(trainIdx)), trace=0)
+			coxAICOsTrain <- step(coxBICOsTrain, scope=scopeStep, k = 2, trace=0)
+			coxCPSSOsTrain <- CoxCPSSInteractions(dataFrame[!is.na(os) & trainIdx, mainIdxOs], na.omit(os[trainIdx]), bootstrap.samples=50, scope = which(groups %in% scope))
+			w <- colnames(dataFrame[mainIdxOs])
+			w <- setdiff(w, names(which(colSums(dataFrame[trainIdx,w])==0)))
+			coxRFXOsTrain <- CoxRFX(dataFrame[trainIdx,w], os[trainIdx], groups=groups[w], nu = if(foo=="AMLSG0704") 1 else 0) # add prior for 0704 (just one group member)
+			coxRFXOsTrain$Z <- NULL
+			w <- whichRFXOsGG
+			w <- setdiff(w, which(colSums(dataFrame[trainIdx,w])==0))
+			coxRFXOsGGc <- CoxRFX(dataFrame[trainIdx,w], os[trainIdx], groups=groups[w], which.mu=mainGroups, nu = if(foo=="AMLSG0704") 1 else 0)
+			coxRFXOsGGc$Z <- NULL
+			rForestOsTrain <- rfsrc(Surv(time, status) ~.,data= cbind(time = os[,1], status = os[,2], dataFrame[,mainIdxOs])[trainIdx,], ntree=100, importance="none")
+			return(list(
+							BIC=coxBICOsTrain,
+							AIC=coxAICOsTrain,
+							CPSS=coxCPSSOsTrain,
+							RFX=coxRFXOsTrain,
+							RFXgg=coxRFXOsGGc,
+							rForest=rForestOsTrain
+					))
+		}, mc.cores=3)
+names(allModelsTrial) <- levels(clinicalData$Study)
+
+allModelsTrialPredictions <- mclapply(names(allModelsTrial), function(foo){
+			x <- allModelsTrial[[foo]]
+			trainIdx <- clinicalData$Study != foo
+			cbind(ELN=c(4,1,3,2)[clinicalData$M_Risk[!trainIdx]],
+					sapply(x, function(y){
+								predictAllModels(y, newdata=dataFrame[!trainIdx,])
+							}))
+		}, mc.cores=10)
+names(allModelsTrialPredictions) <- names(allModelsTrial)
+
+allModelsTrialC <- sapply(names(allModelsTrial), function(foo){
+			trainIdx <- clinicalData$Study != foo
+			apply(allModelsTrialPredictions[[foo]], 2 , function(p){						
+						unlist( survConcordance(osYr[!trainIdx,] ~ p)[c("concordance","std.err")])
+					})
+		}, simplify="array")
+
+allModelsTrialC
+
+#' #### Time-dependent
+#+ allModelsTrialTD, cache=TRUE
+allModelsTrialTD <- mclapply(levels(clinicalData$Study), function(foo){
+			#set.seed(foo)
+			trainIdxTD <- clinicalData$Study[tplSplitOs] != foo 
+			c <- coxph(osTD[trainIdxTD] ~ 1, data=dataFrameOsTD[trainIdxTD,mainIdxOsTD])
+			scopeStep <- as.formula(paste("osTD[trainIdx] ~", paste(colnames(dataFrameOsTD)[mainIdxOsTD], collapse="+")))
+			coxBICOsTrain <- step(c, scope=scopeStep, k = log(sum(trainIdxTD)), trace=0)
+			coxAICOsTrain <- step(coxBICOsTrain, scope=scopeStep, k = 2, trace=0)
+			coxRFXOsTrain <- CoxRFX(dataFrameOsTD[trainIdxTD,mainIdxOsTD], osTD[trainIdxTD], groups=groups[mainIdxOsTD], nu = if(foo=="AMLSG0704") 1 else 0)
+			coxRFXOsTrain$Z <- NULL
+			coxRFXOsGGc <- CoxRFX(dataFrameOsTD[trainIdxTD,whichRFXOsTDGG], osTD[trainIdxTD], groups=groups[whichRFXOsTDGG], which.mu=mainGroups, nu = if(foo=="AMLSG0704") 1 else 0)
+			coxRFXOsGGc$Z <- NULL
+			
+			return(list(
+							BIC=coxBICOsTrain,
+							AIC=coxAICOsTrain,
+							RFX=coxRFXOsTrain,
+							RFXgg=coxRFXOsGGc							))
+		}, mc.cores=3)
+names(allModelsTrialTD) <- levels(clinicalData$Study)
+
+allModelsTrialTdPredictions <- mclapply(names(allModelsTrialTD), function(foo){
+			x <- allModelsTrialTD[[foo]]
+			trainIdxTD <<- clinicalData$Study[tplSplitOs] != foo
+			pred <- cbind(ELN=c(4,1,3,2)[clinicalData$M_Risk[tplSplitOs][!trainIdxTD]],
+					sapply(x, function(y){
+								predictAllModels(y, newdata=dataFrameOsTD[!trainIdxTD,])
+							}))
+			whichTrain <<- which(trainIdxTD[1:nrow(dataFrame)])
+			rfxNrs <- CoxRFX(nrdData[nrdData$index %in% whichTrain, names(crGroups)], Surv(nrdData$time1, nrdData$time2, nrdData$status)[nrdData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+			rfxNrs$coefficients["transplantRel"] <- 0
+			rfxPrs <-  CoxRFX(prdData[prdData$index %in% whichTrain, names(crGroups)], Surv(prdData$time1, prdData$time2, prdData$status)[prdData$index %in% whichTrain], groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
+			rfxRel <-  CoxRFX(relData[relData$index %in% whichTrain, names(crGroups)], Surv(relData$time1, relData$time2, relData$status)[relData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
+			rfxRel$coefficients["transplantRel"] <- 0
+			rfxCr <- CoxRFX(osData[whichTrain, names(crGroups)], Surv(cr[,1], cr[,2]==2)[whichTrain], groups=crGroups, which.mu = NULL)#intersect(mainGroups, unique(crGroups)))
+			rfxEs <- CoxRFX(osData[whichTrain, names(crGroups)], Surv(cr[,1], cr[,2]==1)[whichTrain], groups=crGroups, which.mu = NULL)
+			ix <- tplSplitOs %in% whichTrain
+			rfxOs <- CoxRFX(dataFrameOsTD[ix,whichRFXOsTDGG], osTD[ix], groups[whichRFXOsTDGG], which.mu=mainGroups) ## allow only the main groups to have mean different from zero.. 
+			xx <- 0:2000
+			coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(prdData, time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index])[prdData$index %in% whichTrain,]) 
+			tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1])))						
+			coxphOs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))[osData$index %in% whichTrain,]) 
+			tdOsBaseline <- exp(pmin(predict(coxphOs, newdata=data.frame(time0=500)),predict(coxphOs, newdata=data.frame(time0=xx[-1])))) ## cap predictions at induction length 500 days.
+			
+			dataTD <- data[tplSplitOs, ]
+			dataTD$transplantCR1[1:nrow(data)] <- 0
+			dataTD$transplantRel[1:nrow(data)] <- 0
+			multiRfx5 <- MultiRFX5(rfxEs, rfxCr, rfxNrs, rfxRel, rfxPrs, dataTD[!trainIdxTD,], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)
+			
+			pred <- cbind(pred, mRFX1yr=colSums(multiRfx5[365,1:3,]), mRFX3yr=colSums(multiRfx5[3*365,1:3,]), mRFX5yr=colSums(multiRfx5[5*365,1:3,]))
+			return(pred)
+			
+		}, mc.cores=3)
+names(allModelsTrialTdPredictions) <- names(allModelsTrialTD)
+
+allModelsTrialTdC <- sapply(names(allModelsTrialTD), function(foo){
+			trainIdx <- clinicalData$Study[tplSplitOs] != foo
+			apply(allModelsTrialTdPredictions[[foo]], 2 , function(p){						
+						unlist( survConcordance(osYrTD[!trainIdx,] ~ p)[c("concordance","std.err")])
+					})
+		}, simplify="array")
+
+allModelsTrialTdC
+
+#' ### TCGA validation
+#' 
+#' #### Fit models
+#' Fit a single tree [@Therneau2014A] and a random forest model [@IshwaranTAAS2008].
+#+ tree, fig.width=3, fig.height=3
+library(rpart)
+library(randomForestSRC)
+tree <- rpart(os ~ ., data=dataFrame[mainIdxOs & osIdx])
+plot(tree)
+text(tree)
+survConcordance(na.omit(os)~predict(tree))
+
+#' Random forest
+#+ rForest, cache=TRUE
+rForest <- rfsrc(Surv(time, status) ~.,data= cbind(time = os[,1], status = os[,2], dataFrame[,mainIdxOs & osIdx]), ntree=100)
+boxplot(rForest$importance ~ droplevels(groups[mainIdxOs & osIdx]), border= colGroups[mainGroups], staplewex=0, pch=16, cex=0.75, ylab="RSF importance", lty=1, xaxt="n")
+rotatedLabel(labels=mainGroups)
+rForestVimp <- sapply(mainGroups, function(g) vimp(rForest, colnames(dataFrame)[which(groups==g)]))
+
+survConcordance(na.omit(os)~predict(rForest, importance="none")$predicted)
+
+#' Complementary pairs stability selection with interaction terms
+#+ CoxCPSSIntOs, cache=TRUE
+set.seed(42)
+coxCPSSIntOs <- CoxCPSSInteractions(dataFrame[!is.na(os),groups %in% mainGroups & osIdx], na.omit(os), bootstrap.samples=50, scope = which(groups %in% scope))
+selectedIntOs <- names(which(coxCPSSIntOs$Pi > 0.8))
+coxCPSSIntOs
+
+#' Stepwise model selection by BIC
+#+ coxBIC, cache=TRUE, warning=FALSE
+c <- coxph(os ~ 1, data=dataFrame[,mainIdxOs & osIdx])
+scopeStep <- as.formula(paste("os ~", paste(colnames(dataFrame)[mainIdxOs& osIdx], collapse="+")))
+coxBICOs <- step(c, scope=scopeStep, k = log(sum(trainIdx)), trace=0)
+summary(coxBICOs)
+
+#' With AIC
+#+ coxAIC, cache=TRUE, warning=FALSE
+coxAICOs <- step(c, scope= scopeStep, k = 2, trace=0)
+summary(coxAICOs)
+
+#' Time-dep AIC and BIC, including allografts
+#+ coxBICosTD, cache=TRUE, warning=FALSE
+c <- coxph(osTD ~ 1, data=dataFrameOsTD[mainIdxOsTD])
+scopeStep <- as.formula(paste("osTD ~", paste(colnames(dataFrameOsTD)[mainIdxOsTD], collapse="+")))
+coxBICOsTD <- step(c, scope=scopeStep, k = log(nrow(dataFrame)), trace=0)
+coxAICOsTD <- step(coxBICOsTD, scope=scopeStep, k = 2, trace=0)
+
+
+#' #### TCGA data
+#' Load data
+#+ tcgaData, cache=TRUE
+tcgaClinical <- read.table("../../data/TCGA_clin.txt", sep="\t", header=TRUE)
+tcgaGenetic <- read.table("../../data/TCGA_gen.txt", sep="\t", header=TRUE)
+tcgaGenetic$TCGA_ID <- factor(as.character(tcgaGenetic$TCGA_ID), levels = levels(tcgaClinical$TCGA_ID))
+g <- as.character(tcgaGenetic$Hugo_Symbol)
+g[tcgaGenetic$Hugo_Symbol=="FLT3" & tcgaGenetic$Variant_Type == 'INS'] <- "FLT3_ITD"
+g[tcgaGenetic$Hugo_Symbol=="FLT3" & tcgaGenetic$Variant_Type == 'SNP'] <- "FLT3_TKD"
+tcgaMutation <- (table(tcgaGenetic$TCGA_ID,g)) + 0
+t <- data.frame(tcgaMutation[,]>0, CEBPA_mono = tcgaMutation[,"CEBPA"]==1,CEBPA_bi = tcgaMutation[,"CEBPA"]>1,tcgaClinical[,-c(1,2,4,5,6,13,25)], MakeInteger(tcgaClinical$TypeAML)) + 0
+w <- grep("_10+$",colnames(dataFrame), value=TRUE)
+f <- as.numeric(sub(".+_","",w))
+n <- sub("_10+","",w)
+f <- f[n %in% colnames(tcgaClinical)]
+n <- n[n %in% colnames(tcgaClinical)]
+t[n] <- t[n] / rep(f, each=nrow(t))
+colnames(t)[match(n,colnames(t))] <- paste(n,f,sep="_")
+rm(w,n,f,g)
+
+tcgaData <- dataFrame[1:nrow(t),]
+tcgaData[,] <- NA
+w <- intersect(names(t), names(tcgaData))
+tcgaData[w] <- t[w]
+tcgaData$TPL_os <- NA
+tcgaData[groups=="Genetics"][is.na(tcgaData[groups=="Genetics"])] <- 0
+tcgaData$MissingCyto <- (tcgaClinical$karyotype == '[Not Available]' )+0
+rm(t,w)
+tcgaSurvival <- Surv(tcgaClinical$OS/365, tcgaClinical$Status)
+
+tb <- read.xlsx("../../data/TCGA_SupplementalTable01.xlsx", 1, colIndex=1:29)
+tb <- tb[order(tb$TCGA.Patient.ID),]
+
+tt <- strsplit(as.character(tb$Trnsplt), ", ")
+tp <-  strsplit(as.character(tb$Dz.Stat....trnsplt),", ")
+tcgaTpl <- tb(sapply(1:nrow(tb) , function(i){
+					transplantCR1=0; transplantRel=0
+					if(tt[i] != "0") {
+						a <- tt[i]%in%c("MUD","sib Allo") & !tp[i] %in% c("Refr dz","refr dz","refr dz post induction","xxxxx","aplastic post chemo","0") 
+						if(any(a)){
+							if(any(a & tp[i] %in% c("CR1","CR 1"))) transplantCR1 <- 1
+							if(any(a & !tp[i] %in% c("CR1","CR 1"))) transplantRel <- 1
+						}
+					}
+					return(c(transplantCR1=transplantCR1, transplantRel=transplantRel))
+				}) )
+
+tcgaData$TPL_os <- tcgaTpl[,"transplantCR1"]
+
+#' Plot mutation frequencies
+#+ tcgaFreq, fig.width=2.5, fig.height=2.5
+plot(colMeans(dataFrame[groups=="Genetics"])[colnames(tcgaMutation)], colMeans(tcgaMutation))
+text(colMeans(dataFrame[groups=="Genetics"])[colnames(tcgaMutation)], colMeans(tcgaMutation), colnames(tcgaMutation))
+cor(colMeans(dataFrame[groups=="Genetics"])[colnames(tcgaMutation)], colMeans(tcgaMutation), use='c')
+
+#' NPM1 survival
+plot(survfit(tcgaSurvival ~ NPM1, data=tcgaData), col=set1[1:2])
+lines(survfit(osYr ~ NPM1, data=dataFrame), col=set1, lty=3,mark=NA)
+legend("topright", col=c(set1[1:2],"black","black"), c("NPM1 wt", "NPM1 mut","TCGA","AML"), lty=c(1,1,1,3), bty='n')
+
+#' #### Analyse risk
+#' CoxRFX model and covariance-based imputation
+tcgaRiskRFXOs <- PredictRiskMissing(coxRFXFitOsTDGGc, tcgaData[whichRFXOsTDGG])
+survConcordance(tcgaSurvival ~ tcgaRiskRFXOs[,1])
+
+#' CPSS model
+tcgaDataImputed <- as.data.frame(ImputeMissing(dataFrame[mainIdxOs], newX=tcgaData[mainIdxOs]))
+tcgaRiskCPSSOs <- predict(coxCPSSIntOs, newdata=tcgaDataImputed)
+survConcordance(tcgaSurvival ~ tcgaRiskCPSSOs)
+
+#' Blind imputation (mean only)
+f <- function(X) {X <- sapply(X, poorMansImpute);X[is.na(X)] <- 0; X}
+survConcordance(tcgaSurvival ~ predict(coxCPSSIntOs, newdata=as.data.frame(f(tcgaData[mainIdxOs]))))
+
+#' Cytogenetic risk
+survConcordance(tcgaSurvival ~ c(3,1,2)[tcgaClinical$C_Risk])
+
+#' PINA score [@PastoreJCO2014] for NK AML.
+PINAOs <- function(X){
+	coef <- c( NPM1=-1.2,
+			FLT3_ITD=-.26,
+			`NPM1:FLT3_ITD`=.89,
+			CEBPA_bi=-1.3,
+			wbc_log10=.57,
+			age=0.044,
+			ecog24=.4)
+	x <- cbind(X[,colnames(X) %in% names(coef)], wbc_log10 = log10(100*1e3*pmax(X[,"wbc_100"], 0.001)), age = X[,"AOD_10"]*10, ecog24 = X[,"Performance_ECOG"]>=2)
+	risk <- as.matrix(x[,names(coef)]) %*% coef
+	group <- cut(risk, c(min(risk), 4,5.4, max(risk)), labels = c("low","int","high"))
+	return(data.frame(risk, group))
+}
+pinaOs <- PINAOs(dataFrame)
+
+#+ PINAos, fig.width=3, fig.height=2.5
+nkIdx <- clinicalData$NK == 1
+plot(survfit(os[nkIdx] ~ pinaOs[nkIdx,2]), col=rev(set1[1:3]))
+survConcordance(os[nkIdx] ~ pinaOs[nkIdx,1])
+
+#' Compared to CPSS (AML data)
+survConcordance(os[nkIdx] ~ predict(coxCPSSIntOs, newdata=dataFrame)[nkIdx])
+
+#' And on TCGA data
+tcgaPinaOs <- PINAOs(cbind(tcgaDataImputed, `NPM1:FLT3_ITD` = tcgaDataImputed[,"NPM1"]*tcgaDataImputed[,"FLT3_ITD"]))
+tcgaNkIdx <- tcgaClinical$karyotype == "Normal"
+survConcordance(tcgaSurvival[tcgaNkIdx] ~ tcgaPinaOs[tcgaNkIdx,1])
+survConcordance(tcgaSurvival[tcgaNkIdx] ~ tcgaRiskCPSSOs[tcgaNkIdx])
+
+
+#' ELN score [@DohnerB2010]
+ELN <- function(X, nkIdx){
+	factor(ifelse(X$inv3_t3_3==1 | X$t_6_9==1 | X$minus5_5q==1 | X$mono17_17p_abn17p==1 | X$minus7==1 | X$complex==1 | X$t_v_11==1,
+					"Adverse",
+					ifelse(X$t_15_17==1 | X$t_8_21==1 | X$inv16_t16_16==1 | ((X$CEBPA_bi==1 |  X$CEBPA_mono==1 | (X$NPM1==1 & X$FLT3_ITD==0)) & nkIdx),
+							"Favorable",
+							ifelse(nkIdx & (X$FLT3_ITD==1 | X$NPM1==0 & X$FLT3_ITD==0), 
+									"Inter-1", "Inter-2"))), levels=rev(c("Adverse","Inter-1","Inter-2","Favorable")))
+}
+
+table(clinicalData$M_Risk, ELN(dataFrame, nkIdx))
+
+#' Other models
+tcgaRisk <- data.frame(
+		#stdRisk = c(3,1,2)[tcgaClinical$C_Risk],
+		ELN = as.numeric(ELN(tcgaDataImputed, tcgaNkIdx)),
+		tree = predict(tree, newdata=tcgaDataImputed),
+		rForest = predict(rForest, newdata = tcgaDataImputed, importance="none")$predicted,
+		PINAos = tcgaPinaOs[,1],
+		coxRFX = tcgaRiskRFXOs[,1],
+		coxBIC = predict(coxBICOs, newdata=tcgaDataImputed),
+		coxAIC = predict(coxAICOs, newdata=tcgaDataImputed),
+		coxCPSS = tcgaRiskCPSSOs
+)
+
+#' Concordance of all models
+#+ concordanceTCGA, fig.width=3, fig.height=2.5
+tcgaConcordance <- sapply(tcgaRisk, function(x) {c <- survConcordance(tcgaSurvival ~ x); c(c$concordance, c$std.err)})
+tcgaConcordance
+o <- order(tcgaConcordance[1,])
+barplot(tcgaConcordance[1,o], border=NA, col= set1[-6], las=2, xaxt="n", ylab="Concordance", ylim=c(0.5,0.75), xpd=FALSE) -> b
+segments(b,tcgaConcordance[1,o]-tcgaConcordance[2,o],b,tcgaConcordance[1,o]+tcgaConcordance[2,o])
+rotatedLabel(b, rep(0.49,length(b)), colnames(tcgaConcordance)[o], srt=45)
+
+#' AUC of all models
+#+ aucTCGA, fig.width=3, fig.height=2.5
+library(survAUC)
+library(survivalROC)
+tcgaAUC <- sapply(tcgaRisk, function(x) AUC.uno(na.omit(os), tcgaSurvival[!is.na(x) & !is.na(tcgaSurvival)], scale(x)[!is.na(tcgaSurvival) &! is.na(x)], c(90,365,1000)/365)$auc)
+tcgaAUCi <- sapply(tcgaRisk, function(x) AUC.uno(na.omit(os), tcgaSurvival[!is.na(x) & !is.na(tcgaSurvival)], scale(x)[!is.na(tcgaSurvival) &! is.na(x)], sort(na.omit(tcgaSurvival[,1])))$iauc)
+o <- order(colMeans(tcgaAUC))
+barplot(tcgaAUC[,o], border=1, col= rep(c("grey",set1[-6]),each=3), las=2, xaxt="n", ylab="AUC", beside=TRUE, density=c(NA, 48,24), ylim=c(0.5,0.85), xpd=FALSE) -> b
+legend("topleft", bty="n", c("3mo","1yr","3yr"), fill='black', density=c(NA, 48,24))
+rotatedLabel(b[seq(3, length(b), 3)], rep(0.49,length(tcgaRisk)), names(tcgaRisk)[o], srt=45)
+
+#' KM curves for four risk categories (quartiles)
+#+ kmTCGA, fig.width=3, fig.height=2.5
+risk <- cut(tcgaRiskRFXOs[,1], quantile(tcgaRiskRFXOs[,1]), labels=c("1st Q","2nd Q","3rd Q","4th Q"))
+s <- survfit(tcgaSurvival ~ risk)
+plot(s, col=set1[c(3,2,4,1)], mark=NA, xlab="Years", ylab="Survival")
+legend("topright", bty="n", rownames(summary(s)$table), col=set1[c(3,2,4,1)], lty=1)
+
+#' Distribution of risk v cytogenic categories
+#+ riskTCGA, fig.width=3, fig.height=2.5
+risk <- tcgaRiskRFXOs[,1] - mean(tcgaRiskRFXOs[,1])
+x <- seq(from=-4,to=4, l=512)
+r <- sapply(levels(tcgaClinical$C_Risk)[c(2,3,1)], function(r){
+			i <- tcgaClinical$C_Risk==r
+			d <- density(na.omit(risk[i]), from=-4,to=4)$y * mean(i, na.rm=TRUE)
+		})
+par(mar=c(4,4,3,4)+.1, bty="n")
+plot(exp(x),rowSums(r), type='l', lty=0,xlab="Hazard", ylab="Prop. patients", log='x', ylim=c(0,.55))
+for(i in 1:3)
+	polygon(exp(c(x, rev(x))), c(rowSums(r[,1:i, drop=FALSE]), rev(rowSums(cbind(0,r)[,1:i, drop=FALSE]))), col=set1[c(3,2,1)][i], border=NA)
+
+H0 <- basehaz(coxph(tcgaSurvival ~ risk), centered=TRUE)
+hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
+invHazardDist <- splinefun(H0$hazard, H0$time, method="monoH.FC")
+l <- c(0.1,.5,.9)#c(0.1,0.25,.5,.75,.9)
+for(i in seq_along(l))
+	lines(exp(x), pmax(0,invHazardDist(-log(l[i]) /exp(x) ))/10000*365, col='black', lty=c(2,1,2)[i])
+axis(side=4, at=seq(0,.5,0.1), labels=seq(0,.5,.1)*10000*365)
+mtext(side=4, "Time", line=2.5)
+mtext(side=3, at = -log(l)/hazardDist(par("usr")[4]*10000*365), text=paste(100*l, "% survive", sep=""))
+legend("topright", levels(tcgaClinical$C_Risk)[c(2,3,1)], fill=set1[c(3,2,1)], bty="n", title="M risk")
+
+#' ### Multistage models
+d <- tcgaData
+d$transplantRel <- tcgaTpl[,"transplantRel"]
+d$transplantCR1 <- tcgaTpl[,"transplantCR1"]
+d$MissingCyto <- (tcgaClinical$karyotype == '[Not Available]' )+0
+multiRfx5Tcga <- MultiRFX5(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, d, tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=xmax)
+
+s <- rowMeans(colSums(aperm(multiRfx5Tcga[,1:3,],c(2,1,3))))
+plot(survfit(tcgaSurvival ~ 1))
+lines(seq(0,2000)/365,1-s)
+
+c <- sapply(seq(1,2000,10), function(i) survConcordance(tcgaSurvival ~  colSums(multiRfx5Tcga[i,1:3,]))$concordance)
+plot(c)
+plot(seq(1,2000,10),c)
+
+r <- colSums(multiRfx5Tcga[365,1:3,])
+survConcordance(tcgaSurvival ~ r)
+
+#' TCGA concordance time-dependent models
+tcgaDataTdImputed <- as.data.frame(ImputeMissing(dataFrame[mainIdxOsTD], newX=tcgaData[mainIdxOsTD]))
+tcgaRiskTD <- data.frame(
+		coxBICTD = predict(coxBICOsTD, newdata=tcgaDataTdImputed),
+		coxAICTD = predict(coxAICOsTD, newdata=tcgaDataTdImputed),
+		coxRFXTD = PredictRiskMissing(coxRFXFitOsTDGGc, tcgaData)[,1],
+		mRFX365 = r
+)
+tcgaConcordanceTD <- sapply(tcgaRiskTD, function(x) unlist(survConcordance(tcgaSurvival ~ x)[c("concordance","std.err")]))
+
+
+
+
+
+#' #### Figure 1A
+#' Here we generate the overview shown in Figure 1b.
+#+ concordanceCvTcga, fig.width=3.5, fig.height=2.5
+library(abind)
+par(mar=c(3,3.5,.5,.5),bty="n", mgp=c(2.5,.5,0), las=2,  lend=1, xpd=FALSE)
+o <- c(1,7,2,3,4,6)
+x <- rbind(allModelsCvC[o,], allModelsCvTdC[c("BIC","AIC","RFXgg","mRFX3yr"),])
+col <- brewer.pal(4,"Pastel1")
+#boxplot(t(x[o,]), notch=TRUE, ylab="Concordance", staplewex=0, lty=1, pch=16, xaxt="n", border="white", ylim=c(0.5,0.75), boxwex=.5)
+bplot <- function(x, at=1:ncol(x),..., ylim=range(x), xlab="", col="black", col.lines="grey"){
+	y <- apply(x,2,fivenum)
+	plot(at,y[3,], pch=NA, ..., ylim=ylim, xlab="", xaxt="n")
+	segments(at,y[1,],at,y[5,], col=col.lines, lwd=2)
+	segments(at,y[2,],at,y[4,], col=col.lines, lwd=4)
+	points(at,y[3,], pch=15, col=col)
+}
+s <- .2 #space
+a <- c(1:6, 7:10+.5)
+bplot(t(x), at=a-1.5*s,ylab="Concordance", ylim=c(0.5,0.75), xlim=range(a)+c(-.5,.5))
+abline(h=seq(.5,.75,.05), col="lightgrey")
+par(xpd=NA)
+t <- tcgaConcordance[,c(1,3,6,7,8,5)]
+z <- abind(abind(TCGA=t, allModelsTrialC[,o,]), abind(TCGA=tcgaConcordanceTD, allModelsTrialTdC[,-c(1,4),]), along=2)
+m <- sapply(1:ncol(z),function(i){
+			err <- 1 / sum(1/z[2,i,]^2)
+			avg <- sum(z[1,i,] /z[2,i,]^2) * err
+			c(avg,sqrt(err))})
+#segments(1:6+s/2,m[1,]-m[2,],1:6+s/2,m[1,]+m[2,], lwd=2, col="#00000044")
+#points(m[1,], pch=19, cex=1.5)
+#segments(a-s/2,t[1,]-t[2,],a-s/2,t[1,]+t[2,], col=paste0(col[1],"FF"), lwd=2)
+#points(a-s/2,t[1,], col=col[1], pch=16, cex=1)
+i <- 0; for(n in dimnames(z)[[3]]) { i<-i+1;
+	segments(a -s +s/2*i, z[1,,n] -  z[2,,n],a -s +s/2*i, z[1,,n]+ z[2,,n], col=paste0(col[i],"FF"), lwd=2)
+	points(a -s +s/2*i, z[1,,n], col=col[i], pch=16, cex=1)
+}
+segments(a -3/4*s, m[1,],a+s*5/4,m[1,], lwd=3)
+rotatedLabel(a, labels= rownames(x))
+legend("bottomright", 
+		c(
+				"random CV 4/5 x100", 
+				paste0("TCGA, (n=",nrow(na.omit(tcgaSurvival)),")"),
+				paste0(dimnames(allModelsTrialC)[[3]]," (n=",table(clinicalData$Study),")"),
+				"average"), 
+		lty=c(1,1), bg="white", col=c("grey",col[1:4], "black"), pch=c(15,16,16,16,16,16,NA))
+
+
 
 #' # Simulations
 #' 
@@ -3843,7 +3949,10 @@ plot(multiRFX3TplCi["dCr1Rel","hat","os",] , simMultiRFX3TplCi["dCr1Rel","hat","
 plot(multiRFX3TplCi["dCr1Rel","upper","os",] - multiRFX3TplCi["dCr1Rel","lower","os",], simMultiRFX3TplCi["dCr1Rel","upper","os",]-simMultiRFX3TplCi["dCr1Rel","lower","os",], xlab="CI width 1,540 patients", ylab="CI width 10,000 patients")
 abline(0,0.5)
 
-#' #### Figure 4a
+#' #### HSCTs
+#' Here we reassess the effect of HSCTs, also cosidering the magnitude of prediction errors in the current data set and based on extrapolated errors.
+#' 
+#' #### Figure 4d
 #' Benefit v number of allografts in CR1
 #+ survNallo10000
 par(bty="L")
@@ -3887,6 +3996,7 @@ x <- seq_along(sEln)/length(sEln)
 
 lines(x + (1-x)*fRelapseEln*fAlloRelapse,sEln, sEln, type='l', col=set1[2])
 legend("bottomright", c("Personalised risk", "Idealised","10,000 patients","This cohort", "Standard risk","ELN and age"),  col=set1[c(NA,1,1,1,NA,2)],lty=c(NA,3,2,1,NA,1), bty="n", text.font=c(2,1,1,1,2,1))
+
 
 
 #' # R session
