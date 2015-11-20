@@ -2506,7 +2506,7 @@ patients <- c("PD11104a","PD8314a","PD9227a")
 threePatientTplCiLoo <- sapply(patients, function(pd){
 			e <- new.env()
 			i <- which(rownames(dataFrame)==pd)
-			whichTrain <-  which(rownames(dataFrame)!=pd)
+			whichTrain <<- which(rownames(dataFrame)!=pd)
 			load(paste0("../../code/loo/",i,".RData"), env=e)			
 			multiRFX3TplCi <- MultiRFX3TplCi(e$rfxNrs, e$rfxRel, e$rfxPrs, data=data[i,colnames(e$rfxPrs$Z), drop=FALSE], x=3*365, nSim=1000, prsData=prdData[prdData$index!=i,colnames(e$rfxPrs$Z)], mc.cores=5)
 		}, simplify="array")
