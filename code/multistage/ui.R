@@ -1,13 +1,6 @@
-# TODO: Add comment
-# 
-# Author: mg14
-###############################################################################
-
-
 library(shiny)
 library(CoxHD)
 load("multistage.RData", envir=globalenv())
-#data <- coxRFXCirTD$Z
 
 
 # Define UI for application that plots random distributions 

@@ -1,9 +1,3 @@
-# TODO: Add comment
-# 
-# Author: mg14
-###############################################################################
-
-
 library(shiny)
 library(RColorBrewer)
 library(CoxHD)
@@ -100,7 +94,6 @@ addGrid <- function() {
 	abline(v=seq(0,2000,365), lty=3)
 }
 
-#data <- coxRFXRelTD$Z
 # Define server logic required to generate and plot a random distribution
 shinyServer(function(input, output) {
 			getData <- reactive({
