@@ -3344,7 +3344,7 @@ bplot(t(x), at=a-1.5*s,ylab="Concordance", ylim=c(0.5,0.75), xlim=range(a)+c(-.5
 abline(h=seq(.5,.75,.05), col="lightgrey")
 par(xpd=NA)
 t <- tcgaConcordance[,c(1,3,6,7,8,5)]
-z <- abind(abind(TCGA=t, allModelsTrialC[,o,]), abind(TCGA=tcgaConcordanceTD, allModelsTrialTdC[,-c(1,4),]), along=2)
+z <- abind(abind(TCGA=t, allModelsTrialC[,o,]), abind(TCGA=tcgaConcordanceTD, allModelsTrialTdC[,c("BIC","AIC","RFXgg","mRFX3yr"),]), along=2)
 m <- sapply(1:ncol(z),function(i){
 			err <- 1 / sum(1/z[2,i,]^2)
 			avg <- sum(z[1,i,] /z[2,i,]^2) * err
