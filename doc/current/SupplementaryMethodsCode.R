@@ -1112,8 +1112,6 @@ cr <- Surv(c, factor(pmin(2 * (!is.na(clinicalData$CR_date))+os[,2],2), levels=0
 coxRFXCrTD <- CoxRFX(osData[1:1540, names(crGroups)], Surv(cr[,1], cr[,2]==2), groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
 coxRFXNcdTD <- CoxRFX(osData[1:1540, names(crGroups)], Surv(cr[,1], cr[,2]==1), groups=crGroups, which.mu = NULL)
 
-#save(coxRFXRelTD, coxRFXNrdTD, coxRFXPrdTD, coxRFXOsCR, coxRFXNcdTD, coxRFXCrTD, cr, nrdData, relData, prdData, osData, crGroups, data, clinicalData, file="../../code/multistage/multistage.RData")
-
 #' ### Variance components
 #+ allVarComp, fig.width=6, fig.height=4
 par(mfrow=c(3,2), xpd=FALSE)
@@ -3996,6 +3994,24 @@ x <- seq_along(sEln)/length(sEln)
 
 lines(x + (1-x)*fRelapseEln*fAlloRelapse,sEln, sEln, type='l', col=set1[2])
 legend("bottomright", c("Personalised risk", "Idealised","10,000 patients","This cohort", "Standard risk","ELN and age"),  col=set1[c(NA,1,1,1,NA,2)],lty=c(NA,3,2,1,NA,1), bty="n", text.font=c(2,1,1,1,2,1))
+
+#' # Web tool
+#' We have implemented the aformentioned multistage prediciton model as a shiny webserver.
+#' ## Code
+#' ### Data
+#' The following data is dumped for running the webtool
+#+ dataWebtool, eval=FALSE
+save(coxRFXRelTD, coxRFXNrdTD, coxRFXPrdTD, coxRFXOsCR, coxRFXNcdTD, coxRFXCrTD, cr, nrdData, relData, prdData, osData, crGroups, data, clinicalData, file="../../code/multistage/multistage.RData")
+
+#' ### server.R
+#' The server runs according to the following script
+read_chunk('../../code/multistage/server.R', labels="server.R")
+#+ server.R, eval=FALSE
+
+#' ### ui.R
+#' The shiny user interface is defined by the following script
+read_chunk('../../code/multistage/ui.R', labels="ui.R")
+#+ ui.R, eval=FALSE
 
 
 
