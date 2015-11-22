@@ -3227,6 +3227,7 @@ ELN <- function(X, nkIdx){
 table(clinicalData$M_Risk, ELN(dataFrame, nkIdx))
 
 #' Other models
+#+ tcgaRisk, cache=TRUE
 tcgaRisk <- data.frame(
 		#stdRisk = c(3,1,2)[tcgaClinical$C_Risk],
 		ELN = as.numeric(ELN(tcgaDataImputed, tcgaNkIdx)),
