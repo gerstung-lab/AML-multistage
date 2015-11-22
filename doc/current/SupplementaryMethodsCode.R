@@ -3143,7 +3143,7 @@ tb <- tb[order(tb$TCGA.Patient.ID),]
 
 tt <- strsplit(as.character(tb$Trnsplt), ", ")
 tp <-  strsplit(as.character(tb$Dz.Stat....trnsplt),", ")
-tcgaTpl <- tb(sapply(1:nrow(tb) , function(i){
+tcgaTpl <- t(sapply(1:nrow(tb) , function(i){
 					transplantCR1=0; transplantRel=0
 					if(tt[i] != "0") {
 						a <- tt[i]%in%c("MUD","sib Allo") & !tp[i] %in% c("Refr dz","refr dz","refr dz post induction","xxxxx","aplastic post chemo","0") 
