@@ -2508,7 +2508,7 @@ threePatientTplCiLoo <- sapply(patients, function(pd){
 			i <- which(rownames(dataFrame)==pd)
 			whichTrain <<- which(rownames(dataFrame)!=pd)
 			load(paste0("../../code/loo/",i,".RData"), env=e)			
-			multiRFX3TplCi <- MultiRFX3TplCi(e$rfxNrs, e$rfxRel, e$rfxPrs, data=data[i,colnames(e$rfxPrs$Z), drop=FALSE], x=3*365, nSim=1000, prdData=prdData[prdData$index!=i,colnames(e$rfxPrs$Z)], mc.cores=5)
+			multiRFX3TplCi <- MultiRFX3TplCi(e$rfxNrs, e$rfxRel, e$rfxPrs, data=data[i,colnames(e$rfxPrs$Z), drop=FALSE], x=3*365, nSim=1000, prdData=prdData[prdData$index!=i,], mc.cores=5)
 		}, simplify="array")
 
 
