@@ -1818,7 +1818,7 @@ datatable(format(survivalTpl[order(survivalTpl$CR1 -survivalTpl$Relapse),], digi
 datatable(multiRFX3Tpl[patients,])
 
 #' Function to predict OS from  Relapse, PRS and NRM. This one also computes confidence intervals for each type of allograft and the predicted differences in outcome between allograft types.
-MultiRFX3TplCi <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, prsData, ciType="simulated", nSim = 200, mc.cores=10){
+MultiRFX3TplCi <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, prdData, ciType="simulated", nSim = 200, mc.cores=10){
 	## Step 1: Compute KM survival curves and log hazard
 	getS <- function(coxRFX, data, max.x=5000) {		
 		if(!is.null(coxRFX$na.action)) coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
@@ -1958,11 +1958,11 @@ d <- osData[1:nrow(dataFrame),]
 d$transplantCR1 <- 0
 d$transplantRel <- 0
 p <- grep("PD11104a|PD8314a|PD11080a",rownames(dataFrame))
-predict3 <- MultiRFX3TplCi(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[p,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=1000, prsData=prsData) ## selected with 1000
+predict3 <- MultiRFX3TplCi(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[p,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=1000, prdData=prdData) ## selected with 1000
 dimnames(predict3)[[4]] <- rownames(dataFrame)[p]
 predict3
 set.seed(42)
-multiRFX3TplCi <- MultiRFX3TplCi(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=200, prsData=prsData) ## others with 200
+multiRFX3TplCi <- MultiRFX3TplCi(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=200, prdData=prdData) ## others with 200
 dimnames(multiRFX3TplCi)[[4]] <- rownames(dataFrame)
 
 #' The figure shows the mortality reduction of allograft CR1 v none, allograft in Rel v none, and CR1 v Relapse.
@@ -2506,7 +2506,7 @@ threePatientTplCiLoo <- sapply(patients, function(pd){
 			i <- which(rownames(dataFrame)==pd)
 			whichTrain <<- which(rownames(dataFrame)!=pd)
 			load(paste0("../../code/loo/",i,".RData"), env=e)			
-			multiRFX3TplCi <- MultiRFX3TplCi(e$rfxNrs, e$rfxRel, e$rfxPrs, data=data[i,colnames(e$rfxPrs$Z), drop=FALSE], x=3*365, nSim=1000, prsData=prdData[prdData$index!=i,colnames(e$rfxPrs$Z)], mc.cores=5)
+			multiRFX3TplCi <- MultiRFX3TplCi(e$rfxNrs, e$rfxRel, e$rfxPrs, data=data[i,colnames(e$rfxPrs$Z), drop=FALSE], x=3*365, nSim=1000, prdData=prdData[prdData$index!=i,colnames(e$rfxPrs$Z)], mc.cores=5)
 		}, simplify="array")
 
 
@@ -3943,7 +3943,7 @@ abline(0,1)
 d <- osData[1:nrow(dataFrame),]
 d$transplantCR1 <- 0
 d$transplantRel <- 0
-simMultiRFX3TplCi <- MultiRFX3TplCi(simRfxNrs, simRfxRel, simRfxPrs, data=d[,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=200, prsData=prsData) ## others with 200
+simMultiRFX3TplCi <- MultiRFX3TplCi(simRfxNrs, simRfxRel, simRfxPrs, data=d[,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=200, prdData=prdData) ## others with 200
 plot(multiRFX3TplCi["dCr1Rel","hat","os",] , simMultiRFX3TplCi["dCr1Rel","hat","os",], xlab="Benefit 1,540 patients", ylab="Benefit 10,000 patients")
 plot(multiRFX3TplCi["dCr1Rel","upper","os",] - multiRFX3TplCi["dCr1Rel","lower","os",], simMultiRFX3TplCi["dCr1Rel","upper","os",]-simMultiRFX3TplCi["dCr1Rel","lower","os",], xlab="CI width 1,540 patients", ylab="CI width 10,000 patients")
 abline(0,0.5)
@@ -3998,9 +3998,11 @@ legend("bottomright", c("Personalised risk", "Idealised","10,000 patients","This
 
 #' # Web tool
 #' We have implemented the aformentioned multistage prediciton model as a shiny webserver.
+#' 
 #' ## Code
+#' 
 #' ### Data
-#' The following data is dumped for running the webtool
+#' The following data is saved for running the webtool:
 #+ dataWebtool, eval=FALSE
 save(coxRFXRelTD, coxRFXNrdTD, coxRFXPrdTD, coxRFXOsCR, coxRFXNcdTD, coxRFXCrTD, cr, nrdData, relData, prdData, osData, crGroups, data, clinicalData, file="../../code/multistage/multistage.RData")
 
