@@ -1916,7 +1916,7 @@ MultiRFX3TplCi <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, 
 										diffCir <- diff(c(1,kmCir$S^H0[1])) * kmNrs$S^H0[2] ## Correct KM estimate for competing risk			
 										cir0 <- 1+cumsum(diffCir)
 										rs0 <- computeTotalPrsC(x = xx, diffCir = diffCir, prsP = kmPrs0, tdPrmBaseline = tdPrmBaseline, risk = -kmPrs$r0+log(H0[3]))
-										aar0 <- rs0-cir0
+										aar0 <- rs0[1:w[i]]-cir0[1:w[i]]
 										
 										Hcr1 <- exp(r0 + rnorm(3,c(coxRFXRelTD$coefficients["transplantCR1"],coxRFXNrdTD$coefficients["transplantCR1"],coxRFXPrdTD$coefficients["transplantCR1"]), 
 														sqrt(c(coxRFXRelTD$var2["transplantCR1","transplantCR1"],coxRFXNrdTD$var2["transplantCR1","transplantCR1"],coxRFXPrdTD$var2["transplantCR1","transplantCR1"])))) 
@@ -1924,7 +1924,7 @@ MultiRFX3TplCi <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, 
 										diffCir <- diff(c(1,kmCir$S^Hcr1[1])) * kmNrs$S^Hcr1[2] ## Correct KM estimate for competing risk	
 										cirCr1 <- 1+cumsum(diffCir)
 										rsCr1 <- computeTotalPrsC(x = xx, diffCir = diffCir, prsP = kmPrs0, tdPrmBaseline = tdPrmBaseline, risk = -kmPrs$r0+log(Hcr1[3]))
-										aarCr1 <- rsCr1-cirCr1
+										aarCr1 <- rsCr1[1:w[i]]-cirCr1[1:w[i]]
 										
 										
 										Hrel <- exp(r0 + rnorm(3,c(coxRFXRelTD$coefficients["transplantRel"],coxRFXNrdTD$coefficients["transplantRel"],coxRFXPrdTD$coefficients["transplantRel"]), 
@@ -1933,7 +1933,7 @@ MultiRFX3TplCi <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, 
 										diffCir <- diff(c(1,kmCir$S^Hrel[1])) * kmNrs$S^Hrel[2] ## Correct KM estimate for competing risk							
 										cirRel <- 1+cumsum(diffCir)
 										rsRel <- computeTotalPrsC(x = xx, diffCir = diffCir, prsP = kmPrs0, tdPrmBaseline = tdPrmBaseline, risk = -kmPrs$r0+log(Hrel[3]))
-										aarRel <- rsRel-cirRel
+										aarRel <- rsRel[1:w[i]]-cirRel[1:w[i]]
 										
 										
 										os0 <- (1-(1-nrs0[1:w[i]])-(1-rs0))[w[i]]
