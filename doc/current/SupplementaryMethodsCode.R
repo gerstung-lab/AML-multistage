@@ -2484,13 +2484,6 @@ t <- table(w %in% osData$index[osData$transplantCR1==1],c[w],!is.na(clinicalData
 legend("topright", legend=as.numeric(t), col=rep(set1[1:nlevels(c)],each=2), lty=rep(c(1,2), nlevels(c)), bty="n")
 
 
-
-#' The model predictions appear consistent, but there is still a substantial uncertainty. We are unable to further tease apart the accuracy in the lower quartiles, as
-#' the predicted effect size is too small. The following is a barplot of the predicted and observed survival benefit.
-#+ allPredictLOOkMbar, fig.width=1.5
-barplot(rbind(x,e[1,]), beside=TRUE, names.arg=colnames(e), args.legend=list(x="topleft",bty="n",legend=c("predicted","observed")), legend=TRUE, xlab = "Predicted survival benefit", ylab="Three-year survival benefit", ylim=c(-0.05,.2)) -> b
-segments(b[2,],e[2,],b[2,],e[3,])
-
 #' The bottom line is that we are able to confidently isolate a quarter of patients with high benefit of allografts (about 12% absolute benefit). The breakdown across 
 #' ELN risk groups is:
 table(c, clinicalData$M_Risk)
