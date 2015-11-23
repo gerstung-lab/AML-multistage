@@ -1243,6 +1243,289 @@ addDataFrame(w,
 
 saveWorkbook(wb, file="SupplementaryTables.xlsx") 
 
+
+#' ### Predicting outcome from diagnosis
+#' The following function fits a 5-stage model. Note that we use a single smooth function g(t) to model the association between time of CR and all subsequent events.
+MultiRFX5 <- function(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, tdPrmBaseline = rep(1, ceiling(max(x))+1), tdOsBaseline = rep(1, ceiling(max(x))+1), ciType="analytical"){
+	cppFunction('NumericVector computeHierarchicalSurvival(NumericVector x, NumericVector diffS0, NumericVector S1Static, NumericVector haz1TimeDep) {
+					int xLen = x.size();
+					double h;
+					NumericVector overallSurvival(xLen);
+					for(int i = 0; i < xLen; ++i) overallSurvival[i] = 1;
+					for(int j = 1; j < xLen; ++j){
+					h = haz1TimeDep[j-1];
+					for(int i = j; i < xLen; ++i){
+					overallSurvival[i] += diffS0[j-1] * (1-pow(S1Static[i-j], h));
+					}
+					}
+					return overallSurvival;
+					}')
+	
+	
+	
+	## Step 1: Compute KM survival curves and log hazard
+	getS <- function(coxRFX, data, max.x=5000) {		
+		if(!is.null(coxRFX$na.action)) coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
+		data <- as.matrix(data[,match(colnames(coxRFX$Z),colnames(data)), drop=FALSE])
+		r <- PredictRiskMissing(coxRFX, data, var="var2")
+		H0 <- basehaz(coxRFX, centered = FALSE)
+		hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
+		x <- c(0:ceiling(max.x))
+		S <- exp(-hazardDist(x))
+		return(list(S=S, r=r, x=x, hazardDist=hazardDist, r0 = coxRFX$means %*% coef(coxRFX)))
+	}
+	kmCr <- getS(coxRFX = coxRFXCrTD, data = data, max.x=max(x))
+	kmEs <- getS(coxRFX = coxRFXNcdTD, data = data, max.x=max(x))
+	kmCir <- getS(coxRFX = coxRFXRelTD, data = data, max.x=max(x))
+	kmNrm <- getS(coxRFX = coxRFXNrdTD, data = data, max.x=max(x))
+	kmPrs <- getS(coxRFX = coxRFXPrdTD, data = data, max.x=max(x))
+	
+	xx <- 0:ceiling(max(x))
+	
+	sapply(1:nrow(data), function(i){
+				## Step 2: Adjust curves for competing risks, accounting for hazard
+				crAbs <-  cumsum(c(1,diff(kmCr$S^exp(kmCr$r[i,1]))) * kmEs$S ^ exp(kmEs$r[i,1]))
+				esAbs  <- cumsum(c(1,diff(kmEs$S^exp(kmEs$r[i,1]))) * kmCr$S ^ exp(kmCr$r[i,1])) ## array times x nrow(data)
+				cirCrAbs <- cumsum(c(1,diff(kmCir$S^exp(kmCir$r[i,1]))) * kmNrm$S ^ exp(kmNrm$r[i,1]))
+				nrsCrAbs <- cumsum(c(1,diff(kmNrm$S^exp(kmNrm$r[i,1]))) * kmCir$S ^ exp(kmCir$r[i,1])) ## array times x nrow(data)
+				
+				## Step 3: Compute hierarchical survival
+				### Prs			
+				rsCrAbs <- computeHierarchicalSurvival(x = xx, diffS0 = diff(cirCrAbs), S1Static = kmPrs$S, haz1TimeDep = tdPrmBaseline * exp(kmPrs$r[i,1]))
+				
+				## Confidence intervals (loglog)
+				PlogP2 <- function(x) {(x * log(x))^2}
+				errOs <- kmNrm$r[i,2] * PlogP2(kmNrm$S^exp(kmNrm$r[i,1])) * (1-(1-kmCir$S ^ exp(kmCir$r[i,1]))) * (1-kmPrs$S ^ exp(kmPrs$r[i,1]))^2 + kmCir$r[i,2] * PlogP2(kmCir$S ^ exp(kmCir$r[i,1])) * (1-kmPrs$S ^ exp(kmPrs$r[i,1]))^2 * (kmNrm$S ^ exp(kmNrm$r[i,1]))^2 +  kmPrs$r[i,2] * PlogP2(kmPrs$S ^ exp(kmPrs$r[i,1])) * (1-kmCir$S ^ exp(kmCir$r[i,1]))^2 * (kmNrm$S ^ exp(kmNrm$r[i,1]))^2 
+				sdOsCr <- sqrt(errOs / PlogP2(1-(1-nrsCrAbs)-(1-rsCrAbs)))
+				
+				
+				### Overall survival from enrollment
+				nrsEr <- computeHierarchicalSurvival(x = xx, diffS0 = diff(crAbs), S1Static = nrsCrAbs, haz1TimeDep = tdOsBaseline)
+				rsEr <- computeHierarchicalSurvival(x = xx, diffS0 = diff(crAbs), S1Static = rsCrAbs, haz1TimeDep = tdOsBaseline)
+				cirEr <- computeHierarchicalSurvival(x = xx, diffS0 = diff(crAbs), S1Static = cirCrAbs, haz1TimeDep = tdOsBaseline)
+				cbind(deathInErFromEr=1-esAbs, deathInCrFromEr=1-nrsEr, deathInRelFromEr=1-rsEr, aliveInRelFromEr=1-cirEr-(1-rsEr), aliveInCrFromEr=1-crAbs - (1-cirEr) - (1-nrsEr),
+						deathInCrFromCr = 1-nrsCrAbs, deathInRelapseFromCr=(1-rsCrAbs), aliveInRelapseFromCr = (1-cirCrAbs) - (1-rsCrAbs), osInCrFromCrSd=sdOsCr
+				)
+			}, simplify='array')
+}
+
+#' PRS baseline with spline-based dep on CR length)
+#+ fiveStagePredicted, cache=TRUE
+xmax <- 2000
+xx <- 0:ceiling(xmax)
+coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(prdData, time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index])) 
+tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1]))) ## Hazard (function of CR length)	
+
+coxphOs <- coxph(Surv(time1,time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))) 
+tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time0=xx[-1])))	 ## Hazard (function of induction length), only for OS (could do CIR,NRM,PRS seperately)
+
+fiveStagePredicted <- MultiRFX5(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=xmax)
+
+#' Function to plot stages
+sedimentPlot <- function(Y, x=1:nrow(Y), y0=0, y1=NULL, col=1:ncol(Y), ...){
+	Z <- cbind(t(apply(cbind(y0,Y),1,cumsum)),y1)
+	plot(x,Z[,1], xlim=range(x), ylim=range(Z), lty=0, pch=NA,...)
+	for(i in 2:ncol(Z))
+		polygon(c(x,rev(x)), c(Z[,i-1],rev(Z[,i])), border=NA, col=col[i-1])
+}
+
+lineStage <- function(CR_date, Recurrence_date, Date_LF, ERDate, Status, y=0, col=1:5, pch.trans=19, pch.end=19, ...){
+	xpd <- par("xpd")
+	par(xpd=NA) 
+	t <- as.numeric(c(CR_date, Recurrence_date, Date_LF) - ERDate )
+	w <- !is.na(t)
+	o <- order(t)
+	to <- pmin(t[o], par("usr")[2])
+	l <- length(to)
+	segments(c(0,to[-l]), rep(y,l), to, rep(y,l), col=col, lend=1, ...)
+	status <- if(Status == 1) 3 else 0
+	if(is.na(Recurrence_date))
+		status <- status - 1
+	if(is.na(CR_date))
+		status <- status - 1
+	x <- ifelse(t <= par("usr")[2], t, NA)
+	points(x, rep(y, length(t)), pch=c(pch.trans,pch.trans, if(Status) pch.end else NA), col=col[c(2:3,status+3)])
+	par(xpd=xpd)
+}
+
+
+#' Average of all multistage predictions, note the precise agreement with overall survival.
+#+ fiveStagePredictedAvg, fig.width=3, fig.height=2.5
+pastel1 <- brewer.pal(9, "Pastel1")
+par(mfrow=c(1,1), mar=c(3,3,1,1), cex=1)
+sedimentPlot(-rowMeans(fiveStagePredicted[,1:5,], dims=2), y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"))
+lines(survfit(Surv(OS, Status) ~ 1, data=clinicalData))
+
+
+#' Multistage predictions v overall survival
+#+ HRFXvRFX
+for(i in 1:5)
+	plot(summary(survfit(coxRFXFitOsTDGGc), i*365)$surv^ exp(coxRFXFitOsTDGGc$linear.predictors[1:1540]), 1-rowSums(aperm(fiveStagePredicted[,1:3,], c(3,1,2)), dim=2)[,365*3],
+			xlab="Survival RFX OS", ylab="Survival RFX Multistage", main=paste(i, "years"))
+
+
+#' #### Leave-one-out cross-validation
+#' The following code is run on the cluster
+read_chunk('../../code/leaveOneOut.R', labels="leaveOneOut")
+#+ leaveOneOut, eval=FALSE
+
+#' Multistage model
+#+ multiRfx5Loo, cache=TRUE
+times <- round(seq(0,5,0.05)*365)
+multiRfx5Loo <- sapply(mclapply(1:nrow(data), function(i){
+					e <- new.env()
+					t <- try(load(paste0("../../code/loo/",i,".RData"), env=e))
+					if(class(t)=="try-error") rep(NA, length(times))
+					else e$multiRfx5[times+1,,1]
+				}, mc.cores=6), I, simplify="array")
+
+#' Error OS
+survConcordance(os ~ colSums(multiRfx5Loo[times == 3*365,1:3,]))
+ape(1-colSums(multiRfx5Loo[times == 3*365,1:3,]), os, 3*365)
+
+
+#' #### Figure 2
+#' In order of risk constellation plots
+#+ fiveStagePredictedHilbert, fig.width=12, fig.height=12
+set.seed(42)
+s <- sample(nrow(dataFrame),nStars^2) #1:(nStars^2)
+library(HilbertVis)
+nStars <- 32
+l <- "coxRFXFitOsTDGGc"
+t <- os#get(l)$surv
+p <- PartialRisk(get(l),  newZ=dataFrame[, colnames(get(l)$Z)])
+p <- p[,colnames(p)!="Nuisance"]
+locations <- hilbertCurve(log2(nStars))+1 
+mat <- matrix(order(locations[,1], locations[,2]), ncol=nStars)
+h <- hclust(dist(p[s,]))
+layout(mat[nStars:1,])
+par(mar=c(0,0,0,0),+.5, bty="n")
+for(i in 1:nStars^2){ # Fitted predictions
+	sedimentPlot(-fiveStagePredicted[seq(1,2001,200),1:5,s[h$order[i]]], x=seq(1,2001,200),y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"), xlab="time",ylab="fraction", xaxt="n", yaxt="n")
+	lines(x=seq(1,2001,200), y=1-rowSums(fiveStagePredicted[seq(1,2001,200),1:3,s[h$order[i]]]), lwd=2)
+	i <- s[h$order[i]]
+	lineStage(clinicalData$CR_date[i], clinicalData$Recurrence_date[i], clinicalData$Date_LF[i], clinicalData$ERDate[i], clinicalData$Status[i], col=c(brewer.pal(8,"Dark2")[8], set1[c(4:5,1:3)]), lwd=2, pch.trans=NA, y=0.05)	
+}
+for(i in 1:nStars^2){ # Leave-one-out predictions
+	sedimentPlot(-multiRfx5Loo[seq(1,length(times),5),1:5,s[h$order[i]]], x=times[seq(1,length(times),5)],y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"), xlab="time",ylab="fraction", xaxt="n", yaxt="n")
+	lines(x=times[seq(1,length(times),5)], y=1-rowSums(multiRfx5Loo[seq(1,length(times),5),1:3,s[h$order[i]]]), lwd=2)
+	i <- s[h$order[i]]
+	lineStage(clinicalData$CR_date[i], clinicalData$Recurrence_date[i], clinicalData$Date_LF[i], clinicalData$ERDate[i], clinicalData$Status[i], col=c(brewer.pal(8,"Dark2")[8], set1[c(4:5,1:3)]), lwd=2, pch.trans=NA, y=0.05)	
+}
+
+#' #### Comparison with RFX
+#+ rfx5Loo, cache=TRUE
+rfx5Loo <- sapply(mclapply(1:nrow(data), function(i){
+					e <- new.env()
+					t <- try(load(paste0("../../code/loo/",i,".RData"), env=e))
+					if(class(t)=="try-error") rep(NA, length(times))
+					else {
+						cvIdx <- 1:nrow(dataFrame)
+						whichTrain <<- which(cvIdx != i)
+						pNrs <- predict(e$rfxNrs, newdata=data[cvIdx==i,])
+						pRel <- predict(e$rfxRel, newdata=data[cvIdx==i,])
+						pPrs <- predict(e$rfxPrs, newdata=data[cvIdx==i,])
+						pCr <- predict(e$rfxCr, newdata=data[cvIdx==i,])
+						pEs <- predict(e$rfxEs, newdata=data[cvIdx==i,])
+						pOs <- predict(e$rfxOs, newdata=dataFrame[cvIdx==i,])
+						c(pCr, pEs, pNrs, pRel, pPrs, pOs)
+					}
+				}, mc.cores=6), I, simplify="array")
+
+colnames(rfx5Loo) <- rownames(data)
+survConcordance(Surv(nrdData$time1, nrdData$time2, nrdData$status) ~ rfx5Loo[3,nrdData$index])
+survConcordance(Surv(prdData$time1, prdData$time2, prdData$status) ~ rfx5Loo[5,rownames(prdData)[prdData$index]])
+survConcordance(Surv(relData$time1, relData$time2, relData$status) ~ rfx5Loo[4,relData$index])
+survConcordance(Surv(cr[,1], cr[,2]==2) ~ rfx5Loo[1,])
+survConcordance(Surv(cr[,1], cr[,2]==1) ~ rfx5Loo[2,])
+survConcordance(os ~ rfx5Loo[6,])
+
+#' #### Figure 1d
+#' Plot of absolute risk at 3yr v outcome
+#+ survival_risk, fig.width=3, fig.height=1.5
+par(mar=c(3,3,2,1), mgp=c(1.5,.5,0), bty="n")
+t <- os
+q <- quantile(t[,1], seq(0,1,.1))# q <- splinefun( s$surv, s$time,"monoH.FC")(seq(1,min(s$surv),l=10))
+c <- cut(t[,1], q, na.rm=TRUE)
+h <- colSums(multiRfx5Loo[times == 3*365,1:3,])
+o <- order(h)
+plot(h[o], col= (brewer.pal(10,'RdBu'))[c[o]], type='h', xaxt="n", xlab='', las=2, ylab="Survival at 3 years")
+mtext(side=1, line=1, "Patient")
+u <- par("usr")
+q <- pmin(q,365*12)
+image(x=q/max(q)*500, y=c(u[4]-(u[4]-u[3])/20, u[4]), matrix(1:10), col= (brewer.pal(10,'RdBu')), add=TRUE)
+#axis(side=3, at=seq(1,500,l=11), labels=seq(0,1,.1))
+axis(side=3, at=pretty(q/365)/max(q)*365*500, labels=pretty(q/365))
+lines(ksmooth(seq_along(o),t[o,2]==0, bandwidth=50))
+
+#' #### Supplementary Figure 3
+#' Plots of concordance and absolute prediction measures
+#+ errorsMultiRfxOsLoo, fig.width=2.5, fig.height=2.5
+multiRfx5C <- sapply(seq_along(times), function(i) survConcordance(os ~ colSums(multiRfx5Loo[i,1:3,]))$concordance[1])
+plot(times, multiRfx5C, type='l', xlab="Time", ylab="Concordance", ylim=c(0.65, 0.73), col=set1[1])
+abline(h=survConcordance(os ~ rfx5Loo[6,])$concordance, col=set1[2], lwd=2)
+legend("bottomright",c("RFX OS","RFX Multistage"), col=set1[1:2], lty=1, bty="n")
+
+a <- sapply(times, function(t) ape(1-colSums(multiRfx5Loo[times == t,1:3,]), os, t))
+s <- summary(survfit(coxRFXFitOsTDGGc), times=times)
+b <- sapply(times, function(t) ape(s$surv[times==t]^exp(rfx5Loo[6,]), os, t))
+e <- sapply(times, function(t) ape(s$surv[times==t], os, t))
+for(i in 1:4){
+	plot(times/365.25, e[i,], type='l', xlab="Time (yr)", ylab=rownames(a)[i], col=set1[9])
+	lines(times/365.25, a[i,], col=set1[1])
+	lines(times/365.25, b[i,], col=set1[2])
+	legend("bottomright",c("Kaplan-Meier","RFX OS","RFX Multistage"), col=set1[c(9,1:2)], lty=1, bty="n")
+}
+
+#' Figure of predicted survival for 100 patients, comparing multistage and OS predictions
+#+ survivalMultiRfxOsLoo, fig.width=2.5, fig.height=2.5
+plot(s$surv^exp(rfx5Loo[6,1]), 1-rowSums(multiRfx5Loo[,1:3,1]), type='l', xlim=c(0,1), ylim=c(0,1), col='grey', xlab="Predicted survival RFX", ylab="Pedicted survival Multistage")
+for(i in 2:100)
+	lines(s$surv^exp(rfx5Loo[6,i]), 1-rowSums(multiRfx5Loo[,1:3,i]), col='grey')
+
+#' #### Figure 3a-f, Supplementary Figure 4
+#' With and without TPL
+#+ threePatientsAllo, fig.width=3, fig.height=2.5
+xmax=2000
+patients <- c("PD11104a","PD8314a","PD9227a")
+fiveStagePredictedTplLoo <- sapply(patients, function(pd){
+			e <- new.env()
+			i <- which(rownames(dataFrame)==pd)
+			load(paste0("../../code/loo/",i,".RData"), env=e)
+			
+			cvIdx <- 1:nrow(dataFrame)
+			whichTrain <<- which(cvIdx != i)
+			xx <- 0:2000
+			coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(prdData, time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index])[prdData$index %in% whichTrain,]) 
+			tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1])))						
+			
+			coxphOs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))[osData$index %in% whichTrain,]) 
+			tdOsBaseline <- exp(pmin(predict(coxphOs, newdata=data.frame(time0=500)),predict(coxphOs, newdata=data.frame(time0=xx[-1])))) ## cap predictions at induction length 500 days.
+			m <- MultiRFX5(e$rfxEs, e$rfxCr, e$rfxNrs, e$rfxRel, e$rfxPrs, allDataTpl[grep(pd, rownames(allDataTpl)),], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)			
+		}, simplify="array")
+#par(mfrow=c(2,2))
+par(mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0)) 
+w <- seq(1,2001,10)
+at <- ceiling(1:5 * 365.5)
+x <- (w-1)/365.25
+for(pd in patients)
+	for(i in c(2,3)){
+		sedimentPlot(-fiveStagePredictedTplLoo[w,6:8,i,pd],x=x, y0=1, y1=0,  col=pastel1[c(2:3,5,4)], xlab="Years from CR",ylab="Probability", xaxs='i', yaxs='i')
+		o <- 1-rowSums(fiveStagePredictedTplLoo[w,6:7,i,pd])
+		abline(v=c(1:5), col="white", lty=3)
+		abline(h=seq(0.2,0.8,0.2), col="white", lty=3)
+		lines(x,o, lwd=2)
+		lines(x,o ^ exp(qnorm(0.975) * fiveStagePredictedTplLoo[w,9,i,pd]))
+		lines(x,o ^ exp(-qnorm(0.975) * fiveStagePredictedTplLoo[w,9,i,pd]))
+		text(x=rep(0,3), c(0.1,0.2,0.3), c("rel./al.", "rel./death", "n.r./death") )
+		text(x=1:5, y=rep(0.3, 5), round(fiveStagePredictedTplLoo[at,6,i,pd],2))
+		text(x=1:5, y=rep(0.2, 5), round(fiveStagePredictedTplLoo[at,7,i,pd],2))
+		text(x=1:5, y=rep(0.1, 5), round(fiveStagePredictedTplLoo[at,8,i,pd],2))
+		#text(x=at, y=rep(0.1, 5), round(fiveStagePredictedTpl[w,6,i],2))
+	}
+
+
+
 #' ### Predicting outcome after CR
 #' We use the following function to compute the hierarchical adjustment for two subsequent stages. It is implemented in C++ for efficiency using the `Rcpp` package [@EddelbuettelJOSS2011]. 
 library(Rcpp)
@@ -1683,7 +1966,6 @@ for(l in levels(clinicalData$M_Risk)[c(2,4,3,1)]){
 	#legend("bottomright", lty=c(1,3), bty="n", c("no TPL","TPL"), col=riskCol[l])
 }
 
-#' #### Figure 4a
 #' We use the `survival` package to compute the following mstate fits of CIR and NRM
 t <- clinicalData$Recurrence_date
 t[is.na(t)] <-  clinicalData$Date_LF[is.na(t)]
@@ -2136,12 +2418,51 @@ segments(x,e[2,],x,e[3,])
 abline(0,1, lty=3)
 
 
+#' #### Three patients with numerical CI's and LOO
+#+ threePatientsAlloLooCi, cache=TRUE
+patients <- c("PD11104a","PD8314a","PD9227a")
+threePatientTplCiLoo <- sapply(patients, function(pd){
+			e <- new.env()
+			i <- which(rownames(dataFrame)==pd)
+			whichTrain <<- which(rownames(dataFrame)!=pd)
+			load(paste0("../../code/loo/",i,".RData"), env=e)			
+			multiRFX3TplCi <- MultiRFX3TplCi(e$rfxNrs, e$rfxRel, e$rfxPrs, data=data[i,colnames(e$rfxPrs$Z), drop=FALSE], x=3*365, nSim=1000, prdData=prdData[prdData$index!=i,], mc.cores=5)
+		}, simplify="array")
+
+
+#' #### Figure 4a
+#' The figure shows the mortality reduction of allograft CR1 v none, allograft in Rel v none, and CR1 v Relapse, for LOO predictions similar to above.
+#+mortalityReductionLoo, fig.width=3.5, fig.height=2.5
+par(mar=c(3,3,1,3), las=2, mgp=c(2,.5,0), bty="n")
+benefit <- multiRFX3LOO[,2]-multiRFX3LOO[,3]
+absrisk <- multiRFX3LOO[,1]
+s <- clinicalData$AOD < 60 & !is.na(clinicalData$CR_date)#sample(1:1540,100)
+x <- 1-absrisk
+y <- benefit
+plot(x[s], y[s], pch=NA, ylab="Mortality reduction from allograft", xlab="3yr mortality with standard chemo", col=riskCol[clinicalData$M_Risk], cex=.8, las=1, ylim=range(benefit))
+abline(h=seq(-.1,.3,.1), col='grey', lty=3)
+abline(v=seq(.2,.9,0.2), col='grey', lty=3)
+points(x[s], y[s], pch=16,  col=riskCol[clinicalData$M_Risk[s]], cex=.8)
+segments(1-threePatientTplCiLoo["none","lower","os",1,patients], threePatientTplCiLoo["dCr1Rel","hat","os",1,patients],1-threePatientTplCiLoo["none","upper","os",1,patients],threePatientTplCiLoo["dCr1Rel","hat","os",1,patients])
+segments(1-threePatientTplCiLoo["none","hat","os",1,patients], threePatientTplCiLoo["dCr1Rel","lower","os",1,patients],1-threePatientTplCiLoo["none","hat","os",1,patients], threePatientTplCiLoo["dCr1Rel","upper","os",1,patients])
+xn <- seq(0,1,0.01)
+p <- predict(loess(y~x, data=data.frame(x=x[s], y=y[s])), newdata=data.frame(x=xn), se=TRUE)
+yn <- c(p$fit + 2*p$se.fit,rev(p$fit - 2*p$se.fit))
+polygon(c(xn, rev(xn))[!is.na(yn)],yn[!is.na(yn)], border=NA, col="#00000044", lwd=1)
+lines(xn,p$fit, col='black', lwd=2)
+legend("topleft", pch=c(16,16,16,16,NA),lty=c(NA,NA,NA,NA,1), col=c(riskCol[c(2,4,3,1)],1),fill=c(NA,NA,NA,NA,"grey"), border=NA, c(names(riskCol)[c(2,4,3,1)],"loess average"), box.lty=0)
+n <- c(100,50,20,10,5,4,3)
+axis(side=4, at=1/n, labels=n, las=1)
+mtext("Number needed to treat", side=4, at=.2, line=2, las=0)
+axis(side=4, at=-1/n, labels=n, las=1)
+mtext("Number needed to harm", side=4, at=-.1, line=2, las=0)
+
 
 #' #### Figure 4b
 #' Violins plot of the predicted survival gain
 #+ benefit_hsct, fig.width=1, fig.height=2.5
 par(mar=c(3,3,1,1), mgp=c(2,0.5,0), bty="n")
-h <- density(d[w]) 
+h <- density(benefit[s]) 
 y <- h$y/diff(range(h$y))*.05 + par("usr")[3]
 par(xpd=FALSE)
 xx <- c(h$x, rev(h$x))
@@ -2220,328 +2541,9 @@ ape(p, c, time=3*365)
 ape(coxRFXOsCrLOO$surv[unduplicate(osData$index)], c, time=3*365)
 
 
-#' ### Predicting outcome from diagnosis
-#' The following function fits a 5-stage model. Note that we use a single smooth function g(t) to model the association between time of CR and all subsequent events.
-MultiRFX5 <- function(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, tdPrmBaseline = rep(1, ceiling(max(x))+1), tdOsBaseline = rep(1, ceiling(max(x))+1), ciType="analytical"){
-	cppFunction('NumericVector computeHierarchicalSurvival(NumericVector x, NumericVector diffS0, NumericVector S1Static, NumericVector haz1TimeDep) {
-					int xLen = x.size();
-					double h;
-					NumericVector overallSurvival(xLen);
-					for(int i = 0; i < xLen; ++i) overallSurvival[i] = 1;
-					for(int j = 1; j < xLen; ++j){
-					h = haz1TimeDep[j-1];
-					for(int i = j; i < xLen; ++i){
-					overallSurvival[i] += diffS0[j-1] * (1-pow(S1Static[i-j], h));
-					}
-					}
-					return overallSurvival;
-					}')
-	
-	
-	
-	## Step 1: Compute KM survival curves and log hazard
-	getS <- function(coxRFX, data, max.x=5000) {		
-		if(!is.null(coxRFX$na.action)) coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
-		data <- as.matrix(data[,match(colnames(coxRFX$Z),colnames(data)), drop=FALSE])
-		r <- PredictRiskMissing(coxRFX, data, var="var2")
-		H0 <- basehaz(coxRFX, centered = FALSE)
-		hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
-		x <- c(0:ceiling(max.x))
-		S <- exp(-hazardDist(x))
-		return(list(S=S, r=r, x=x, hazardDist=hazardDist, r0 = coxRFX$means %*% coef(coxRFX)))
-	}
-	kmCr <- getS(coxRFX = coxRFXCrTD, data = data, max.x=max(x))
-	kmEs <- getS(coxRFX = coxRFXNcdTD, data = data, max.x=max(x))
-	kmCir <- getS(coxRFX = coxRFXRelTD, data = data, max.x=max(x))
-	kmNrm <- getS(coxRFX = coxRFXNrdTD, data = data, max.x=max(x))
-	kmPrs <- getS(coxRFX = coxRFXPrdTD, data = data, max.x=max(x))
-	
-	xx <- 0:ceiling(max(x))
-	
-	sapply(1:nrow(data), function(i){
-				## Step 2: Adjust curves for competing risks, accounting for hazard
-				crAbs <-  cumsum(c(1,diff(kmCr$S^exp(kmCr$r[i,1]))) * kmEs$S ^ exp(kmEs$r[i,1]))
-				esAbs  <- cumsum(c(1,diff(kmEs$S^exp(kmEs$r[i,1]))) * kmCr$S ^ exp(kmCr$r[i,1])) ## array times x nrow(data)
-				cirCrAbs <- cumsum(c(1,diff(kmCir$S^exp(kmCir$r[i,1]))) * kmNrm$S ^ exp(kmNrm$r[i,1]))
-				nrsCrAbs <- cumsum(c(1,diff(kmNrm$S^exp(kmNrm$r[i,1]))) * kmCir$S ^ exp(kmCir$r[i,1])) ## array times x nrow(data)
-				
-				## Step 3: Compute hierarchical survival
-				### Prs			
-				rsCrAbs <- computeHierarchicalSurvival(x = xx, diffS0 = diff(cirCrAbs), S1Static = kmPrs$S, haz1TimeDep = tdPrmBaseline * exp(kmPrs$r[i,1]))
-				
-				## Confidence intervals (loglog)
-				PlogP2 <- function(x) {(x * log(x))^2}
-				errOs <- kmNrm$r[i,2] * PlogP2(kmNrm$S^exp(kmNrm$r[i,1])) * (1-(1-kmCir$S ^ exp(kmCir$r[i,1]))) * (1-kmPrs$S ^ exp(kmPrs$r[i,1]))^2 + kmCir$r[i,2] * PlogP2(kmCir$S ^ exp(kmCir$r[i,1])) * (1-kmPrs$S ^ exp(kmPrs$r[i,1]))^2 * (kmNrm$S ^ exp(kmNrm$r[i,1]))^2 +  kmPrs$r[i,2] * PlogP2(kmPrs$S ^ exp(kmPrs$r[i,1])) * (1-kmCir$S ^ exp(kmCir$r[i,1]))^2 * (kmNrm$S ^ exp(kmNrm$r[i,1]))^2 
-				sdOsCr <- sqrt(errOs / PlogP2(1-(1-nrsCrAbs)-(1-rsCrAbs)))
-				
-				
-				### Overall survival from enrollment
-				nrsEr <- computeHierarchicalSurvival(x = xx, diffS0 = diff(crAbs), S1Static = nrsCrAbs, haz1TimeDep = tdOsBaseline)
-				rsEr <- computeHierarchicalSurvival(x = xx, diffS0 = diff(crAbs), S1Static = rsCrAbs, haz1TimeDep = tdOsBaseline)
-				cirEr <- computeHierarchicalSurvival(x = xx, diffS0 = diff(crAbs), S1Static = cirCrAbs, haz1TimeDep = tdOsBaseline)
-				cbind(deathInErFromEr=1-esAbs, deathInCrFromEr=1-nrsEr, deathInRelFromEr=1-rsEr, aliveInRelFromEr=1-cirEr-(1-rsEr), aliveInCrFromEr=1-crAbs - (1-cirEr) - (1-nrsEr),
-						deathInCrFromCr = 1-nrsCrAbs, deathInRelapseFromCr=(1-rsCrAbs), aliveInRelapseFromCr = (1-cirCrAbs) - (1-rsCrAbs), osInCrFromCrSd=sdOsCr
-				)
-			}, simplify='array')
-}
 
-#' PRS baseline with spline-based dep on CR length)
-#+ fiveStagePredicted, cache=TRUE
-xmax <- 2000
-xx <- 0:ceiling(xmax)
-coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(prdData, time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index])) 
-tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1]))) ## Hazard (function of CR length)	
-
-coxphOs <- coxph(Surv(time1,time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))) 
-tdOsBaseline <- exp(predict(coxphOs, newdata=data.frame(time0=xx[-1])))	 ## Hazard (function of induction length), only for OS (could do CIR,NRM,PRS seperately)
-
-fiveStagePredicted <- MultiRFX5(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=xmax)
-
-#' Function to plot stages
-sedimentPlot <- function(Y, x=1:nrow(Y), y0=0, y1=NULL, col=1:ncol(Y), ...){
-	Z <- cbind(t(apply(cbind(y0,Y),1,cumsum)),y1)
-	plot(x,Z[,1], xlim=range(x), ylim=range(Z), lty=0, pch=NA,...)
-	for(i in 2:ncol(Z))
-		polygon(c(x,rev(x)), c(Z[,i-1],rev(Z[,i])), border=NA, col=col[i-1])
-}
-
-lineStage <- function(CR_date, Recurrence_date, Date_LF, ERDate, Status, y=0, col=1:5, pch.trans=19, pch.end=19, ...){
-	xpd <- par("xpd")
-	par(xpd=NA) 
-	t <- as.numeric(c(CR_date, Recurrence_date, Date_LF) - ERDate )
-	w <- !is.na(t)
-	o <- order(t)
-	to <- pmin(t[o], par("usr")[2])
-	l <- length(to)
-	segments(c(0,to[-l]), rep(y,l), to, rep(y,l), col=col, lend=1, ...)
-	status <- if(Status == 1) 3 else 0
-	if(is.na(Recurrence_date))
-		status <- status - 1
-	if(is.na(CR_date))
-		status <- status - 1
-	x <- ifelse(t <= par("usr")[2], t, NA)
-	points(x, rep(y, length(t)), pch=c(pch.trans,pch.trans, if(Status) pch.end else NA), col=col[c(2:3,status+3)])
-	par(xpd=xpd)
-}
-
-
-#' Average of all multistage predictions, note the precise agreement with overall survival.
-#+ fiveStagePredictedAvg, fig.width=3, fig.height=2.5
-pastel1 <- brewer.pal(9, "Pastel1")
-par(mfrow=c(1,1), mar=c(3,3,1,1), cex=1)
-sedimentPlot(-rowMeans(fiveStagePredicted[,1:5,], dims=2), y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"))
-lines(survfit(Surv(OS, Status) ~ 1, data=clinicalData))
-
-
-#' Multistage predictions v overall survival
-#+ HRFXvRFX
-for(i in 1:5)
-plot(summary(survfit(coxRFXFitOsTDGGc), i*365)$surv^ exp(coxRFXFitOsTDGGc$linear.predictors[1:1540]), 1-rowSums(aperm(fiveStagePredicted[,1:3,], c(3,1,2)), dim=2)[,365*3],
-		xlab="Survival RFX OS", ylab="Survival RFX Multistage", main=paste(i, "years"))
-
-
-#' #### Leave-one-out cross-validation
-#' The following code is run on the cluster
-read_chunk('../../code/leaveOneOut.R', labels="leaveOneOut")
-#+ leaveOneOut, eval=FALSE
-
-#' Multistage model
-#+ multiRfx5Loo, cache=TRUE
-times <- round(seq(0,5,0.05)*365)
-multiRfx5Loo <- sapply(mclapply(1:nrow(data), function(i){
-					e <- new.env()
-					t <- try(load(paste0("../../code/loo/",i,".RData"), env=e))
-					if(class(t)=="try-error") rep(NA, length(times))
-					else e$multiRfx5[times+1,,1]
-				}, mc.cores=6), I, simplify="array")
-
-#' Error OS
-survConcordance(os ~ colSums(multiRfx5Loo[times == 3*365,1:3,]))
-ape(1-colSums(multiRfx5Loo[times == 3*365,1:3,]), os, 3*365)
-
-
-#' #### Figure 2
-#' In order of risk constellation plots
-#+ fiveStagePredictedHilbert, fig.width=12, fig.height=12
-set.seed(42)
-s <- sample(nrow(dataFrame),nStars^2) #1:(nStars^2)
-library(HilbertVis)
-nStars <- 32
-l <- "coxRFXFitOsTDGGc"
-t <- os#get(l)$surv
-p <- PartialRisk(get(l),  newZ=dataFrame[, colnames(get(l)$Z)])
-p <- p[,colnames(p)!="Nuisance"]
-locations <- hilbertCurve(log2(nStars))+1 
-mat <- matrix(order(locations[,1], locations[,2]), ncol=nStars)
-h <- hclust(dist(p[s,]))
-layout(mat[nStars:1,])
-par(mar=c(0,0,0,0),+.5, bty="n")
-for(i in 1:nStars^2){ # Fitted predictions
-	sedimentPlot(-fiveStagePredicted[seq(1,2001,200),1:5,s[h$order[i]]], x=seq(1,2001,200),y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"), xlab="time",ylab="fraction", xaxt="n", yaxt="n")
-	lines(x=seq(1,2001,200), y=1-rowSums(fiveStagePredicted[seq(1,2001,200),1:3,s[h$order[i]]]), lwd=2)
-	i <- s[h$order[i]]
-	lineStage(clinicalData$CR_date[i], clinicalData$Recurrence_date[i], clinicalData$Date_LF[i], clinicalData$ERDate[i], clinicalData$Status[i], col=c(brewer.pal(8,"Dark2")[8], set1[c(4:5,1:3)]), lwd=2, pch.trans=NA, y=0.05)	
-}
-for(i in 1:nStars^2){ # Leave-one-out predictions
-	sedimentPlot(-multiRfx5Loo[seq(1,length(times),5),1:5,s[h$order[i]]], x=times[seq(1,length(times),5)],y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"), xlab="time",ylab="fraction", xaxt="n", yaxt="n")
-	lines(x=times[seq(1,length(times),5)], y=1-rowSums(multiRfx5Loo[seq(1,length(times),5),1:3,s[h$order[i]]]), lwd=2)
-	i <- s[h$order[i]]
-	lineStage(clinicalData$CR_date[i], clinicalData$Recurrence_date[i], clinicalData$Date_LF[i], clinicalData$ERDate[i], clinicalData$Status[i], col=c(brewer.pal(8,"Dark2")[8], set1[c(4:5,1:3)]), lwd=2, pch.trans=NA, y=0.05)	
-}
-
-#' #### Comparison with RFX
-#+ rfx5Loo, cache=TRUE
-rfx5Loo <- sapply(mclapply(1:nrow(data), function(i){
-					e <- new.env()
-					t <- try(load(paste0("../../code/loo/",i,".RData"), env=e))
-					if(class(t)=="try-error") rep(NA, length(times))
-					else {
-						cvIdx <- 1:nrow(dataFrame)
-						whichTrain <<- which(cvIdx != i)
-						pNrs <- predict(e$rfxNrs, newdata=data[cvIdx==i,])
-						pRel <- predict(e$rfxRel, newdata=data[cvIdx==i,])
-						pPrs <- predict(e$rfxPrs, newdata=data[cvIdx==i,])
-						pCr <- predict(e$rfxCr, newdata=data[cvIdx==i,])
-						pEs <- predict(e$rfxEs, newdata=data[cvIdx==i,])
-						pOs <- predict(e$rfxOs, newdata=dataFrame[cvIdx==i,])
-						c(pCr, pEs, pNrs, pRel, pPrs, pOs)
-					}
-				}, mc.cores=6), I, simplify="array")
-
-colnames(rfx5Loo) <- rownames(data)
-survConcordance(Surv(nrdData$time1, nrdData$time2, nrdData$status) ~ rfx5Loo[3,nrdData$index])
-survConcordance(Surv(prdData$time1, prdData$time2, prdData$status) ~ rfx5Loo[5,rownames(prdData)[prdData$index]])
-survConcordance(Surv(relData$time1, relData$time2, relData$status) ~ rfx5Loo[4,relData$index])
-survConcordance(Surv(cr[,1], cr[,2]==2) ~ rfx5Loo[1,])
-survConcordance(Surv(cr[,1], cr[,2]==1) ~ rfx5Loo[2,])
-survConcordance(os ~ rfx5Loo[6,])
-
-#' #### Figure 1d
-#' Plot of absolute risk at 3yr v outcome
-#+ survival_risk, fig.width=3, fig.height=1.5
-par(mar=c(3,3,2,1), mgp=c(1.5,.5,0), bty="n")
-t <- os
-q <- quantile(t[,1], seq(0,1,.1))# q <- splinefun( s$surv, s$time,"monoH.FC")(seq(1,min(s$surv),l=10))
-c <- cut(t[,1], q, na.rm=TRUE)
-h <- colSums(multiRfx5Loo[times == 3*365,1:3,])
-o <- order(h)
-plot(h[o], col= (brewer.pal(10,'RdBu'))[c[o]], type='h', xaxt="n", xlab='', las=2, ylab="Survival at 3 years")
-mtext(side=1, line=1, "Patient")
-u <- par("usr")
-q <- pmin(q,365*12)
-image(x=q/max(q)*500, y=c(u[4]-(u[4]-u[3])/20, u[4]), matrix(1:10), col= (brewer.pal(10,'RdBu')), add=TRUE)
-#axis(side=3, at=seq(1,500,l=11), labels=seq(0,1,.1))
-axis(side=3, at=pretty(q/365)/max(q)*365*500, labels=pretty(q/365))
-lines(ksmooth(seq_along(o),t[o,2]==0, bandwidth=50))
-
-#' #### Supplementary Figure 3
-#' Plots of concordance and absolute prediction measures
-#+ errorsMultiRfxOsLoo, fig.width=2.5, fig.height=2.5
-multiRfx5C <- sapply(seq_along(times), function(i) survConcordance(os ~ colSums(multiRfx5Loo[i,1:3,]))$concordance[1])
-plot(times, multiRfx5C, type='l', xlab="Time", ylab="Concordance", ylim=c(0.65, 0.73), col=set1[1])
-abline(h=survConcordance(os ~ rfx5Loo[6,])$concordance, col=set1[2], lwd=2)
-legend("bottomright",c("RFX OS","RFX Multistage"), col=set1[1:2], lty=1, bty="n")
-
-a <- sapply(times, function(t) ape(1-colSums(multiRfx5Loo[times == t,1:3,]), os, t))
-s <- summary(survfit(coxRFXFitOsTDGGc), times=times)
-b <- sapply(times, function(t) ape(s$surv[times==t]^exp(rfx5Loo[6,]), os, t))
-e <- sapply(times, function(t) ape(s$surv[times==t], os, t))
-for(i in 1:4){
-	plot(times/365.25, e[i,], type='l', xlab="Time (yr)", ylab=rownames(a)[i], col=set1[9])
-	lines(times/365.25, a[i,], col=set1[1])
-	lines(times/365.25, b[i,], col=set1[2])
-	legend("bottomright",c("Kaplan-Meier","RFX OS","RFX Multistage"), col=set1[c(9,1:2)], lty=1, bty="n")
-}
-
-#' Figure of predicted survival for 100 patients, comparing multistage and OS predictions
-#+ survivalMultiRfxOsLoo, fig.width=2.5, fig.height=2.5
-plot(s$surv^exp(rfx5Loo[6,1]), 1-rowSums(multiRfx5Loo[,1:3,1]), type='l', xlim=c(0,1), ylim=c(0,1), col='grey', xlab="Predicted survival RFX", ylab="Pedicted survival Multistage")
-for(i in 2:100)
-	lines(s$surv^exp(rfx5Loo[6,i]), 1-rowSums(multiRfx5Loo[,1:3,i]), col='grey')
-
-#' #### Figure 3a-f, Supplementary Figure 4
-#' With and without TPL
-#+ threePatientsAllo, fig.width=3, fig.height=2.5
-xmax=2000
-patients <- c("PD11104a","PD8314a","PD9227a")
-fiveStagePredictedTplLoo <- sapply(patients, function(pd){
-			e <- new.env()
-			i <- which(rownames(dataFrame)==pd)
-			load(paste0("../../code/loo/",i,".RData"), env=e)
-
-			cvIdx <- 1:nrow(dataFrame)
-			whichTrain <<- which(cvIdx != i)
-			xx <- 0:2000
-			coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(prdData, time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index])[prdData$index %in% whichTrain,]) 
-			tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1])))						
-			
-			coxphOs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))[osData$index %in% whichTrain,]) 
-			tdOsBaseline <- exp(pmin(predict(coxphOs, newdata=data.frame(time0=500)),predict(coxphOs, newdata=data.frame(time0=xx[-1])))) ## cap predictions at induction length 500 days.
-			m <- MultiRFX5(e$rfxEs, e$rfxCr, e$rfxNrs, e$rfxRel, e$rfxPrs, allDataTpl[grep(pd, rownames(allDataTpl)),], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)			
-		}, simplify="array")
-#par(mfrow=c(2,2))
-par(mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0)) 
-w <- seq(1,2001,10)
-at <- ceiling(1:5 * 365.5)
-x <- (w-1)/365.25
-for(pd in patients)
-	for(i in c(2,3)){
-	sedimentPlot(-fiveStagePredictedTplLoo[w,6:8,i,pd],x=x, y0=1, y1=0,  col=pastel1[c(2:3,5,4)], xlab="Years from CR",ylab="Probability", xaxs='i', yaxs='i')
-	o <- 1-rowSums(fiveStagePredictedTplLoo[w,6:7,i,pd])
-	abline(v=c(1:5), col="white", lty=3)
-	abline(h=seq(0.2,0.8,0.2), col="white", lty=3)
-	lines(x,o, lwd=2)
-	lines(x,o ^ exp(qnorm(0.975) * fiveStagePredictedTplLoo[w,9,i,pd]))
-	lines(x,o ^ exp(-qnorm(0.975) * fiveStagePredictedTplLoo[w,9,i,pd]))
-	text(x=rep(0,3), c(0.1,0.2,0.3), c("rel./al.", "rel./death", "n.r./death") )
-	text(x=1:5, y=rep(0.3, 5), round(fiveStagePredictedTplLoo[at,6,i,pd],2))
-	text(x=1:5, y=rep(0.2, 5), round(fiveStagePredictedTplLoo[at,7,i,pd],2))
-	text(x=1:5, y=rep(0.1, 5), round(fiveStagePredictedTplLoo[at,8,i,pd],2))
-	#text(x=at, y=rep(0.1, 5), round(fiveStagePredictedTpl[w,6,i],2))
-}
-
-#' #### Three patients with numerical CI's and LOO
-#+ threePatientsAlloLooCi, cache=TRUE
-patients <- c("PD11104a","PD8314a","PD9227a")
-threePatientTplCiLoo <- sapply(patients, function(pd){
-			e <- new.env()
-			i <- which(rownames(dataFrame)==pd)
-			whichTrain <<- which(rownames(dataFrame)!=pd)
-			load(paste0("../../code/loo/",i,".RData"), env=e)			
-			multiRFX3TplCi <- MultiRFX3TplCi(e$rfxNrs, e$rfxRel, e$rfxPrs, data=data[i,colnames(e$rfxPrs$Z), drop=FALSE], x=3*365, nSim=1000, prdData=prdData[prdData$index!=i,], mc.cores=5)
-		}, simplify="array")
-
-
-#' #### Figure 4a
-#' The figure shows the mortality reduction of allograft CR1 v none, allograft in Rel v none, and CR1 v Relapse, for LOO predictions similar to above.
-#+mortalityReductionLoo, fig.width=3.5, fig.height=2.5
-par(mar=c(3,3,1,3), las=2, mgp=c(2,.5,0), bty="n")
-benefit <- multiRFX3LOO[,2]-multiRFX3LOO[,3]
-absrisk <- multiRFX3LOO[,1]
-s <- clinicalData$AOD < 60 & !is.na(clinicalData$CR_date)#sample(1:1540,100)
-x <- 1-absrisk
-y <- benefit
-plot(x[s], y[s], pch=NA, ylab="Mortality reduction from allograft", xlab="3yr mortality with standard chemo", col=riskCol[clinicalData$M_Risk], cex=.8, las=1, ylim=range(benefit))
-abline(h=seq(-.1,.3,.1), col='grey', lty=3)
-abline(v=seq(.2,.9,0.2), col='grey', lty=3)
-points(x[s], y[s], pch=16,  col=riskCol[clinicalData$M_Risk[s]], cex=.8)
-segments(1-threePatientTplCiLoo["none","lower","os",1,patients], threePatientTplCiLoo["dCr1Rel","hat","os",1,patients],1-threePatientTplCiLoo["none","upper","os",1,patients],threePatientTplCiLoo["dCr1Rel","hat","os",1,patients])
-segments(1-threePatientTplCiLoo["none","hat","os",1,patients], threePatientTplCiLoo["dCr1Rel","lower","os",1,patients],1-threePatientTplCiLoo["none","hat","os",1,patients], threePatientTplCiLoo["dCr1Rel","upper","os",1,patients])
-xn <- seq(0,1,0.01)
-p <- predict(loess(y~x, data=data.frame(x=x[s], y=y[s])), newdata=data.frame(x=xn), se=TRUE)
-yn <- c(p$fit + 2*p$se.fit,rev(p$fit - 2*p$se.fit))
-polygon(c(xn, rev(xn))[!is.na(yn)],yn[!is.na(yn)], border=NA, col="#00000044", lwd=1)
-lines(xn,p$fit, col='black', lwd=2)
-legend("topleft", pch=c(16,16,16,16,NA),lty=c(NA,NA,NA,NA,1), col=c(riskCol[c(2,4,3,1)],1),fill=c(NA,NA,NA,NA,"grey"), border=NA, c(names(riskCol)[c(2,4,3,1)],"loess average"), box.lty=0)
-n <- c(100,50,20,10,5,4,3)
-axis(side=4, at=1/n, labels=n, las=1)
-mtext("Number needed to treat", side=4, at=.2, line=2, las=0)
-axis(side=4, at=-1/n, labels=n, las=1)
-mtext("Number needed to harm", side=4, at=-.1, line=2, las=0)
-
-
-#' #### Imputation of missing genes
-#' For RFX model on OS
+#' ### Imputation of missing genes
+#' #### RFX model on OS
 #+ imputationGenes, cache=TRUE
 w <- WaldTest(coxRFXFitOsTDGGc)
 o <- order(w$p.value[groups[whichRFXOsTDGG] %in% c("Genetics","GeneGene")])
@@ -2586,7 +2588,7 @@ abline(h=seq(0.68,0.73,0.01), lty=3)
 axis(side=3)
 
 
-#' Genetic imputation multi stage
+#' #### Genetic imputation multi stage
 read_chunk('../../code/imputation.R', labels="imputationMultiRfx")
 #+ imputationMultiRfx, eval=FALSE
 
