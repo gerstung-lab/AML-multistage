@@ -732,7 +732,7 @@ text(locations[,1], locations[,2]+1,labels=paste(gsub(";","\n",genotype[patients
 #' 
 #' ### Transitions
 #' 
-#' We use a hierarchical multistage model to quantify the rates at which a patient progresses from one disease/treatment stage to another (Figure 3a).
+#' We use a hierarchical multistage model to quantify the rates at which a patient progresses from one disease/treatment stage to another (Figure 1A).
 #' After learning the marginal time-dependent transition probabilities for each event, we can combine these into a time-dependent joint probability. 
 #' 
 #' In particular, we model the following transition times:
@@ -790,7 +790,7 @@ text(locations[,1], locations[,2]+1,labels=paste(gsub(";","\n",genotype[patients
 #' ## Static multistage models
 #' 
 #' To estimate the population average transition probabilities and absolute incidence of each each individual stage we use the `msSurv` R package [@FergusonJOSS2012]. 
-#' The resulting time-dependent joint distribution $P(X_t)$ is shown in Figure 3b.
+#' The resulting time-dependent joint distribution $P(X_t)$ is shown in Figure 1B.
 #' 
 #' ## Multistage random effects modelling
 #' 
@@ -1007,7 +1007,7 @@ text(locations[,1], locations[,2]+1,labels=paste(gsub(";","\n",genotype[patients
 #' ## Code
 #' 
 #' ### Static multistage model
-#' #### Figure 3b 
+#' #### Figure 1B 
 #' Multi-state using msSurv  [@FergusonJOSS2012].
 #+ mstate, fig.width=3,fig.height=2.5
 library(msSurv)
@@ -1129,7 +1129,7 @@ title(main="Non-relapse deaths")
 PlotVarianceComponents(coxRFXPrdTD, col=colGroups, order=o)
 title(main="Post-relapse deaths")
 
-#' #### Figure 3c
+#' #### Figure 1C
 #' As barplot
 #+ allVarCompBar, fig.width=2, fig.height=2
 par(mar=c(4,3,1,5))
@@ -1385,7 +1385,7 @@ ape(1-colSums(multiRfx5Loo[times == 3*365,1:3,]), os, 3*365)
 
 
 #' #### Figure 2
-#' In order of risk constellation plots
+#' We plot all predictions as sediments plots, laid out in the same way as the risk constellation plot, Figure S3C
 #+ fiveStagePredictedHilbert, fig.width=12, fig.height=12
 set.seed(42)
 s <- sample(nrow(dataFrame),nStars^2) #1:(nStars^2)
@@ -1440,8 +1440,8 @@ survConcordance(Surv(cr[,1], cr[,2]==2) ~ rfx5Loo[1,])
 survConcordance(Surv(cr[,1], cr[,2]==1) ~ rfx5Loo[2,])
 survConcordance(os ~ rfx5Loo[6,])
 
-#' #### Figure 1d
-#' Plot of absolute risk at 3yr v outcome
+#' #### Figure 1D
+#' Plot of absolute risk at 3yr, leave-one-out cross validated v outcome
 #+ survival_risk, fig.width=3, fig.height=1.5
 par(mar=c(3,3,2,1), mgp=c(1.5,.5,0), bty="n")
 t <- os
@@ -1458,7 +1458,7 @@ image(x=q/max(q)*500, y=c(u[4]-(u[4]-u[3])/20, u[4]), matrix(1:10), col= (brewer
 axis(side=3, at=pretty(q/365)/max(q)*365*500, labels=pretty(q/365))
 lines(ksmooth(seq_along(o),t[o,2]==0, bandwidth=50))
 
-#' #### Supplementary Figure 3
+#' #### Supplementary Figure S4
 #' Plots of concordance and absolute prediction measures
 #+ errorsMultiRfxOsLoo, fig.width=2.5, fig.height=2.5
 multiRfx5C <- sapply(seq_along(times), function(i) survConcordance(os ~ colSums(multiRfx5Loo[i,1:3,]))$concordance[1])
@@ -1483,7 +1483,7 @@ plot(s$surv^exp(rfx5Loo[6,1]), 1-rowSums(multiRfx5Loo[,1:3,1]), type='l', xlim=c
 for(i in 2:100)
 	lines(s$surv^exp(rfx5Loo[6,i]), 1-rowSums(multiRfx5Loo[,1:3,i]), col='grey')
 
-#' #### Figure 3a-f, Supplementary Figure 4
+#' #### Figure 3A-F, Supplementary Figure 5
 #' With and without TPL
 #+ threePatientsAllo, fig.width=3, fig.height=2.5
 xmax=2000
@@ -1838,7 +1838,7 @@ EvalAbsolutePred <- function(prediction, surv, time, bins=seq(0,1,0.05)){
 	return(list(mean.error=mean.error, std.err=std.err, survfit=e, x=x))
 }
 
-#' #### Supplementary Figure 5
+#' #### Supplementary Figure S6
 #+ absError
 absPredError <- EvalAbsolutePred(multiRFX3$os, Surv(allData$time1, allData$time2, allData$status), time=3*365)
 
@@ -2430,7 +2430,7 @@ threePatientTplCiLoo <- sapply(patients, function(pd){
 		}, simplify="array")
 
 
-#' #### Figure 4a
+#' #### Figure 4A
 #' The figure shows the mortality reduction of allograft CR1 v none, allograft in Rel v none, and CR1 v Relapse, for LOO predictions similar to above.
 #+mortalityReductionLoo, fig.width=3.5, fig.height=2.5
 par(mar=c(3,3,1,3), las=2, mgp=c(2,.5,0), bty="n")
@@ -2458,7 +2458,7 @@ axis(side=4, at=-1/n, labels=n, las=1)
 mtext("Number needed to harm", side=4, at=-.1, line=2, las=0)
 
 
-#' #### Figure 4b
+#' #### Figure 4B
 #' Violins plot of the predicted survival gain
 #+ benefit_hsct, fig.width=1, fig.height=2.5
 par(mar=c(3,3,1,1), mgp=c(2,0.5,0), bty="n")
@@ -2473,7 +2473,7 @@ polygon(yy[v], xx[v], border=NA, col=set1[1])
 polygon(yy[!v], xx[!v], border=NA, col=set1[2])
 lines(yy, xx)
 
-#' #### Figure 4c
+#' #### Figure 4B
 #' KM plot of the high v low benefit groups
 #+ survival_hsct, fig.width=3, fig.height=2.5
 par(mar=c(3,3,1,1), mgp=c(2,0.5,0), bty="L")
@@ -2536,6 +2536,8 @@ ape(coxRFXOsCrLOO$surv[unduplicate(osData$index)], c, time=3*365)
 
 
 #' ### Imputation of missing genes
+#' Not all variables are needed to make predictions. Here we  systematically assess the effect of the set of know genes for our preditive accuracy.
+#' 
 #' #### RFX model on OS
 #+ imputationGenes, cache=TRUE
 w <- WaldTest(coxRFXFitOsTDGGc)
@@ -2866,7 +2868,7 @@ allModelsCvRfxC <- do.call("rbind",mclapply(1:100, function(foo){
 				}, mc.cores=10))
 colnames(allModelsCvRfxC) <- sub(".concordant","",colnames(allModelsCvRfxC))
 
-#' #### Supplementary Figure 2
+#' #### Supplementary Figure S2
 
 #+ allModelsCvRfxBoxplot, fig.width=2, fig.height=1.5
 par(mar=c(3,3,1,1),bty="n", mgp=c(2,.5,0), las=2)
@@ -3320,8 +3322,8 @@ tcgaConcordanceTD <- sapply(tcgaRiskTD, function(x) unlist(survConcordance(tcgaS
 
 
 
-#' #### Figure 1A
-#' Here we generate the overview shown in Figure 1b.
+#' #### Supplementary Figure 1A
+#' Here we generate the overview shown in Supplementary Figure S1A.
 #+ concordanceCvTcga, fig.width=3.5, fig.height=2.5
 library(abind)
 par(mar=c(3,3.5,.5,.5),bty="n", mgp=c(2.5,.5,0), las=2,  lend=1, xpd=FALSE)
@@ -3495,7 +3497,7 @@ legend("bottomright",
 #' ## Code
 
 #' ### Interpolations
-#' #### Figure 5b
+#' #### Figure 5B
 #' Subsampling patients
 #+ subsetPatients, cache=TRUE
 library(survivalROC)
@@ -3559,7 +3561,7 @@ rangeplot3(x=subsets, y = sapply(subsetPatients, function(x) sapply(x, function(
 #				})) , col=1, xlab="Cohort", ylab="Concordance", ylim=c(0.65,.75))
 #
 
-#' #### Figure 5a
+#' #### Figure S9A
 #' Subsampling genes
 #+ subsetGenes, cache=TRUE
 set.seed(42)
@@ -3644,7 +3646,7 @@ files <- dir("../../code/simRFX", pattern="Farmulations\\[1-1000\\]*", full.name
 tmp <- new.env()
 load(files[1], envir = tmp)
 
-#' #### Supplementary Figure 7
+#' #### Supplementary Figure S7
 #' ##### P-values
 #' Plot the P-values as a function of Npu^2.
 #+ pVarSchoenfeld, fig.width=2, fig.height=2, cache=TRUE
@@ -3669,7 +3671,6 @@ power <- function(beta, N, p, psi=0.5, alpha=0.05){
 	pnorm(sqrt(N*psi*beta^2*p*(1-p))-qnorm(1-alpha/2))
 }
 
-#' #### Figure 5c
 #' Plot for observed cases and overlay a few usual suspects
 #+ power1540, fig.width=3, fig.height=3
 x <- seq(-2,2,0.01)
@@ -3710,7 +3711,7 @@ boxplot(t(C), staplewex=0, pch=16, lty=1, ylab="", ylab="Concordance", xaxt="n")
 rotatedLabel(labels=(sub(".concordant","", rownames(C))))
 abline(h=CoxHD:::ConcordanceFromVariance(var(simRisk)))
 
-#' #### Figure 5e
+#' #### Figure 5C
 #' ##### Mean prediction error
 #+ predError100-10000, cache=TRUE
 load("../../code/sim2Data.RData")
@@ -3761,7 +3762,7 @@ points(exp(coef(coxRFXFitOsTDGGc)[effects]), colMeans(dataFrame[effects]), col=c
 text(labels=effects,exp(coef(coxRFXFitOsTDGGc)[effects]), colMeans(dataFrame[effects]), pos=ifelse(sign(coef(coxRFXFitOsTDGGc)[effects])==1,4,2))
 #legend("bottom", lty=c(1,NA,NA,NA,NA,NA),pch=c(NA,19,22,22,22,22), c("Power","Selected variables", paste("Dist.", g)), col=c(colLevels[10], "black", colGroups[g]), bty="n", ncol=2)
 
-#' #### Figure 5d
+#' #### Figure 5B
 #' Number of cases needed
 #+ cases, fig.width=2.2, fig.height=2
 par(mar=c(3,5,1,1), bty='n', mgp=c(2.5,0.5,0))
