@@ -1176,7 +1176,7 @@ allStagesRisk <- as.data.frame(sapply(c("NcdTD","CrTD","NrdTD","RelTD","PrdTD"),
 f <- function(x,y,...) {points(x,y, col=densCols(x,y),...); lines(lowess(x,y), col='red')}
 pairs(allStagesRisk, panel=f, pch=19)
 
-#' #### Supplementary Tables 2-6 
+#' #### Supplementary Tables S2-6 
 #' Non-complete remission deaths
 w <- WaldTest(coxRFXNcdTD)
 w$Q.BH <- p.adjust(w$p.value, "BH")
@@ -1483,7 +1483,7 @@ plot(s$surv^exp(rfx5Loo[6,1]), 1-rowSums(multiRfx5Loo[,1:3,1]), type='l', xlim=c
 for(i in 2:100)
 	lines(s$surv^exp(rfx5Loo[6,i]), 1-rowSums(multiRfx5Loo[,1:3,i]), col='grey')
 
-#' #### Figure 3A-F, Supplementary Figure 5
+#' #### Figure 3A-F
 #' With and without TPL
 #+ threePatientsAllo, fig.width=3, fig.height=2.5
 xmax=2000
@@ -2477,7 +2477,7 @@ polygon(yy[v], xx[v], border=NA, col=set1[1])
 polygon(yy[!v], xx[!v], border=NA, col=set1[2])
 lines(yy, xx)
 
-#' #### Figure 4B
+#' #### Figure 4C
 #' KM plot of the high v low benefit groups
 #+ survival_hsct, fig.width=3, fig.height=2.5
 par(mar=c(3,3,1,1), mgp=c(2,0.5,0), bty="L")
@@ -3326,7 +3326,7 @@ tcgaConcordanceTD <- sapply(tcgaRiskTD, function(x) unlist(survConcordance(tcgaS
 
 
 
-#' #### Supplementary Figure 1A
+#' #### Supplementary Figure S1A
 #' Here we generate the overview shown in Supplementary Figure S1A.
 #+ concordanceCvTcga, fig.width=3.5, fig.height=2.5
 library(abind)
