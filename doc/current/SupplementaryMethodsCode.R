@@ -1245,7 +1245,8 @@ saveWorkbook(wb, file="SupplementaryTables.xlsx")
 
 
 #' ### Predicting outcome from diagnosis
-#' The following function fits a 5-stage model. Note that we use a single smooth function g(t) to model the association between time of CR and all subsequent events.
+#' The following function fits a 5-stage model. Note that we use a single smooth function g(t) to model the association between time of CR and all subsequent events.  It is implemented in C++ for efficiency using the `Rcpp` package [@EddelbuettelJOSS2011]. 
+library(Rcpp)
 MultiRFX5 <- function(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, tdPrmBaseline = rep(1, ceiling(max(x))+1), tdOsBaseline = rep(1, ceiling(max(x))+1), ciType="analytical"){
 	cppFunction('NumericVector computeHierarchicalSurvival(NumericVector x, NumericVector diffS0, NumericVector S1Static, NumericVector haz1TimeDep) {
 					int xLen = x.size();
@@ -1530,8 +1531,7 @@ for(pd in patients)
 
 
 #' ### Predicting outcome after CR
-#' We use the following function to compute the hierarchical adjustment for two subsequent stages. It is implemented in C++ for efficiency using the `Rcpp` package [@EddelbuettelJOSS2011]. 
-library(Rcpp)
+#' We use the following function to compute the hierarchical adjustment for two subsequent stages.
 cppFunction('NumericVector computeTotalPrsC(NumericVector x, NumericVector diffCir, NumericVector prsP, NumericVector tdPrmBaseline, double risk) {
 				int xLen = x.size();
 				double hj;
@@ -1547,7 +1547,7 @@ cppFunction('NumericVector computeTotalPrsC(NumericVector x, NumericVector diffC
 				return rs;
 				}', rebuild=TRUE)
 
-#' Function to predict OS from Relapse, PRS and NRM, as described in [Section 4.3.5](#probabilities-of-each-state).
+#' Function to predict OS from Relapse, PRS and NRM, as described in [Section 4.3.5](#probabilities-of-each-state). It is slightly more efficient than MultiRFX5, as it doesn't require evaluating the chances of reaching CR.
 MultiRFX3 <- function(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data, x =365, ciType="analytical", prdData){
 	## Step 1: Compute KM survival curves and log hazard
 	getS <- function(coxRFX, data, max.x=5000) {		
