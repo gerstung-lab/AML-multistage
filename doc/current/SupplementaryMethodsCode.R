@@ -1487,7 +1487,7 @@ for(i in 2:100)
 #' With and without TPL
 #+ threePatientsAllo, fig.width=3, fig.height=2.5
 xmax=2000
-patients <- c("PD11104a","PD8314a","PD9227a")
+patients <- c("PD11104a","PD8314a","PD10941a")
 fiveStagePredictedTplLoo <- sapply(patients, function(pd){
 			e <- new.env()
 			i <- which(rownames(dataFrame)==pd)
@@ -1522,6 +1522,9 @@ for(pd in patients)
 		text(x=1:5, y=rep(0.2, 5), round(fiveStagePredictedTplLoo[at,7,i,pd],2))
 		text(x=1:5, y=rep(0.1, 5), round(fiveStagePredictedTplLoo[at,8,i,pd],2))
 		#text(x=at, y=rep(0.1, 5), round(fiveStagePredictedTpl[w,6,i],2))
+		p <- which(rownames(dataFrame)==pd)
+		lineStage(CR_date=0, as.numeric(clinicalData$Recurrence_date[p]-clinicalData$CR_date[p])/365.25, as.numeric(clinicalData$Date_LF[p]-clinicalData$CR_date[p])/365.25, ERDate=0, clinicalData$Status[p], col=c(brewer.pal(8,"Dark2")[8], set1[c(4:5,1:3)]), lwd=4, pch.trans=NA, y=0.05, cex=4)
+		mtext(side=3, line=-1, pd, las=1)
 	}
 
 
@@ -2241,7 +2244,7 @@ set.seed(42)
 d <- osData[1:nrow(dataFrame),]
 d$transplantCR1 <- 0
 d$transplantRel <- 0
-p <- grep("PD11104a|PD8314a|PD11080a",rownames(dataFrame))
+p <- grep("PD11104a|PD8314a|PD10941a",rownames(dataFrame))
 predict3 <- MultiRFX3TplCi(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[p,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=1000, prdData=prdData) ## selected with 1000
 dimnames(predict3)[[4]] <- rownames(dataFrame)[p]
 predict3
@@ -2420,7 +2423,7 @@ abline(0,1, lty=3)
 
 #' #### Three patients with numerical CI's and LOO
 #+ threePatientsAlloLooCi, cache=TRUE
-patients <- c("PD11104a","PD8314a","PD9227a")
+patients <- c("PD11104a","PD8314a","PD10941a")
 threePatientTplCiLoo <- sapply(patients, function(pd){
 			e <- new.env()
 			i <- which(rownames(dataFrame)==pd)
@@ -2436,6 +2439,7 @@ threePatientTplCiLoo <- sapply(patients, function(pd){
 par(mar=c(3,3,1,3), las=2, mgp=c(2,.5,0), bty="n")
 benefit <- multiRFX3LOO[,2]-multiRFX3LOO[,3]
 absrisk <- multiRFX3LOO[,1]
+names(absrisk) <- names(benefit) <- rownames(dataFrame)
 s <- clinicalData$AOD < 60 & !is.na(clinicalData$CR_date)#sample(1:1540,100)
 x <- 1-absrisk
 y <- benefit
@@ -2443,8 +2447,8 @@ plot(x[s], y[s], pch=NA, ylab="Mortality reduction from allograft", xlab="3yr mo
 abline(h=seq(-.1,.3,.1), col='grey', lty=3)
 abline(v=seq(.2,.9,0.2), col='grey', lty=3)
 points(x[s], y[s], pch=16,  col=riskCol[clinicalData$M_Risk[s]], cex=.8)
-segments(1-threePatientTplCiLoo["none","lower","os",1,patients], threePatientTplCiLoo["dCr1Rel","hat","os",1,patients],1-threePatientTplCiLoo["none","upper","os",1,patients],threePatientTplCiLoo["dCr1Rel","hat","os",1,patients])
-segments(1-threePatientTplCiLoo["none","hat","os",1,patients], threePatientTplCiLoo["dCr1Rel","lower","os",1,patients],1-threePatientTplCiLoo["none","hat","os",1,patients], threePatientTplCiLoo["dCr1Rel","upper","os",1,patients])
+segments(1-threePatientTplCiLoo["none","lower","os",1,patients], y[patients],1-threePatientTplCiLoo["none","upper","os",1,patients],y[patients])
+segments(x[patients], threePatientTplCiLoo["dCr1Rel","lower","os",1,patients],x[patients], threePatientTplCiLoo["dCr1Rel","upper","os",1,patients])
 xn <- seq(0,1,0.01)
 p <- predict(loess(y~x, data=data.frame(x=x[s], y=y[s])), newdata=data.frame(x=xn), se=TRUE)
 yn <- c(p$fit + 2*p$se.fit,rev(p$fit - 2*p$se.fit))
