@@ -3381,10 +3381,10 @@ legend("bottomright",
 		lty=c(1,1), bg="white", col=c("grey",col[1:4], "black"), pch=c(15,16,16,16,16,NA))
 
 #' Short version
-#+ allModelsCvTdCRank4, fig.width=1.5, fig.height=1.5
-par(mar=c(3,3,3,1), xpd=NA, las=2, mgp=c(2,.5,0))
+#+ allModelsCvTdCRankAll, fig.width=3.5, fig.height=1.5
+par(mar=c(3,3.5,.5,.5),bty="n", mgp=c(2.5,.5,0), las=2,  lend=1, xpd=FALSE)
 r <- sapply(as.data.frame(lapply(as.data.frame(t(apply(-x,2,rank, ties.method="random"))),factor, levels=1:nrow(x))),table)
-o <- 1:nc #order(apply(allModelsCvTdC[w,],1,median))
+o <- 1:ncol(r) #order(apply(allModelsCvTdC[w,],1,median))
 clr <- rev(brewer.pal(nrow(x),"PiYG"))#set1[c(3,2,4,1,5,7)]
 barplot(r[,o]/replicates, col=clr[1:ncol(allModelsCvTdC)], ylab="Fraction", names.arg=rep("",ncol(r))) -> b
 mg14::rotatedLabel(1:nrow(x), rep(par("usr")[3],nrow(x)), w[o])
