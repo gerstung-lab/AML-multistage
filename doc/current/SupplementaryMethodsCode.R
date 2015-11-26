@@ -3303,14 +3303,13 @@ multiRfx5Tcga <- MultiRFX5(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, co
 
 s <- rowMeans(colSums(aperm(multiRfx5Tcga[,1:3,],c(2,1,3))))
 plot(survfit(tcgaSurvival ~ 1))
-lines(seq(0,2000)/365,1-s)
+lines(seq(0,2000)/365.25/1.25,1-s)
 
 c <- sapply(seq(1,2000,10), function(i) survConcordance(tcgaSurvival ~  colSums(multiRfx5Tcga[i,1:3,]))$concordance)
-plot(c)
-plot(seq(1,2000,10),c)
+plot(seq(1,2000,10),c, type='l', xlab="Years after diagnosis", ylab="Concordance")
 
-r <- colSums(multiRfx5Tcga[365,1:3,])
-survConcordance(tcgaSurvival ~ r)
+mRFX3yr <- colSums(multiRfx5Tcga[3*365,1:3,])
+survConcordance(tcgaSurvival ~ mRFX3yr)
 
 #' TCGA concordance time-dependent models
 tcgaDataTdImputed <- as.data.frame(ImputeMissing(dataFrame[mainIdxOsTD], newX=tcgaData[mainIdxOsTD]))
@@ -3318,13 +3317,23 @@ tcgaRiskTD <- data.frame(
 		coxBICTD = predict(coxBICOsTD, newdata=tcgaDataTdImputed),
 		coxAICTD = predict(coxAICOsTD, newdata=tcgaDataTdImputed),
 		coxRFXTD = PredictRiskMissing(coxRFXFitOsTDGGc, tcgaData)[,1],
-		mRFX365 = r
+		mRFX3yr = mRFX3yr
 )
 tcgaConcordanceTD <- sapply(tcgaRiskTD, function(x) unlist(survConcordance(tcgaSurvival ~ x)[c("concordance","std.err")]))
 
-
-
-
+#' Absolute errors
+times <- seq(1,2000,10)
+s <- summary(survfit(tcgaSurvival ~ 1), times=times/365.25)
+c <- summary(survfit(coxRFXFitOsTDGGc), times=times)
+e <- sapply(times, function(t) ape(s$surv[times==t], tcgaSurvival, t/365.25))
+a <- sapply(times, function(t) ape(1-colSums(multiRfx5Tcga[t,1:3,]), tcgaSurvival, t/365.25))
+b <- sapply(times, function(t) ape(c$surv[times==t] ^ exp(tcgaRiskTD$coxRFXTD - mean(coxRFXFitOsTDGGc$means %*% coxRFXFitOsTDGGc$coefficients)), tcgaSurvival, t/365.25))
+for(i in 1:4){
+	plot(times/365.25, e[i,], type='l', xlab="Time (yr)", ylab=rownames(a)[i], col=set1[9])
+	lines(times/365.25, a[i,], col=set1[1])
+	lines(times/365.25, b[i,], col=set1[2])
+	legend("bottomright",c("Kaplan-Meier","RFX OS","RFX Multistage"), col=set1[c(9,1:2)], lty=1, bty="n")
+}
 
 #' #### Supplementary Figure S1A
 #' Here we generate the overview shown in Supplementary Figure S1A.
@@ -3333,13 +3342,13 @@ library(abind)
 par(mar=c(3,3.5,.5,.5),bty="n", mgp=c(2.5,.5,0), las=2,  lend=1, xpd=FALSE)
 o <- c(1,7,2,3,4,6)
 x <- rbind(allModelsCvC[o,], allModelsCvTdC[c("BIC","AIC","RFXgg","mRFX3yr"),])
-col <- brewer.pal(4,"Pastel1")
+col <- brewer.pal(4,"Set1")
 #boxplot(t(x[o,]), notch=TRUE, ylab="Concordance", staplewex=0, lty=1, pch=16, xaxt="n", border="white", ylim=c(0.5,0.75), boxwex=.5)
 bplot <- function(x, at=1:ncol(x),..., ylim=range(x), xlab="", col="black", col.lines="grey"){
 	y <- apply(x,2,fivenum)
 	plot(at,y[3,], pch=NA, ..., ylim=ylim, xlab="", xaxt="n")
 	segments(at,y[1,],at,y[5,], col=col.lines, lwd=2)
-	segments(at,y[2,],at,y[4,], col=col.lines, lwd=4)
+	segments(at,y[2,],at,y[4,], col=col.lines, lwd=5)
 	points(at,y[3,], pch=15, col=col)
 }
 s <- .2 #space
@@ -3358,19 +3367,28 @@ m <- sapply(1:ncol(z),function(i){
 #segments(a-s/2,t[1,]-t[2,],a-s/2,t[1,]+t[2,], col=paste0(col[1],"FF"), lwd=2)
 #points(a-s/2,t[1,], col=col[1], pch=16, cex=1)
 i <- 0; for(n in dimnames(z)[[3]]) { i<-i+1;
-	segments(a -s +s/2*i, z[1,,n] -  z[2,,n],a -s +s/2*i, z[1,,n]+ z[2,,n], col=paste0(col[i],"FF"), lwd=2)
+	segments(a -s +s/2*i, z[1,,n] -  z[2,,n],a -s +s/2*i, z[1,,n]+ z[2,,n], col=mg14::colTrans(col[i]), lwd=2)
 	points(a -s +s/2*i, z[1,,n], col=col[i], pch=16, cex=1)
 }
 segments(a -3/4*s, m[1,],a+s*5/4,m[1,], lwd=3)
-rotatedLabel(a, labels= rownames(x))
+mg14::rotatedLabel(a, labels= rownames(x))
 legend("bottomright", 
 		c(
 				"random CV 4/5 x100", 
 				paste0("TCGA, (n=",nrow(na.omit(tcgaSurvival)),")"),
 				paste0(dimnames(allModelsTrialC)[[3]]," (n=",table(clinicalData$Study),")"),
 				"average"), 
-		lty=c(1,1), bg="white", col=c("grey",col[1:4], "black"), pch=c(15,16,16,16,16,16,NA))
+		lty=c(1,1), bg="white", col=c("grey",col[1:4], "black"), pch=c(15,16,16,16,16,NA))
 
+#' Short version
+#+ allModelsCvTdCRank4, fig.width=1.5, fig.height=1.5
+par(mar=c(3,3,3,1), xpd=NA, las=2, mgp=c(2,.5,0))
+r <- sapply(as.data.frame(lapply(as.data.frame(t(apply(-x,2,rank, ties.method="random"))),factor, levels=1:nrow(x))),table)
+o <- 1:nc #order(apply(allModelsCvTdC[w,],1,median))
+clr <- rev(brewer.pal(nrow(x),"PiYG"))#set1[c(3,2,4,1,5,7)]
+barplot(r[,o]/replicates, col=clr[1:ncol(allModelsCvTdC)], ylab="Fraction", names.arg=rep("",ncol(r))) -> b
+mg14::rotatedLabel(1:nrow(x), rep(par("usr")[3],nrow(x)), w[o])
+legend(par("usr")[1],1.5, fill=clr[1:nrow(allModelsCvTdC)], legend=1:nrow(allModelsCvTdC), bty="n", border=NA, horiz=TRUE, title="Rank")
 
 
 #' # Simulations
