@@ -219,6 +219,128 @@ dataFrame <- as.data.frame(sapply(dataFrame, poorMansImpute))
 rownames(dataFrame) <- clinicalData$PDID
 
 
+#' ### Subclonal mutations
+copyNumbers = cbind(dataList$Cytogenetics[grep(c("minus|plus|mono"), colnames(dataList$Cytogenetics))], clinicalData$gender)
+copyNumbers$minus7 <- (copyNumbers$minus7 | copyNumbers$minus7q) +0
+copyNumbers$minus7q <- NULL
+for(i in 1:ncol(copyNumbers)){
+	if(grepl("plus", colnames(copyNumbers)[i]))
+		copyNumbers[,i] = copyNumbers[,i] * 3
+}
+copyNumbers[copyNumbers==0 | is.na(copyNumbers)] = 2
+colnames(copyNumbers) = c(5,7,8,9,12,13,17,18,20,21,22,"Y",11,4,"X")
+rownames(copyNumbers) <- clinicalData$PDID
+copyNumbers$Y <- c(1:0)[clinicalData$gender] - mg14::na.zero(dataList$Cytogenetics$minusY)
+
+cn = sapply(1:nrow(mutationData), function(i) {c=copyNumbers[mutationData$SAMPLE_NAME[i],match(mutationData$CHR[i], colnames(copyNumbers))]; if(length(c)==0) 2 else c})
+vaf <- as.numeric(as.character(mutationData$X._MUT_IN_TUM))
+depth <- as.numeric(as.character(mutationData$TUM_DEPTH))
+
+dataFLT3_ITD <- read.table("../../data/FLT3_ITD.txt", sep="\t", header=TRUE)
+dataFLT3_ITD$Sample <- sub("WGA_","", dataFLT3_ITD$Sample)
+
+mcf <- vaf/100*cn ## Approx mutant cell fraction, assuming mutations on only one copy
+mcf[which(mcf > 1.25)] <- vaf[which(mcf > 1.25)] ## Probably over adjusted
+mcf[mcf > 1] <- 1 ## Random fluctuations
+genesClonal <- dataFrame[groups=="Genetics"]
+precedence <- matrix(0, nrow=ncol(genesClonal), ncol = ncol(genesClonal) , dimnames=list(colnames(genesClonal), colnames(genesClonal)))
+plist <- list()
+lesions <- as.character(mutationData$GENE)
+lesions[mutationData$GENE=='IDH2' & grepl("172", mutationData$AA_CHANGE)] <- "IDH2_p172"
+lesions[mutationData$GENE=='IDH2' & grepl("140", mutationData$AA_CHANGE)] <- "IDH2_p140"
+lesions[mutationData$GENE=='FLT3' & grepl(paste(835:841, collapse="|"), mutationData$AA_CHANGE)] <- "FLT3_TKD"
+lesions[mutationData$GENE=='FLT3' & grepl("ITD", mutationData$AA_CHANGE)] <- "FLT3_ITD"
+lesions[lesions=="FLT3"] <- "FLT3_other"
+
+# Add FLT3_ITD VAF, not the most accurate presumably, due to mapping problems for ITDs..
+i <- lesions == "FLT3_ITD"
+m <- match(mutationData$SAMPLE_NAME[i], dataFLT3_ITD$Sample)
+mcf[i] <- as.numeric(as.character(dataFLT3_ITD$Read_count[m]))/dataFLT3_ITD$Coverage[m]
+depth[i] <- dataFLT3_ITD$Coverage[m]
+
+ix= lesions %in% colnames(precedence) & mutationData$Result %in% c("ONCOGENIC","POSSIBLE")
+for(s in clinicalData$PDID){
+	l <- list()
+	for(i in which(mutationData$SAMPLE_NAME==s & ix))
+		for(j in which(mutationData$SAMPLE_NAME==s & ix)){
+			if(!is.na(cn[i]) & !is.na(cn[j]) & i!=j){
+				m <- round(matrix(c(
+										mcf[i]*depth[i],
+										depth[i]-mcf[i]*depth[i], 
+										mcf[j]*depth[j],
+										depth[j]-mcf[j]*depth[j]),
+								ncol=2))
+				f <- try(fisher.test(m, alternative="greater")$p.value< 0.01 , silent=TRUE) ## Fisher test
+				if(class(f)!="try-error")
+					if(f & mcf[i] >= 1 - mcf[j]){ ## Pidgeonhole
+						precedence[as.character(lesions[i]),as.character(lesions[j])] <- precedence[as.character(lesions[i]),as.character(lesions[j])] + 1
+						l <- c(l, list(c(as.character(lesions[i]),as.character(lesions[j]))))
+						genesClonal[s, as.character(lesions[i])] <- 2
+						genesClonal[s, as.character(lesions[j])] <- 3
+					}
+				
+			}
+		}
+	plist[[s]] <- l
+}
+
+#+ subcloneAML, fig.width=2.5, fig.height=2.5
+t <- table(sapply(plist, length)>0)
+pie(t, labels=paste(t, c("clonal/NA","polyclonal")), col=set1[2:1])
+
+#' #### Bradley-Terry Model
+makeDesign <- function(I) {
+	w <- which(lower.tri(I), arr.ind=TRUE)
+	x <- matrix(0, nrow(w), nrow(I))
+	for(i in 1:nrow(w)){
+		x[i,w[i,1]] <- 1
+		x[i,w[i,2]] <- -1
+	}
+	return(x)
+}
+
+btModel <- function(I){
+	y <- cbind(I[lower.tri(I)], t(I)[lower.tri(I)])
+	x <- makeDesign(I = I)
+	glm.fit(x=x[,-1],y=y, family=binomial())
+}
+
+nCasesGene <- table(factor(unlist(sapply(plist, function(x) unique(unlist(x)))), levels=colnames(precedence)))
+w <- which(nCasesGene > 5)
+
+fit <- btModel(precedence[w,w]+.01)
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- rank(c)
+v <- pmin(2,sqrt(c(0,diag(chol2inv(fit$qr$qr)))))
+
+#+ bradleyTerryAML, fig.width=4, fig.height=2.5
+l <- names(c)
+m <- paste("n=",nCasesGene[w], sep="")
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+3*c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c-v ,o,l, font=3, pos=2)
+text(-c+v ,o,m, font=1, pos=4)
+
+
+
+#' #### Supplemenary Figure X
+#' ' Here we generate a panel overview of all genetic lesions and their impact on outcome.
+
+#+ subcloneKM, fig.width=8, fig.height=8 
+par(mfrow=c(8,8), mar=c(1.5,2.5,1.5,0.5), mgp=c(2,0.5,0), bty="L", xpd=TRUE, las=1, tcl=-0.2, cex.axis=1.25)
+for(g in colnames(genesClonal)){
+	p <- try(pchisq(survdiff(osYr ~ genesClonal[,g] == 3, subset=genesClonal[,g]>0)$chisq,1,lower.tail=FALSE))
+	plot(survfit(osYr ~ factor(genesClonal[,g], levels=0:3)), col=set1[c(9,c(4,2,1))], mark=NA, xlim=c(0,5))
+	mtext(side=3, paste0(g, ifelse(class(p)!="try-error",mg14::sig2star(p),"")), line=0, font=4)
+}
+plot.new(); par(xpd=NA)
+legend("topleft", col=set1[c(9,c(2,4,1))], lty=1, c("wt","clonal","indetermined","subclonal"), cex=1.5, bty="n")
+plot.new(); par(xpd=NA)
+legend("topleft", c(".","*","**","***", "P (0.05, 0.1]", "P (0.01, 0.05]", "P (0.001, 0.01]", "P < 0.001"), ncol=2, cex=1.5, bty="n", text.width= 0.1)
+
+
+
 
 #' 
 #' 
@@ -1459,12 +1581,12 @@ image(x=q/max(q)*500, y=c(u[4]-(u[4]-u[3])/20, u[4]), matrix(1:10), col= (brewer
 axis(side=3, at=pretty(q/365)/max(q)*365*500, labels=pretty(q/365))
 lines(ksmooth(seq_along(o),t[o,2]==0, bandwidth=50))
 
-#' #### Supplementary Figure S4
+#' #### Supplementary Figure S1B-D
 #' Plots of concordance and absolute prediction measures
 #+ errorsMultiRfxOsLoo, fig.width=2.5, fig.height=2.5
 multiRfx5C <- sapply(seq_along(times), function(i) survConcordance(os ~ colSums(multiRfx5Loo[i,1:3,]))$concordance[1])
-plot(times, multiRfx5C, type='l', xlab="Time", ylab="Concordance", ylim=c(0.65, 0.73), col=set1[1])
-abline(h=survConcordance(os ~ rfx5Loo[6,])$concordance, col=set1[2], lwd=2)
+plot(times/365.25, multiRfx5C, type='l', xlab="Time", ylab="Concordance", ylim=c(0.65, 0.73), col=set1[1])
+abline(h=survConcordance(os ~ rfx5Loo[6,])$concordance, col=set1[2], lwd=1)
 legend("bottomright",c("RFX OS","RFX Multistage"), col=set1[1:2], lty=1, bty="n")
 
 a <- sapply(times, function(t) ape(1-colSums(multiRfx5Loo[times == t,1:3,]), os, t))
@@ -1475,7 +1597,7 @@ for(i in 1:4){
 	plot(times/365.25, e[i,], type='l', xlab="Time (yr)", ylab=rownames(a)[i], col=set1[9])
 	lines(times/365.25, a[i,], col=set1[1])
 	lines(times/365.25, b[i,], col=set1[2])
-	legend("bottomright",c("Kaplan-Meier","RFX OS","RFX Multistage"), col=set1[c(9,1:2)], lty=1, bty="n")
+	legend("bottomright",c("Kaplan-Meier","Multistage","RFX OS"), col=set1[c(9,1:2)], lty=1, bty="n")
 }
 
 #' Figure of predicted survival for 100 patients, comparing multistage and OS predictions
@@ -3294,24 +3416,8 @@ mtext(side=4, "Time", line=2.5)
 mtext(side=3, at = -log(l)/hazardDist(par("usr")[4]*10000*365), text=paste(100*l, "% survive", sep=""))
 legend("topright", levels(tcgaClinical$C_Risk)[c(2,3,1)], fill=set1[c(3,2,1)], bty="n", title="M risk")
 
-#' ### Multistage models
-d <- tcgaData
-d$transplantRel <- tcgaTpl[,"transplantRel"]
-d$transplantCR1 <- tcgaTpl[,"transplantCR1"]
-d$MissingCyto <- (tcgaClinical$karyotype == '[Not Available]' )+0
-multiRfx5Tcga <- MultiRFX5(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, d, tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=xmax)
-
-s <- rowMeans(colSums(aperm(multiRfx5Tcga[,1:3,],c(2,1,3))))
-plot(survfit(tcgaSurvival ~ 1))
-lines(seq(0,2000)/365.25/1.25,1-s)
-
-c <- sapply(seq(1,2000,10), function(i) survConcordance(tcgaSurvival ~  colSums(multiRfx5Tcga[i,1:3,]))$concordance)
-plot(seq(1,2000,10),c, type='l', xlab="Years after diagnosis", ylab="Concordance")
-
-mRFX3yr <- colSums(multiRfx5Tcga[3*365,1:3,])
-survConcordance(tcgaSurvival ~ mRFX3yr)
-
 #' TCGA concordance time-dependent models
+#+ tcgaConcordanceTD
 tcgaDataTdImputed <- as.data.frame(ImputeMissing(dataFrame[mainIdxOsTD], newX=tcgaData[mainIdxOsTD]))
 tcgaRiskTD <- data.frame(
 		coxBICTD = predict(coxBICOsTD, newdata=tcgaDataTdImputed),
@@ -3321,7 +3427,32 @@ tcgaRiskTD <- data.frame(
 )
 tcgaConcordanceTD <- sapply(tcgaRiskTD, function(x) unlist(survConcordance(tcgaSurvival ~ x)[c("concordance","std.err")]))
 
-#' Absolute errors
+
+#' ### Multistage models
+d <- tcgaData
+d$transplantRel <- tcgaTpl[,"transplantRel"]
+d$transplantCR1 <- tcgaTpl[,"transplantCR1"]
+d$MissingCyto <- (tcgaClinical$karyotype == '[Not Available]' )+0
+multiRfx5Tcga <- MultiRFX5(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, d, tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=xmax)
+
+#' #### Supplementary Figure S1E
+#+ tcgaMultistage, fig.width=2.5, fig.height=2.5
+s <- rowMeans(colSums(aperm(multiRfx5Tcga[,1:3,],c(2,1,3))))
+plot(survfit(tcgaSurvival ~ 1))
+lines(seq(0,2000)/365.25/1.25,1-s)
+
+multiRfx5TcgaC <- sapply(seq(1,2000,10), function(i) survConcordance(tcgaSurvival ~  colSums(multiRfx5Tcga[i,1:3,]))$concordance)
+plot(seq(1,2000,10)/365.25,multiRfx5TcgaC, type='l', xlab="Years after diagnosis", ylab="Concordance", col=set1[1])
+abline(h=tcgaConcordanceTD[1,"coxRFXTD"],col=set1[2])
+legend("bottomright",c("RFX OS","RFX Multistage"), col=set1[2:1], lty=1, bty="n")
+
+
+mRFX3yr <- colSums(multiRfx5Tcga[3*365,1:3,])
+survConcordance(tcgaSurvival ~ mRFX3yr)
+
+
+#' #### Supplementary Figure S1F-G
+#+ tcgaMultistageError, fig.width=2.5, fig.height=2.5
 times <- seq(1,2000,10)
 s <- summary(survfit(tcgaSurvival ~ 1), times=times/365.25)
 c <- summary(survfit(coxRFXFitOsTDGGc), times=times)
@@ -3332,7 +3463,7 @@ for(i in 1:4){
 	plot(times/365.25, e[i,], type='l', xlab="Time (yr)", ylab=rownames(a)[i], col=set1[9])
 	lines(times/365.25, a[i,], col=set1[1])
 	lines(times/365.25, b[i,], col=set1[2])
-	legend("bottomright",c("Kaplan-Meier","RFX OS","RFX Multistage"), col=set1[c(9,1:2)], lty=1, bty="n")
+	legend("bottomright",c("Kaplan-Meier","Multistage","RFX"), col=set1[c(9,1:2)], lty=1, bty="n")
 }
 
 #' #### Supplementary Figure S1A
