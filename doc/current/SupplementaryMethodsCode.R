@@ -1606,6 +1606,13 @@ plot(s$surv^exp(rfx5Loo[6,1]), 1-rowSums(multiRfx5Loo[,1:3,1]), type='l', xlim=c
 for(i in 2:100)
 	lines(s$surv^exp(rfx5Loo[6,i]), 1-rowSums(multiRfx5Loo[,1:3,i]), col='grey')
 
+#' Data with and without allograft
+#+ allDataTpl, cache=TRUE
+allDataTpl <- osData[rep(1:nrow(dataFrame), each=3),]
+allDataTpl$transplantCR1 <- rep(c(0,1,0), nrow(dataFrame))
+allDataTpl$transplantRel <- rep(c(0,0,1), nrow(dataFrame))
+
+
 #' #### Figure 3A-F
 #' With and without TPL
 #+ threePatientsAllo, fig.width=3, fig.height=2.5
@@ -2215,9 +2222,6 @@ barplot(matrix(diff(quantile(relData$time2[m], na.rm=T, seq(0,1,0.1))), ncol=1)/
 #' Create a data.frame with all possibilities for allografts - none, CR1, after relapse.
 #+survivalTpl, cache=TRUE
 w <- sort(unique(osData$index[which(quantileRiskOsCR==3 & clinicalData$M_Risk[osData$index]=="Favorable")]))
-allDataTpl <- osData[rep(1:nrow(dataFrame), each=3),]
-allDataTpl$transplantCR1 <- rep(c(0,1,0), nrow(dataFrame))
-allDataTpl$transplantRel <- rep(c(0,0,1), nrow(dataFrame))
 multiRFX3Tpl <- MultiRFX3(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=allDataTpl, x=3*365, prdData=prdData)
 multiRFX3Tpl <- as.data.frame(matrix(multiRFX3Tpl$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse"))), row.names=rownames(dataFrame))
 survivalTpl <- data.frame(multiRFX3Tpl, os=osYr, age=clinicalData$AOD, ELN=clinicalData$M_Risk, tercile=quantileRiskOsCR[1:nrow(multiRFX3Tpl)])
