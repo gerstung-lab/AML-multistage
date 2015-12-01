@@ -3428,17 +3428,6 @@ d$transplantCR1 <- tcgaTpl[,"transplantCR1"]
 d$MissingCyto <- (tcgaClinical$karyotype == '[Not Available]' )+0
 multiRfx5Tcga <- MultiRFX5(coxRFXNcdTD, coxRFXCrTD, coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, d, tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=xmax)
 
-#' #### Supplementary Figure S1E
-#+ tcgaMultistage, fig.width=2.5, fig.height=2.5
-s <- rowMeans(colSums(aperm(multiRfx5Tcga[,1:3,],c(2,1,3))))
-plot(survfit(tcgaSurvival ~ 1))
-lines(seq(0,2000)/365.25/1.25,1-s)
-
-multiRfx5TcgaC <- sapply(seq(1,2000,10), function(i) survConcordance(tcgaSurvival ~  colSums(multiRfx5Tcga[i,1:3,]))$concordance)
-plot(seq(1,2000,10)/365.25,multiRfx5TcgaC, type='l', xlab="Years after diagnosis", ylab="Concordance", col=set1[1])
-abline(h=tcgaConcordanceTD[1,"coxRFXTD"],col=set1[2])
-legend("bottomright",c("RFX OS","RFX Multistage"), col=set1[2:1], lty=1, bty="n")
-
 mRFX3yr <- colSums(multiRfx5Tcga[3*365,1:3,])
 survConcordance(tcgaSurvival ~ mRFX3yr)
 
@@ -3451,7 +3440,20 @@ tcgaRiskTD <- data.frame(
 		coxRFXTD = PredictRiskMissing(coxRFXFitOsTDGGc, tcgaData)[,1],
 		mRFX3yr = mRFX3yr
 )
+
 tcgaConcordanceTD <- sapply(tcgaRiskTD, function(x) unlist(survConcordance(tcgaSurvival ~ x)[c("concordance","std.err")]))
+
+
+#' #### Supplementary Figure S1E
+#+ tcgaMultistage, fig.width=2.5, fig.height=2.5
+s <- rowMeans(colSums(aperm(multiRfx5Tcga[,1:3,],c(2,1,3))))
+plot(survfit(tcgaSurvival ~ 1))
+lines(seq(0,2000)/365.25/1.25,1-s)
+
+multiRfx5TcgaC <- sapply(seq(1,2000,10), function(i) survConcordance(tcgaSurvival ~  colSums(multiRfx5Tcga[i,1:3,]))$concordance)
+plot(seq(1,2000,10)/365.25,multiRfx5TcgaC, type='l', xlab="Years after diagnosis", ylab="Concordance", col=set1[1])
+abline(h=tcgaConcordanceTD[1,"coxRFXTD"],col=set1[2])
+legend("bottomright",c("RFX OS","RFX Multistage"), col=set1[2:1], lty=1, bty="n")
 
 
 #' #### Supplementary Figure S1F-G
