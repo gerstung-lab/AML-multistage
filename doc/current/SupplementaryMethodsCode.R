@@ -3420,17 +3420,6 @@ mtext(side=4, "Time", line=2.5)
 mtext(side=3, at = -log(l)/hazardDist(par("usr")[4]*10000*365), text=paste(100*l, "% survive", sep=""))
 legend("topright", levels(tcgaClinical$C_Risk)[c(2,3,1)], fill=set1[c(3,2,1)], bty="n", title="M risk")
 
-#' TCGA concordance time-dependent models
-#+ tcgaConcordanceTD
-tcgaDataTdImputed <- as.data.frame(ImputeMissing(dataFrame[mainIdxOsTD], newX=tcgaData[mainIdxOsTD]))
-tcgaRiskTD <- data.frame(
-		coxBICTD = predict(coxBICOsTD, newdata=tcgaDataTdImputed),
-		coxAICTD = predict(coxAICOsTD, newdata=tcgaDataTdImputed),
-		coxRFXTD = PredictRiskMissing(coxRFXFitOsTDGGc, tcgaData)[,1],
-		mRFX3yr = mRFX3yr
-)
-tcgaConcordanceTD <- sapply(tcgaRiskTD, function(x) unlist(survConcordance(tcgaSurvival ~ x)[c("concordance","std.err")]))
-
 
 #' ### Multistage models
 d <- tcgaData
@@ -3450,9 +3439,19 @@ plot(seq(1,2000,10)/365.25,multiRfx5TcgaC, type='l', xlab="Years after diagnosis
 abline(h=tcgaConcordanceTD[1,"coxRFXTD"],col=set1[2])
 legend("bottomright",c("RFX OS","RFX Multistage"), col=set1[2:1], lty=1, bty="n")
 
-
 mRFX3yr <- colSums(multiRfx5Tcga[3*365,1:3,])
 survConcordance(tcgaSurvival ~ mRFX3yr)
+
+#' TCGA concordance time-dependent models
+#+ tcgaConcordanceTD
+tcgaDataTdImputed <- as.data.frame(ImputeMissing(dataFrame[mainIdxOsTD], newX=tcgaData[mainIdxOsTD]))
+tcgaRiskTD <- data.frame(
+		coxBICTD = predict(coxBICOsTD, newdata=tcgaDataTdImputed),
+		coxAICTD = predict(coxAICOsTD, newdata=tcgaDataTdImputed),
+		coxRFXTD = PredictRiskMissing(coxRFXFitOsTDGGc, tcgaData)[,1],
+		mRFX3yr = mRFX3yr
+)
+tcgaConcordanceTD <- sapply(tcgaRiskTD, function(x) unlist(survConcordance(tcgaSurvival ~ x)[c("concordance","std.err")]))
 
 
 #' #### Supplementary Figure S1F-G
