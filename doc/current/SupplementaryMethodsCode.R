@@ -4052,12 +4052,12 @@ abline(0,0.5)
 #+ survNallo10000
 par(bty="L")
 fAlloRelapse <- sum(prdData$transplantRel & clinicalData$AOD[ !is.na(clinicalData$Recurrence_date)][prdData$index] < 60)/sum(relData$status & clinicalData$AOD[relData$index] < 60 ) # fraction of patients that have received a salvage transplant
-benefitAllo <- multiRFX3TplLoo[,"CR1"] - (fAlloRelapse*multiRFX3TplLoo[,"Relapse"] +(1-fAlloRelapse)*multiRFX3TplLoo[,"None"])
+benefitAllo <- multiRFX3TplLoo[,"cr1"] - (fAlloRelapse*multiRFX3TplLoo[,"rel"] +(1-fAlloRelapse)*multiRFX3TplLoo[,"none"])
 o <- order(-benefitAllo + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0), na.last=NA)
 pRelapse <- 1+multiRFX3TplCi[1:2,1,"aar",] - multiRFX3TplCi[1:2,1,"rs",] ## Relapse probabilities
 fRelapse <- sapply(seq_along(o), function(i) mean(c(pRelapse[2,o[1:i]], pRelapse[1,o[-(1:i)]]), na.rm=TRUE)) # Personalised
 
-s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplLoo[o[1:i],"CR1"], (1-fAlloRelapse)*multiRFX3TplLoo[o[-(1:i)],"None"] + fAlloRelapse*multiRFX3TplLoo[o[-(1:i)],"Relapse"]), na.rm=TRUE))
+s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplLoo[o[1:i],"cr1"], (1-fAlloRelapse)*multiRFX3TplLoo[o[-(1:i)],"none"] + fAlloRelapse*multiRFX3TplLoo[o[-(1:i)],"rel"]), na.rm=TRUE))
 x <- seq_along(s)/length(s)
 plot(x + (1-x)*fRelapse*fAlloRelapse,s, type='l', xlab="Total fraction of allografts", ylab="Survival of eligible patients 3yrs after CR", col=set1[1], xaxs="i", yaxs="i", lty=3)
 
@@ -4071,7 +4071,7 @@ plot(x + (1-x)*fRelapse*fAlloRelapse,s, type='l', xlab="Total fraction of allogr
 ci <- multiRFX3TplCiLoo["dCr1Rel","upper","os",]-multiRFX3TplCiLoo["dCr1Rel","lower","os",] # 1540 patients
 sCi1540 <- rowMeans(sapply(1:10, function(foo){ set.seed(foo)
 					o <- order(-benefitAllo + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0) + rnorm(1540,sd=ci/4), na.last=NA)
-					s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplLoo[o[1:i],"CR1"], (1-fAlloRelapse)*multiRFX3TplLoo[o[-(1:i)],"None"] + fAlloRelapse*multiRFX3TplLoo[o[-(1:i)],"Relapse"]), na.rm=TRUE))
+					s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplLoo[o[1:i],"cr1"], (1-fAlloRelapse)*multiRFX3TplLoo[o[-(1:i)],"none"] + fAlloRelapse*multiRFX3TplLoo[o[-(1:i)],"rel"]), na.rm=TRUE))
 				}))
 lines(x + (1-x)*fRelapse*fAlloRelapse, sCi1540, type='l',col=set1[1], lty=1)
 #w <- max(which(abs(sCi1540-sCi1540[1] - 1/10 * seq_along(sCi1540)/length(sCi1540))<1e-5))
@@ -4081,12 +4081,12 @@ simCi <- simMultiRFX3TplCi["dCr1Rel","upper","os",]-simMultiRFX3TplCi["dCr1Rel",
 
 sCi10000 <- rowMeans(sapply(1:10, function(foo){ set.seed(foo)
 					o <- order(-benefitAllo + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0) + rnorm(1540,sd=simCi/4), na.last=NA)
-					s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplLoo[o[1:i],"CR1"], (1-fAlloRelapse)*multiRFX3TplLoo[o[-(1:i)],"None"] + fAlloRelapse*multiRFX3TplLoo[o[-(1:i)],"Relapse"]), na.rm=TRUE))
+					s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplLoo[o[1:i],"cr1"], (1-fAlloRelapse)*multiRFX3TplLoo[o[-(1:i)],"none"] + fAlloRelapse*multiRFX3TplLoo[o[-(1:i)],"rel"]), na.rm=TRUE))
 				}))
 lines(x + (1-x)*fRelapse*fAlloRelapse, sCi10000, type='l',col=set1[1], lty=2)
 p <- order(na.zero(c(1,4,2,3)[clinicalData$M_Risk])  + dataFrame$AOD_10/20 + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0), na.last=NA)
 fRelapseEln <- sapply(seq_along(p), function(i) mean(c(pRelapse[2,p[1:i]], pRelapse[1,p[-(1:i)]]), na.rm=TRUE)) # ELN
-sEln <- sapply(seq_along(p), function(i) mean(c(multiRFX3TplLoo[p[1:i],"CR1"], (1-fAlloRelapse)*multiRFX3TplLoo[p[-(1:i)],"None"] + fAlloRelapse*multiRFX3TplLoo[p[-(1:i)],"Relapse"]), na.rm=TRUE))
+sEln <- sapply(seq_along(p), function(i) mean(c(multiRFX3TplLoo[p[1:i],"cr1"], (1-fAlloRelapse)*multiRFX3TplLoo[p[-(1:i)],"none"] + fAlloRelapse*multiRFX3TplLoo[p[-(1:i)],"rel"]), na.rm=TRUE))
 x <- seq_along(sEln)/length(sEln)
 
 lines(x + (1-x)*fRelapseEln*fAlloRelapse,sEln, sEln, type='l', col=set1[2])
