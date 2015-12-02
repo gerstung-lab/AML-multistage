@@ -2411,7 +2411,7 @@ multiRFX3TplCiLoo <- sapply(mclapply(rownames(dataFrame), function(pd){
 			whichTrain <<- which(rownames(dataFrame)!=pd)
 			load(paste0("../../code/loo/",i,".RData"), env=e)			
 			multiRFX3TplCi <- MultiRFX3TplCi(e$rfxNrs, e$rfxRel, e$rfxPrs, data=data[i,colnames(e$rfxPrs$Z), drop=FALSE], x=3*365, nSim=200, prdData=prdData[prdData$index!=i,], mc.cores=1)
-		}, mc.cores=10), simplify="array")[,,,1,]
+		}, mc.cores=10), I, simplify="array")[,,,1,]
 
 
 #' This we compare to in-sample predictions of the model trained on all 1540 patients.
