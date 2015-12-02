@@ -2405,7 +2405,7 @@ lines(lowess(predict(coxRFXOsCR, newdata=osData[1:1540,]), multiRFX3Tpl$CR1 - mu
 #' ##### Three state model
 #' We compute LOO out-of-sample predictions for the survival gain by allograft in CR1 v relapse by training 1540 models on 1539 patients each. 
 #+ multiRFX3TplCiLoo, cache=TRUE
-multiRFX3TplCiLoo <- sapply(1:rownames(dataFrame), function(pd){
+multiRFX3TplCiLoo <- sapply(rownames(dataFrame), function(pd){
 			e <- new.env()
 			i <- which(rownames(dataFrame)==pd)
 			whichTrain <<- which(rownames(dataFrame)!=pd)
