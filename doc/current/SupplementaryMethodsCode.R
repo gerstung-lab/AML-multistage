@@ -2378,33 +2378,6 @@ set.seed(42)
 multiRFX3TplCi <- MultiRFX3TplCi(coxRFXNrdTD, coxRFXRelTD, coxRFXPrdTD, data=d[,colnames(coxRFXNrdTD$Z)], x=3*365, nSim=200, prdData=prdData) ## others with 200
 dimnames(multiRFX3TplCi)[[4]] <- rownames(dataFrame)
 
-#' The figure shows the mortality reduction of allograft CR1 v none, allograft in Rel v none, and CR1 v Relapse.
-#+mortalityReduction, fig.width=3.5, fig.height=2.5
-set.seed(42)
-par(mar=c(3,3,1,3), las=2, mgp=c(2,.5,0), bty="n")
-patients <- grep("PD11104a|PD8314a",rownames(dataFrame))
-for(t in c("dCr1","dRel","dCr1Rel")){
-	s <- clinicalData$AOD < 60 #sample(1:1540,100)
-	x <- 1-multiRFX3TplCi["none","hat","os",]
-	y <- multiRFX3TplCi[t,"hat","os",]
-	plot(x[s], y[s], pch=NA, ylab="Mortality reduction from allograft", xlab="3yr mortality with standard chemo", col=riskCol[clinicalData$M_Risk], cex=.8, las=1, ylim=range(multiRFX3Tpl$CR1-multiRFX3Tpl$None))
-	abline(h=seq(-.1,.3,.1), col='grey', lty=3)
-	abline(v=seq(.2,.9,0.2), col='grey', lty=3)
-	points(x[s], y[s], pch=16,  col=riskCol[clinicalData$M_Risk[s]], cex=.8)
-	segments(1-multiRFX3TplCi["none","lower","os",patients], y[patients],1-multiRFX3TplCi["none","upper","os",patients],y[patients])
-	segments(x[patients], multiRFX3TplCi[t,"lower","os",patients],x[patients], multiRFX3TplCi[t,"upper","os",patients])
-	xn <- seq(0,1,0.01)
-	p <- predict(loess(y~x, data=data.frame(x=x[s], y=y[s])), newdata=data.frame(x=xn), se=TRUE)
-	yn <- c(p$fit + 2*p$se.fit,rev(p$fit - 2*p$se.fit))
-	polygon(c(xn, rev(xn))[!is.na(yn)],yn[!is.na(yn)], border=NA, col="#00000044", lwd=1)
-	lines(xn,p$fit, col='black', lwd=2)
-	legend("topleft", pch=c(16,16,16,16,NA),lty=c(NA,NA,NA,NA,1), col=c(riskCol[c(2,4,3,1)],1),fill=c(NA,NA,NA,NA,"grey"), border=NA, c(names(riskCol)[c(2,4,3,1)],"loess average"), box.lty=0)
-	n <- c(100,50,20,10,5,4,3)
-	axis(side=4, at=1/n, labels=n, las=1)
-	mtext("Number needed to treat", side=4, at=.2, line=2, las=0)
-	axis(side=4, at=-1/n, labels=n, las=1)
-	mtext("Number needed to harm", side=4, at=-.1, line=2, las=0)
-}
 
 #' The following shows boxplots of the mortality reduction v the risk terciles.
 #+survivalTplBoxPlot
@@ -2428,88 +2401,32 @@ plot(multiRFX3Tpl$CR1 - multiRFX3Tpl$None ~ predict(coxRFXOsCR, newdata=osData[1
 lines(lowess(predict(coxRFXOsCR, newdata=osData[1:1540,]), multiRFX3Tpl$CR1 - multiRFX3Tpl$None), col='green')
 
 
-#' #### Best treatment options
-#' We can explore the the hypothetical survival gain if each patient had received the optimal treatment strategy.
-#' Distribution of ranks.
-apply(apply(-multiRFX3Tpl,1,rank),1,function(x) table(factor(x, levels=1:3)))
-
-#' Split by ELN risk
-table(clinicalData$M_Risk, factor(apply(multiRFX3Tpl, 1, which.max), levels=1:3, labels=colnames(multiRFX3Tpl)))[c(2,4,3,1),]
-
-#' Split by ELN risk, requiring TPL in CR1 to offer 5% advantage over salvage
-table(clinicalData$M_Risk, apply(multiRFX3Tpl, 1, function(x) x[2] > x[3]+.05))[c(2,4,3,1),]
-
-#' Observed outcome
-summary(survfit(Surv(time1, time2, status) ~ 1, data=osData), time=3*365)
-
-#' Under different scenarios
-colMeans(multiRFX3Tpl[!is.na(clinicalData$CR_date),])
-
-#' Using observed 
-mean(sapply((1:nrow(data))[!is.na(clinicalData$CR_date) & clinicalData$AOD < 60], function(i) multiRFX3Tpl[i, 1+data[i,"transplantCR1"] + 2*data[i, "transplantRel"] ]))
-
-#' Best possible - everyone had received the optimum 
-mean(apply(multiRFX3Tpl[!is.na(clinicalData$CR_date),],1,max))
-
-#' Benefit v number of allografts in CR1
-#+ survNallo
-par(bty="L")
-o <- order(-multiRFX3TplCi["dCr1Rel","hat","os",] + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>=60,NA,0), na.last=NA)
-f <- sum(prdData$transplantRel & clinicalData$AOD[ !is.na(clinicalData$Recurrence_date)][prdData$index] < 60)/sum(relData$status & clinicalData$AOD[relData$index] < 60 ) # fraction of patients that have received a salvage transplant
-s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplCi["cr1","hat","os",o[1:i]], (1-f)*multiRFX3TplCi["none","hat","os",o[-(1:i)]] + f*multiRFX3TplCi["rel","hat","os",o[-(1:i)]]), na.rm=TRUE))
-plot(seq_along(s)/length(s), s, type='l', xlab="Fraction of allografts in CR1", ylab="Survival of eligible patients 3yrs after CR", col=set1[1], lty=3)
-s <- rowMeans(sapply(1:10, function(foo){ set.seed(foo)
-					o <- order(-multiRFX3TplCi["dCr1Rel","hat","os",] + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>=60,NA,0) + rnorm(1540,sd=(multiRFX3TplCi["dCr1Rel","upper","os",]-multiRFX3TplCi["dCr1Rel","lower","os",])/4), na.last=NA)
-					s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplCi["cr1","hat","os",o[1:i]], (1-f)*multiRFX3TplCi["none","hat","os",o[-(1:i)]] + f*multiRFX3TplCi["rel","hat","os",o[-(1:i)]]), na.rm=TRUE))
-				}))
-lines(seq_along(s)/length(s), s, type='l',col=set1[1], lty=1)
-p <- order(na.zero(c(1,4,2,3)[clinicalData$M_Risk])  + dataFrame$AOD_10/20 + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>=60,NA,0), na.last=NA)
-e <- sapply(seq_along(p), function(i) mean(c(multiRFX3Tpl[p[1:i],2], f*multiRFX3Tpl[p[-(1:i)],3] + (1-f)*multiRFX3Tpl[p[-(1:i)],1]), na.rm=TRUE)) 
-lines(seq_along(e)/length(e), e, type='l', col=set1[2])
-legend("bottomright", c("Personalised risk", "ELN and age"), lty=1, col=set1, bty="n")
-
-#' Consider fraction of patients relapsing with salvage allograft as well
-r <- 1+multiRFX3TplCi[1:2,1,"aar",] - multiRFX3TplCi[1:2,1,"rs",] ## Relapse probabilities
-a <- sapply(seq_along(o), function(i) mean(c(r[2,o[1:i]], r[1,o[-(1:i)]]), na.rm=TRUE)) # Personalised
-b <- sapply(seq_along(p), function(i) mean(c(r[2,p[1:i]], r[1,p[-(1:i)]]), na.rm=TRUE)) # ELN
-
-x <- seq_along(s)/length(s)
-plot(x + (1-x)*a*f,s, type='l', xlab="Total fraction of allografts", ylab="Survival of eligible patients 3yrs after CR", col=set1[1])
-lines(x + (1-x)*b*f,e, lty=1, col=set1[2])
-legend("bottomright", c("Personalised risk", "ELN and age"), lty=1, col=set1, bty="n")
-
-#' Fraction of relapse
-plot(x ,a*f, type='l', xlab="Fraction with allograft in CR1", ylab="Fraction relapsing", col=set1[1])
-lines(x, b*f, lty=1, col=set1[2])
-legend("bottomright", c("Personalised risk", "ELN and age"), lty=1, col=set1, bty="n")
-
 #' #### Leave one out cross-validation 
 #' ##### Three state model
 #' We compute LOO out-of-sample predictions for the survival gain by allograft in CR1 v relapse by training 1540 models on 1539 patients each. 
-#' This we compare to in-sample predictions of the model trained on all 1540 patients.
-#+ allPredictLOO, cache=TRUE
-cvFold <- nrow(dataFrame)
-cvIdx <- 1:nrow(dataFrame)
-multiRFX3LOO <- Reduce("rbind", mclapply(1:nrow(data), function(i){
-					whichTrain <- which(cvIdx != i)
-					rfxNrm <- CoxRFX(nrdData[nrdData$index %in% whichTrain, names(crGroups)], Surv(nrdData$time1, nrdData$time2, nrdData$status)[nrdData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
-					rfxNrm$coefficients["transplantRel"] <- 0
-					rfxPrs <-  CoxRFX(prdData[prdData$index %in% whichTrain, names(crGroups)], Surv(prdData$time1, prdData$time2, prdData$status)[prdData$index %in% whichTrain], groups=crGroups, nu=1, which.mu = intersect(mainGroups, unique(crGroups)))
-					rfxCir <-  CoxRFX(relData[relData$index %in% whichTrain, names(crGroups)], Surv(relData$time1, relData$time2, relData$status)[relData$index %in% whichTrain], groups=crGroups, which.mu = intersect(mainGroups, unique(crGroups)))
-					rfxCir$coefficients["transplantRel"] <- 0
-					allPrd <- MultiRFX3(rfxNrm, rfxCir, rfxPrs, data=allDataTpl[rep(cvIdx, each=3) == i,], x=3*365, prdData=prdData[prdData$index %in% whichTrain,])
-					allPrd <- matrix(allPrd$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse")))
-				}, mc.cores=10))
+#+ multiRFX3TplCiLoo, cache=TRUE
+multiRFX3TplCiLoo <- sapply(1:rownames(dataFrame), function(pd){
+			e <- new.env()
+			i <- which(rownames(dataFrame)==pd)
+			whichTrain <<- which(rownames(dataFrame)!=pd)
+			load(paste0("../../code/loo/",i,".RData"), env=e)			
+			multiRFX3TplCi <- MultiRFX3TplCi(e$rfxNrs, e$rfxRel, e$rfxPrs, data=data[i,colnames(e$rfxPrs$Z), drop=FALSE], x=3*365, nSim=200, prdData=prdData[prdData$index!=i,], mc.cores=10)
+		}, simplify="array")[,,,1,]
 
-plot(multiRFX3LOO[,2]-multiRFX3LOO[,3],multiRFX3TplCi["dCr1Rel","hat","os",] )
-cor(multiRFX3LOO[,2]-multiRFX3LOO[,3],multiRFX3TplCi["dCr1Rel","hat","os",] )
+
+#' This we compare to in-sample predictions of the model trained on all 1540 patients.
+plot(multiRFX3TplCiLoo["dCr1Rel","hat","os",],multiRFX3TplCi["dCr1Rel","hat","os",] )
+cor(multiRFX3TplCiLoo["dCr1Rel","hat","os",], multiRFX3TplCi["dCr1Rel","hat","os",] )
+
+multiRFX3TplLoo <- t(multiRFX3TplCiLoo[1:3,"hat","os",])
+
 
 #' The correlation of in-sample and out-of-sample predictions is very high, but there are some differences.
 #' We now assess the accuracy of our predictions by comparing the observed survival with the out-of-sample prediction. To this end,
 #' we split out the quarter of patients predicted to benefit the most. In both subsets we compare the observed 3yr survial between patients with
 #' and without allograft in CR1 and compute the difference. CIs by boostrapping.
 #+ allPredictLOOkM
-d <- multiRFX3LOO[,2]-multiRFX3LOO[,3]
+d <- multiRFX3TplLoo[,2]-multiRFX3TplLoo[,3]
 w <- which(clinicalData$AOD < 60)
 q <- c(min(d), 0.1, max(d)) 
 c <- cut(d, breaks=q, include.lowest=TRUE)# , paste0("[",names(q)[-length(q)],",",names(q)[-1],")"))
@@ -2546,6 +2463,29 @@ segments(x,e[2,],x,e[3,])
 #rug(d, col="#00000022")
 abline(0,1, lty=3)
 
+#' #### Best treatment options
+#' We can explore the the hypothetical survival gain if each patient had received the optimal treatment strategy.
+
+#' First, observed outcome for patients < 60yr with CR
+summary(survfit(Surv(time1, time2, status) ~ 1, data=osData, subset=AOD_10 < 6), time=3*365)
+
+#' Compared to predictions, as treated 
+mean(sapply((1:nrow(data))[!is.na(clinicalData$CR_date) & clinicalData$AOD < 60], function(i) multiRFX3TplLoo[i, 1+data[i,"transplantCR1"] + 2*data[i, "transplantRel"] ]))
+
+#' The observed outcome and predictions are consistent. Now explore what would have been the best option for each patient:
+apply(apply(-multiRFX3TplLoo[!is.na(clinicalData$CR_date) & clinicalData$AOD < 60,],1,rank),1,function(x) table(factor(x, levels=1:3)))
+
+#' The same as above, split by ELN risk categories:
+table(clinicalData$M_Risk[!is.na(clinicalData$CR_date) & clinicalData$AOD < 60], factor(apply(multiRFX3TplLoo[!is.na(clinicalData$CR_date) & clinicalData$AOD < 60,], 1, which.max), levels=1:3, labels=colnames(multiRFX3TplLoo)))[c(2,4,3,1),]
+
+#' Split by ELN risk, requiring TPL in CR1 to offer 5% advantage over salvage
+table(clinicalData$M_Risk, apply(multiRFX3TplLoo, 1, function(x) x[2] > x[3]+.05))[c(2,4,3,1),]
+
+#' Compute the extrapolated survival under each of the different scenarios:
+colMeans(multiRFX3TplLoo[!is.na(clinicalData$CR_date) & clinicalData$AOD < 60,])
+
+#' Best possible - everyone had received the optimal strategy: 
+mean(apply(multiRFX3TplLoo[!is.na(clinicalData$CR_date) & clinicalData$AOD < 60,],1,max))
 
 #' #### Three patients with numerical CI's and LOO
 #+ threePatientsAlloLooCi, cache=TRUE
@@ -2563,8 +2503,8 @@ threePatientTplCiLoo <- sapply(patients, function(pd){
 #' The figure shows the mortality reduction of allograft CR1 v none, allograft in Rel v none, and CR1 v Relapse, for LOO predictions similar to above.
 #+mortalityReductionLoo, fig.width=3.5, fig.height=2.5
 par(mar=c(3,3,1,3), las=2, mgp=c(2,.5,0), bty="n")
-benefit <- multiRFX3LOO[,2]-multiRFX3LOO[,3]
-absrisk <- multiRFX3LOO[,1]
+benefit <- multiRFX3TplLoo[,2]-multiRFX3TplLoo[,3]
+absrisk <- multiRFX3TplLoo[,1]
 names(absrisk) <- names(benefit) <- rownames(dataFrame)
 s <- clinicalData$AOD < 60 & !is.na(clinicalData$CR_date)#sample(1:1540,100)
 x <- 1-absrisk
@@ -2607,7 +2547,7 @@ lines(yy, xx)
 #' KM plot of the high v low benefit groups
 #+ survival_hsct, fig.width=3, fig.height=2.5
 par(mar=c(3,3,1,1), mgp=c(2,0.5,0), bty="L")
-f <- survfit(Surv(time1/365, time2/365, status) ~ group +  transplantCR1, data=cbind(osData, group=c[osData$index]), subset=osData$index %in% w)
+f <- survfit(Surv(time1/365, time2/365, status) ~ group +  transplantCR1, data=cbind(osData, group=benefit[osData$index]<=0.1), subset=osData$index %in% w)
 summary(f, time=3)
 plot(f, col=rep(set1[1:nlevels(c)],each=2), lty=rep(c(1,2), nlevels(c)), xlab="TIme after CR", ylab="Survival", xlim=c(0,5), cex=.5)
 t <- table(w %in% osData$index[osData$transplantCR1==1],c[w],!is.na(clinicalData$CR_date[w]))[,,"TRUE"]
@@ -2635,7 +2575,7 @@ rm(p,d)
 
 #' Compare with corresponding multistage predictions
 #+ coxRFXOsCrLOOplot
-m <- c(multiRFX3LOO[,3],multiRFX3LOO[osData$index[osData$transplantCR1==1],2])
+m <- c(multiRFX3TplLoo[,3],multiRFX3TplLoo[osData$index[osData$transplantCR1==1],2])
 r <- c(coxRFXOsCrLOO$surv[1:1540],coxRFXOsCrLOO$surv[osData$transplantCR1==1]) 
 plot(m, r)
 abline(0,1)
@@ -2656,8 +2596,8 @@ ape(q, c, time=3*365)
 
 #' ##### LOO test error
 #' 3-state model
-p <- multiRFX3LOO[,3]
-p[osData$index[osData$transplantCR1==1]] <-  multiRFX3LOO[osData$index[osData$transplantCR1==1],2]
+p <- multiRFX3TplLoo[,3]
+p[osData$index[osData$transplantCR1==1]] <-  multiRFX3TplLoo[osData$index[osData$transplantCR1==1],2]
 ape(p, c, time=3*365)
 
 #' RFX
@@ -4112,12 +4052,12 @@ abline(0,0.5)
 #+ survNallo10000
 par(bty="L")
 fAlloRelapse <- sum(prdData$transplantRel & clinicalData$AOD[ !is.na(clinicalData$Recurrence_date)][prdData$index] < 60)/sum(relData$status & clinicalData$AOD[relData$index] < 60 ) # fraction of patients that have received a salvage transplant
-benefitAllo <- multiRFX3LOO[,"CR1"] - (fAlloRelapse*multiRFX3LOO[,"Relapse"] +(1-fAlloRelapse)*multiRFX3LOO[,"None"])
+benefitAllo <- multiRFX3TplLoo[,"CR1"] - (fAlloRelapse*multiRFX3TplLoo[,"Relapse"] +(1-fAlloRelapse)*multiRFX3TplLoo[,"None"])
 o <- order(-benefitAllo + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0), na.last=NA)
 pRelapse <- 1+multiRFX3TplCi[1:2,1,"aar",] - multiRFX3TplCi[1:2,1,"rs",] ## Relapse probabilities
 fRelapse <- sapply(seq_along(o), function(i) mean(c(pRelapse[2,o[1:i]], pRelapse[1,o[-(1:i)]]), na.rm=TRUE)) # Personalised
 
-s <- sapply(seq_along(o), function(i) mean(c(multiRFX3LOO[o[1:i],"CR1"], (1-fAlloRelapse)*multiRFX3LOO[o[-(1:i)],"None"] + fAlloRelapse*multiRFX3LOO[o[-(1:i)],"Relapse"]), na.rm=TRUE))
+s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplLoo[o[1:i],"CR1"], (1-fAlloRelapse)*multiRFX3TplLoo[o[-(1:i)],"None"] + fAlloRelapse*multiRFX3TplLoo[o[-(1:i)],"Relapse"]), na.rm=TRUE))
 x <- seq_along(s)/length(s)
 plot(x + (1-x)*fRelapse*fAlloRelapse,s, type='l', xlab="Total fraction of allografts", ylab="Survival of eligible patients 3yrs after CR", col=set1[1], xaxs="i", yaxs="i", lty=3)
 
@@ -4128,10 +4068,10 @@ plot(x + (1-x)*fRelapse*fAlloRelapse,s, type='l', xlab="Total fraction of allogr
 #for(i in seq_along(n)) abline(s[1], 1/n[i], col='grey', lty=3)
 #lines(seq_along(s)/length(s), s, type='l',col=set1[1], lty=3)
 
-ci <- multiRFX3TplCi["dCr1Rel","upper","os",]-multiRFX3TplCi["dCr1Rel","lower","os",] # 1540 patients
+ci <- multiRFX3TplCiLoo["dCr1Rel","upper","os",]-multiRFX3TplCiLoo["dCr1Rel","lower","os",] # 1540 patients
 sCi1540 <- rowMeans(sapply(1:10, function(foo){ set.seed(foo)
 					o <- order(-benefitAllo + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0) + rnorm(1540,sd=ci/4), na.last=NA)
-					s <- sapply(seq_along(o), function(i) mean(c(multiRFX3LOO[o[1:i],"CR1"], (1-fAlloRelapse)*multiRFX3LOO[o[-(1:i)],"None"] + fAlloRelapse*multiRFX3LOO[o[-(1:i)],"Relapse"]), na.rm=TRUE))
+					s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplLoo[o[1:i],"CR1"], (1-fAlloRelapse)*multiRFX3TplLoo[o[-(1:i)],"None"] + fAlloRelapse*multiRFX3TplLoo[o[-(1:i)],"Relapse"]), na.rm=TRUE))
 				}))
 lines(x + (1-x)*fRelapse*fAlloRelapse, sCi1540, type='l',col=set1[1], lty=1)
 #w <- max(which(abs(sCi1540-sCi1540[1] - 1/10 * seq_along(sCi1540)/length(sCi1540))<1e-5))
@@ -4141,12 +4081,12 @@ simCi <- simMultiRFX3TplCi["dCr1Rel","upper","os",]-simMultiRFX3TplCi["dCr1Rel",
 
 sCi10000 <- rowMeans(sapply(1:10, function(foo){ set.seed(foo)
 					o <- order(-benefitAllo + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0) + rnorm(1540,sd=simCi/4), na.last=NA)
-					s <- sapply(seq_along(o), function(i) mean(c(multiRFX3LOO[o[1:i],"CR1"], (1-fAlloRelapse)*multiRFX3LOO[o[-(1:i)],"None"] + fAlloRelapse*multiRFX3LOO[o[-(1:i)],"Relapse"]), na.rm=TRUE))
+					s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplLoo[o[1:i],"CR1"], (1-fAlloRelapse)*multiRFX3TplLoo[o[-(1:i)],"None"] + fAlloRelapse*multiRFX3TplLoo[o[-(1:i)],"Relapse"]), na.rm=TRUE))
 				}))
 lines(x + (1-x)*fRelapse*fAlloRelapse, sCi10000, type='l',col=set1[1], lty=2)
 p <- order(na.zero(c(1,4,2,3)[clinicalData$M_Risk])  + dataFrame$AOD_10/20 + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0), na.last=NA)
 fRelapseEln <- sapply(seq_along(p), function(i) mean(c(pRelapse[2,p[1:i]], pRelapse[1,p[-(1:i)]]), na.rm=TRUE)) # ELN
-sEln <- sapply(seq_along(p), function(i) mean(c(multiRFX3LOO[p[1:i],"CR1"], (1-fAlloRelapse)*multiRFX3LOO[p[-(1:i)],"None"] + fAlloRelapse*multiRFX3LOO[p[-(1:i)],"Relapse"]), na.rm=TRUE))
+sEln <- sapply(seq_along(p), function(i) mean(c(multiRFX3TplLoo[p[1:i],"CR1"], (1-fAlloRelapse)*multiRFX3TplLoo[p[-(1:i)],"None"] + fAlloRelapse*multiRFX3TplLoo[p[-(1:i)],"Relapse"]), na.rm=TRUE))
 x <- seq_along(sEln)/length(sEln)
 
 lines(x + (1-x)*fRelapseEln*fAlloRelapse,sEln, sEln, type='l', col=set1[2])
