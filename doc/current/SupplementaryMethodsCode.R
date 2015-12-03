@@ -14,6 +14,8 @@
 #' 
 #' ---
 #' 
+#' A machine readable version of this document and associated data can be found at [github.com/mg14/AML](http://www.github.com/mg14/AML).
+#' 
 #' # Data
 #' 
 #' 
@@ -324,7 +326,7 @@ text(-c+v ,o,m, font=1, pos=4)
 
 
 
-#' #### Supplemenary Figure X
+#' #### Supplemenary Figure S6
 #' ' Here we generate a panel overview of all genetic lesions and their impact on outcome.
 
 #+ subcloneKM, fig.width=8, fig.height=8 
@@ -1508,7 +1510,7 @@ ape(1-colSums(multiRfx5Loo[times == 3*365,1:3,]), os, 3*365)
 
 
 #' #### Figure 2
-#' We plot all predictions as sediments plots, laid out in the same way as the risk constellation plot, Figure S3C
+#' We plot all predictions as sediments plots, laid out in the same way as the risk constellation plot, Supplementary Figure S3C
 #+ fiveStagePredictedHilbert, fig.width=12, fig.height=12
 set.seed(42)
 s <- sample(nrow(dataFrame),nStars^2) #1:(nStars^2)
@@ -1970,7 +1972,7 @@ EvalAbsolutePred <- function(prediction, surv, time, bins=seq(0,1,0.05)){
 	return(list(mean.error=mean.error, std.err=std.err, survfit=e, x=x))
 }
 
-#' #### Supplementary Figure S6
+#'Absolute prediction error
 #+ absError
 absPredError <- EvalAbsolutePred(multiRFX3$os, Surv(allData$time1, allData$time2, allData$status), time=3*365)
 
@@ -2556,7 +2558,7 @@ legend("topright", legend=as.numeric(t), col=rep(set1[1:nlevels(c)],each=2), lty
 
 #' The bottom line is that we are able to confidently isolate a quarter of patients with high benefit of allografts (about 12% absolute benefit). The breakdown across 
 #' ELN risk groups is:
-table(c, clinicalData$M_Risk)
+table(benefit[s]>0.1, paste(clinicalData$M_Risk[s]))
 
 #' ##### Leave one out cross-validation for RFX on post-CR OS 
 #+ coxRFXOsCrLOO, cache=TRUE
@@ -2666,7 +2668,7 @@ multiRfx5CvImputed <- sapply(mclapply(1:nrow(data), function(i){
 			else colSums(e$multiRfx5Imputed[3*365,1:3,])
 		}, mc.cores=10), I)
 
-#' #### Figure S8
+#' #### Supplementary Figure S4B
 #' Imputed accuracy
 #+ multiRfx5CvImputedPlot, cache=TRUE, fig.width=5, fig.height=2.5
 par(mar=c(3,3,3,1))
@@ -2808,7 +2810,6 @@ barplot(r[,o]/replicates, col=c(set1[c(3,2,4,1,5,7)],"grey"), ylab="Fraction", n
 rotatedLabel(b, rep(par("usr")[3],6), colnames(allModelsCvC)[o])
 legend(par("usr")[1],1.5, fill=c(set1[c(3,2,4,1,5,7)],"grey"), legend=1:6, bty="n", border=NA, horiz=TRUE, title="Rank")
 
-#' #### Supplementary Figure S1B
 #' Brier scores
 #+ allModelsCv-Brier, cache=TRUE
 library(survAUC)
@@ -2938,7 +2939,6 @@ allModelsCvRfxC <- do.call("rbind",mclapply(1:100, function(foo){
 				}, mc.cores=10))
 colnames(allModelsCvRfxC) <- sub(".concordant","",colnames(allModelsCvRfxC))
 
-#' #### Supplementary Figure S2
 
 #+ allModelsCvRfxBoxplot, fig.width=2, fig.height=1.5
 par(mar=c(3,3,1,1),bty="n", mgp=c(2,.5,0), las=2)
@@ -3659,7 +3659,7 @@ rangeplot3(x=subsets, y = sapply(subsetPatients, function(x) sapply(x, function(
 #				})) , col=1, xlab="Cohort", ylab="Concordance", ylim=c(0.65,.75))
 #
 
-#' #### Figure S9A
+#' #### Supplementary Figure S4A
 #' Subsampling genes
 #+ subsetGenes, cache=TRUE
 set.seed(42)
@@ -3744,7 +3744,7 @@ files <- dir("../../code/simRFX", pattern="Farmulations\\[1-1000\\]*", full.name
 tmp <- new.env()
 load(files[1], envir = tmp)
 
-#' #### Supplementary Figure S7
+#' #### Supplementary Figure S5B
 #' ##### P-values
 #' Plot the P-values as a function of Npu^2.
 #+ pVarSchoenfeld, fig.width=2, fig.height=2, cache=TRUE
@@ -4047,7 +4047,7 @@ abline(0,0.5)
 #' #### HSCTs
 #' Here we reassess the effect of HSCTs, also cosidering the magnitude of prediction errors in the current data set and based on extrapolated errors.
 #' 
-#' #### Figure 4d
+#' #### Figure 4D
 #' Benefit v number of allografts in CR1
 #+ survNallo10000
 par(bty="L")
