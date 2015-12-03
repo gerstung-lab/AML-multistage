@@ -112,7 +112,9 @@ library(mg14)
 set1 <- brewer.pal(9, "Set1")
 
 #' ### Raw data
-#' Load clinical data
+#' #### Clinical data
+#' We use the following steps for processing of the original data. Note that, for privacy reasons, we cannot distribute clinical data with the actual event dates and instead provide
+#' these data in an anonymised form.  
 #+ clinicalData, cache=TRUE
 clinicalData <- read.table("../../data/Ulm1.17_MG_Clinical.txt", sep="\t", header=TRUE, na.strings = "na", comment.char = "", quote="\"")
 clinicalData <- clinicalData[order(clinicalData$PDID),]
@@ -136,7 +138,17 @@ clinicalData$t_MLL <- NULL
 
 dim(clinicalData)
 
-#' Load mutation data
+#' Here we store the data in an anonymised form, where all references to the actual date of diagnoses are removed. These data are available on github.
+#+ anonymous, eval=FALSE
+e <- clinicalData$ERDate
+clinicalData$ERDate <- clinicalData$ERDate - e
+clinicalData$CR_date <- clinicalData$CR_date - e
+clinicalData$Date_LF <- clinicalData$Date_LF - e
+clinicalData$TPL_date <- clinicalData$TPL_date - e
+clinicalData$Recurrence_date <- clinicalData$Recurrence_date - e
+save(clinicalData, file="../../data/ClinicalDataAnon.RData")
+
+#' #### Mutation data
 mutationData = read.table("../../data/Ulm1.14_MG_Genetic.txt", sep="\t", header=TRUE, strip.white = TRUE)
 mutationData$SAMPLE_NAME <- factor(as.character(mutationData$SAMPLE_NAME), levels = levels(clinicalData$PDID)) ## Refactor
 mutationTable <- (table(mutationData[mutationData$Result %in% c("ONCOGENIC","POSSIBLE") & mutationData$FINAL_CALL == "OK" ,c("SAMPLE_NAME","GENE")]) > 0)+0
