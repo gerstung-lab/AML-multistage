@@ -148,6 +148,10 @@ clinicalData$TPL_date <- clinicalData$TPL_date - e
 clinicalData$Recurrence_date <- clinicalData$Recurrence_date - e
 save(clinicalData, file="../../data/ClinicalDataAnon.RData")
 
+#' Load the data using
+#+ load, eval=FALSE
+load("../../data/ClinicalDataAnon.RData")
+
 #' #### Mutation data
 mutationData = read.table("../../data/Ulm1.14_MG_Genetic.txt", sep="\t", header=TRUE, strip.white = TRUE)
 mutationData$SAMPLE_NAME <- factor(as.character(mutationData$SAMPLE_NAME), levels = levels(clinicalData$PDID)) ## Refactor
@@ -4073,21 +4077,12 @@ s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplLoo[o[1:i],"cr1"], (1-f
 x <- seq_along(s)/length(s)
 plot(x + (1-x)*fRelapse*fAlloRelapse,s, type='l', xlab="Total fraction of allografts", ylab="Survival of eligible patients 3yrs after CR", col=set1[1], xaxs="i", yaxs="i", lty=3)
 
-#n <- c(5,10,15,20,25,30)
-#u <- par("usr")
-#mtext( at=(u[4] - s[1])*n, text=n,side=3, line=0)
-#mtext( at=s[1]+u[2]/n, text=n,side=4, line=0)
-#for(i in seq_along(n)) abline(s[1], 1/n[i], col='grey', lty=3)
-#lines(seq_along(s)/length(s), s, type='l',col=set1[1], lty=3)
-
 ci <- multiRFX3TplCiLoo["dCr1Rel","upper","os",]-multiRFX3TplCiLoo["dCr1Rel","lower","os",] # 1540 patients
 sCi1540 <- rowMeans(sapply(1:10, function(foo){ set.seed(foo)
 					o <- order(-benefitAllo + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>=60,NA,0) + rnorm(1540,sd=ci/4), na.last=NA)
 					s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplLoo[o[1:i],"cr1"], (1-fAlloRelapse)*multiRFX3TplLoo[o[-(1:i)],"none"] + fAlloRelapse*multiRFX3TplLoo[o[-(1:i)],"rel"]), na.rm=TRUE))
 				}))
 lines(x + (1-x)*fRelapse*fAlloRelapse, sCi1540, type='l',col=set1[1], lty=1)
-#w <- max(which(abs(sCi1540-sCi1540[1] - 1/10 * seq_along(sCi1540)/length(sCi1540))<1e-5))
-#points(w/length(sCi1540), sCi1540[w], pch=19, col=set1[1])
 
 simCi <- simMultiRFX3TplCi["dCr1Rel","upper","os",]-simMultiRFX3TplCi["dCr1Rel","lower","os",]
 
