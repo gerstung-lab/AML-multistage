@@ -14,7 +14,7 @@
 #' 
 #' ---
 #' 
-#' A machine readable version of this document and associated data can be found at [github.com/mg14/AML](http://www.github.com/mg14/AML).
+#' A machine readable version of this document and associated data can be found at [github.com/mg14/AML-multistage](http://www.github.com/mg14/AML-multistage).
 #' 
 #' # Data
 #' 
@@ -4051,10 +4051,10 @@ abline(0,0.5)
 #' Benefit v number of allografts in CR1
 #+ survNallo10000
 par(bty="L")
-fAlloRelapse <- sum(prdData$transplantRel & clinicalData$AOD[ !is.na(clinicalData$Recurrence_date)][prdData$index] < 60)/sum(relData$status & clinicalData$AOD[relData$index] < 60 ) # fraction of patients that have received a salvage transplant
+fAlloRelapse <- sum(prdData$transplantRel & clinicalData$AOD[ !is.na(clinicalData$Recurrence_date)][prdData$index] < 60)/sum(relData$status & !relData$transplantCR1 & clinicalData$AOD[relData$index] < 60 ) # fraction of patients that have received a salvage transplant
 benefitAllo <- multiRFX3TplLoo[,"cr1"] - (fAlloRelapse*multiRFX3TplLoo[,"rel"] +(1-fAlloRelapse)*multiRFX3TplLoo[,"none"])
-o <- order(-benefitAllo + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0), na.last=NA)
-pRelapse <- 1+multiRFX3TplCi[1:2,1,"aar",] - multiRFX3TplCi[1:2,1,"rs",] ## Relapse probabilities
+o <- order(-benefitAllo + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>=60,NA,0), na.last=NA)
+pRelapse <- 1+multiRFX3TplCiLoo[1:2,1,"aar",] - multiRFX3TplCiLoo[1:2,1,"rs",] ## Relapse probabilities
 fRelapse <- sapply(seq_along(o), function(i) mean(c(pRelapse[2,o[1:i]], pRelapse[1,o[-(1:i)]]), na.rm=TRUE)) # Personalised
 
 s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplLoo[o[1:i],"cr1"], (1-fAlloRelapse)*multiRFX3TplLoo[o[-(1:i)],"none"] + fAlloRelapse*multiRFX3TplLoo[o[-(1:i)],"rel"]), na.rm=TRUE))
@@ -4070,7 +4070,7 @@ plot(x + (1-x)*fRelapse*fAlloRelapse,s, type='l', xlab="Total fraction of allogr
 
 ci <- multiRFX3TplCiLoo["dCr1Rel","upper","os",]-multiRFX3TplCiLoo["dCr1Rel","lower","os",] # 1540 patients
 sCi1540 <- rowMeans(sapply(1:10, function(foo){ set.seed(foo)
-					o <- order(-benefitAllo + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0) + rnorm(1540,sd=ci/4), na.last=NA)
+					o <- order(-benefitAllo + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>=60,NA,0) + rnorm(1540,sd=ci/4), na.last=NA)
 					s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplLoo[o[1:i],"cr1"], (1-fAlloRelapse)*multiRFX3TplLoo[o[-(1:i)],"none"] + fAlloRelapse*multiRFX3TplLoo[o[-(1:i)],"rel"]), na.rm=TRUE))
 				}))
 lines(x + (1-x)*fRelapse*fAlloRelapse, sCi1540, type='l',col=set1[1], lty=1)
@@ -4080,17 +4080,31 @@ lines(x + (1-x)*fRelapse*fAlloRelapse, sCi1540, type='l',col=set1[1], lty=1)
 simCi <- simMultiRFX3TplCi["dCr1Rel","upper","os",]-simMultiRFX3TplCi["dCr1Rel","lower","os",]
 
 sCi10000 <- rowMeans(sapply(1:10, function(foo){ set.seed(foo)
-					o <- order(-benefitAllo + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0) + rnorm(1540,sd=simCi/4), na.last=NA)
+					o <- order(-benefitAllo + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>=60,NA,0) + rnorm(1540,sd=simCi/4), na.last=NA)
 					s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplLoo[o[1:i],"cr1"], (1-fAlloRelapse)*multiRFX3TplLoo[o[-(1:i)],"none"] + fAlloRelapse*multiRFX3TplLoo[o[-(1:i)],"rel"]), na.rm=TRUE))
 				}))
 lines(x + (1-x)*fRelapse*fAlloRelapse, sCi10000, type='l',col=set1[1], lty=2)
-p <- order(na.zero(c(1,4,2,3)[clinicalData$M_Risk])  + dataFrame$AOD_10/20 + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>60,NA,0), na.last=NA)
+p <- order(na.zero(c(1,4,2,3)[clinicalData$M_Risk])  + dataFrame$AOD_10/20 + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>=60,NA,0), na.last=NA)
 fRelapseEln <- sapply(seq_along(p), function(i) mean(c(pRelapse[2,p[1:i]], pRelapse[1,p[-(1:i)]]), na.rm=TRUE)) # ELN
 sEln <- sapply(seq_along(p), function(i) mean(c(multiRFX3TplLoo[p[1:i],"cr1"], (1-fAlloRelapse)*multiRFX3TplLoo[p[-(1:i)],"none"] + fAlloRelapse*multiRFX3TplLoo[p[-(1:i)],"rel"]), na.rm=TRUE))
 x <- seq_along(sEln)/length(sEln)
 
 lines(x + (1-x)*fRelapseEln*fAlloRelapse,sEln, sEln, type='l', col=set1[2])
 legend("bottomright", c("Personalised risk", "Idealised","10,000 patients","This cohort", "Standard risk","ELN and age"),  col=set1[c(NA,1,1,1,NA,2)],lty=c(NA,3,2,1,NA,1), bty="n", text.font=c(2,1,1,1,2,1))
+
+#' Total numbers of transplants
+fAlloCR1 <- 0.3 ## Assume 30% allografts in CR1
+i <- which(x > fAlloCR1)[1] - 1
+c(`Knowlege bank`=(x + (1-x)*fRelapse*fAlloRelapse)[i], ELN=(x + (1-x)*fRelapseEln*fAlloRelapse)[i])
+
+#' Projected survival at 3yrs
+c(ELN=sEln[i], `This cohort`=sCi1540[i], `10000 patients` = sCi10000[i], Optimal=s[i])
+
+#' Achieve same survival as ELN with the following number of allografts
+j <- c(`This cohort`=which(sCi1540 >= sEln[i])[1]-1, `10000 patients`=which(sCi10000 >= sEln[i])[1]-1, Optimal=which(s >= sEln[i])[1]-1)
+fAlloCR1Pers <- (x + (1-x)*fRelapse*fAlloRelapse)[j]
+names(fAlloCR1Pers) <- names(j)
+fAlloCR1Pers
 
 #' # Web tool
 #' We have implemented the aformentioned multistage prediciton model as a shiny webserver.
