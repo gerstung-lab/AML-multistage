@@ -116,7 +116,7 @@ set1 <- brewer.pal(9, "Set1")
 #' We use the following steps for processing of the original data. Note that, for privacy reasons, we cannot distribute clinical data with the actual event dates and instead provide
 #' these data in an anonymised form.  
 #+ clinicalData, cache=TRUE
-clinicalData <- read.table("../../data/Ulm1.17_MG_Clinical.txt", sep="\t", header=TRUE, na.strings = "na", comment.char = "", quote="\"")
+clinicalData <- read.table("../../data/AMLSG_Clinical.txt", sep="\t", header=TRUE, na.strings = "na", comment.char = "", quote="\"")
 clinicalData <- clinicalData[order(clinicalData$PDID),]
 clinicalData$ERDate <- as.Date(as.character(clinicalData$ERDate), "%d-%b-%y")
 clinicalData$CR_date <- as.Date(as.character(clinicalData$CR_date), "%d-%b-%y")
@@ -129,7 +129,7 @@ clinicalData$ATRA_arm[is.na(clinicalData$ATRA_arm)] <- 0
 colnames(clinicalData) <- gsub('\\.',"",colnames(clinicalData))
 clinicalData <- clinicalData[!is.na(clinicalData$TypeAML),] ## remove unknown patients
 clinicalData$PDID <- factor(as.character(clinicalData$PDID))
-t <- read.table("../../data/Ulm1.9_sm_Clinical.txt", header=T, sep="\t", na.strings = "na",comment.char = "", quote="\"")
+t <- read.table("../../data/AMLSG_Karyotypes.txt", header=T, sep="\t", na.strings = "na",comment.char = "", quote="\"")
 karyotypes <- t$karyotype[match(clinicalData$PDID,t$PDID)]
 rm(t)
 clinicalData$t_9_11 <- grepl("t\\(9;11\\)\\(p22;q23\\)", karyotypes) + 0 # t(9;11)
@@ -146,14 +146,14 @@ clinicalData$CR_date <- clinicalData$CR_date - e
 clinicalData$Date_LF <- clinicalData$Date_LF - e
 clinicalData$TPL_date <- clinicalData$TPL_date - e
 clinicalData$Recurrence_date <- clinicalData$Recurrence_date - e
-save(clinicalData, file="../../data/ClinicalDataAnon.RData")
+save(clinicalData, file="../../data/AMLSG_Clinical_Anon.RData")
 
 #' Load the data using
 #+ load, eval=FALSE
-load("../../data/ClinicalDataAnon.RData")
+load("../../data/AMLSG_Clinical_Anon.RData")
 
 #' #### Mutation data
-mutationData = read.table("../../data/Ulm1.14_MG_Genetic.txt", sep="\t", header=TRUE, strip.white = TRUE)
+mutationData = read.table("../../data/AMLSG_Genetic.txt", sep="\t", header=TRUE, strip.white = TRUE)
 mutationData$SAMPLE_NAME <- factor(as.character(mutationData$SAMPLE_NAME), levels = levels(clinicalData$PDID)) ## Refactor
 mutationTable <- (table(mutationData[mutationData$Result %in% c("ONCOGENIC","POSSIBLE") & mutationData$FINAL_CALL == "OK" ,c("SAMPLE_NAME","GENE")]) > 0)+0
 dim(mutationTable)
@@ -254,7 +254,7 @@ cn = sapply(1:nrow(mutationData), function(i) {c=copyNumbers[mutationData$SAMPLE
 vaf <- as.numeric(as.character(mutationData$X._MUT_IN_TUM))
 depth <- as.numeric(as.character(mutationData$TUM_DEPTH))
 
-dataFLT3_ITD <- read.table("../../data/FLT3_ITD.txt", sep="\t", header=TRUE)
+dataFLT3_ITD <- read.table("../../data/AMLSG_FLT3ITD.txt", sep="\t", header=TRUE)
 dataFLT3_ITD$Sample <- sub("WGA_","", dataFLT3_ITD$Sample)
 
 mcf <- vaf/100*cn ## Approx mutant cell fraction, assuming mutations on only one copy
@@ -3194,8 +3194,8 @@ coxAICOsTD <- step(coxBICOsTD, scope=scopeStep, k = 2, trace=0)
 #' #### TCGA data
 #' Load data
 #+ tcgaData, cache=TRUE
-tcgaClinical <- read.table("../../data/TCGA_clin.txt", sep="\t", header=TRUE)
-tcgaGenetic <- read.table("../../data/TCGA_gen.txt", sep="\t", header=TRUE)
+tcgaClinical <- read.table("../../data/TCGA_Clinical.txt", sep="\t", header=TRUE)
+tcgaGenetic <- read.table("../../data/TCGA_Genetic.txt", sep="\t", header=TRUE)
 tcgaGenetic$TCGA_ID <- factor(as.character(tcgaGenetic$TCGA_ID), levels = levels(tcgaClinical$TCGA_ID))
 g <- as.character(tcgaGenetic$Hugo_Symbol)
 g[tcgaGenetic$Hugo_Symbol=="FLT3" & tcgaGenetic$Variant_Type == 'INS'] <- "FLT3_ITD"
