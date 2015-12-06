@@ -116,7 +116,7 @@ set1 <- brewer.pal(9, "Set1")
 #' We use the following steps for processing of the original data. Note that, for privacy reasons, we cannot distribute clinical data with the actual event dates and instead provide
 #' these data in an anonymised form.  
 #+ clinicalData, cache=TRUE
-clinicalData <- read.table("../../data/AMLSG_Clinical.txt", sep="\t", header=TRUE, na.strings = "na", comment.char = "", quote="\"")
+clinicalData <- read.table("../data/AMLSG_Clinical.txt", sep="\t", header=TRUE, na.strings = "na", comment.char = "", quote="\"")
 clinicalData <- clinicalData[order(clinicalData$PDID),]
 clinicalData$ERDate <- as.Date(as.character(clinicalData$ERDate), "%d-%b-%y")
 clinicalData$CR_date <- as.Date(as.character(clinicalData$CR_date), "%d-%b-%y")
@@ -129,7 +129,7 @@ clinicalData$ATRA_arm[is.na(clinicalData$ATRA_arm)] <- 0
 colnames(clinicalData) <- gsub('\\.',"",colnames(clinicalData))
 clinicalData <- clinicalData[!is.na(clinicalData$TypeAML),] ## remove unknown patients
 clinicalData$PDID <- factor(as.character(clinicalData$PDID))
-t <- read.table("../../data/AMLSG_Karyotypes.txt", header=T, sep="\t", na.strings = "na",comment.char = "", quote="\"")
+t <- read.table("../data/AMLSG_Karyotypes.txt", header=T, sep="\t", na.strings = "na",comment.char = "", quote="\"")
 karyotypes <- t$karyotype[match(clinicalData$PDID,t$PDID)]
 rm(t)
 clinicalData$t_9_11 <- grepl("t\\(9;11\\)\\(p22;q23\\)", karyotypes) + 0 # t(9;11)
@@ -146,14 +146,14 @@ clinicalData$CR_date <- clinicalData$CR_date - e
 clinicalData$Date_LF <- clinicalData$Date_LF - e
 clinicalData$TPL_date <- clinicalData$TPL_date - e
 clinicalData$Recurrence_date <- clinicalData$Recurrence_date - e
-save(clinicalData, file="../../data/AMLSG_Clinical_Anon.RData")
+save(clinicalData, file="../data/AMLSG_Clinical_Anon.RData")
 
 #' Load the data using
 #+ load, eval=FALSE
-load("../../data/AMLSG_Clinical_Anon.RData")
+load("../data/AMLSG_Clinical_Anon.RData")
 
 #' #### Mutation data
-mutationData = read.table("../../data/AMLSG_Genetic.txt", sep="\t", header=TRUE, strip.white = TRUE)
+mutationData = read.table("../data/AMLSG_Genetic.txt", sep="\t", header=TRUE, strip.white = TRUE)
 mutationData$SAMPLE_NAME <- factor(as.character(mutationData$SAMPLE_NAME), levels = levels(clinicalData$PDID)) ## Refactor
 mutationTable <- (table(mutationData[mutationData$Result %in% c("ONCOGENIC","POSSIBLE") & mutationData$FINAL_CALL == "OK" ,c("SAMPLE_NAME","GENE")]) > 0)+0
 dim(mutationTable)
@@ -254,7 +254,7 @@ cn = sapply(1:nrow(mutationData), function(i) {c=copyNumbers[mutationData$SAMPLE
 vaf <- as.numeric(as.character(mutationData$X._MUT_IN_TUM))
 depth <- as.numeric(as.character(mutationData$TUM_DEPTH))
 
-dataFLT3_ITD <- read.table("../../data/AMLSG_FLT3ITD.txt", sep="\t", header=TRUE)
+dataFLT3_ITD <- read.table("../data/AMLSG_FLT3ITD.txt", sep="\t", header=TRUE)
 dataFLT3_ITD$Sample <- sub("WGA_","", dataFLT3_ITD$Sample)
 
 mcf <- vaf/100*cn ## Approx mutant cell fraction, assuming mutations on only one copy
@@ -1507,7 +1507,7 @@ for(i in 1:5)
 
 #' #### Leave-one-out cross-validation
 #' The following code is run on the cluster
-read_chunk('../../code/leaveOneOut.R', labels="leaveOneOut")
+read_chunk('../code/leaveOneOut.R', labels="leaveOneOut")
 #+ leaveOneOut, eval=FALSE
 
 #' Multistage model
@@ -1515,7 +1515,7 @@ read_chunk('../../code/leaveOneOut.R', labels="leaveOneOut")
 times <- round(seq(0,5,0.05)*365)
 multiRfx5Loo <- sapply(mclapply(1:nrow(data), function(i){
 					e <- new.env()
-					t <- try(load(paste0("../../code/loo/",i,".RData"), env=e))
+					t <- try(load(paste0("../code/loo/",i,".RData"), env=e))
 					if(class(t)=="try-error") rep(NA, length(times))
 					else e$multiRfx5[times+1,,1]
 				}, mc.cores=6), I, simplify="array")
@@ -1558,7 +1558,7 @@ for(i in 1:nStars^2){ # Leave-one-out predictions
 #+ rfx5Loo, cache=TRUE
 rfx5Loo <- sapply(mclapply(1:nrow(data), function(i){
 					e <- new.env()
-					t <- try(load(paste0("../../code/loo/",i,".RData"), env=e))
+					t <- try(load(paste0("../code/loo/",i,".RData"), env=e))
 					if(class(t)=="try-error") rep(NA, length(times))
 					else {
 						cvIdx <- 1:nrow(dataFrame)
@@ -1639,7 +1639,7 @@ patients <- c("PD11104a","PD8314a","PD10941a")
 fiveStagePredictedTplLoo <- sapply(patients, function(pd){
 			e <- new.env()
 			i <- which(rownames(dataFrame)==pd)
-			load(paste0("../../code/loo/",i,".RData"), env=e)
+			load(paste0("../code/loo/",i,".RData"), env=e)
 			
 			cvIdx <- 1:nrow(dataFrame)
 			whichTrain <<- which(cvIdx != i)
@@ -2427,7 +2427,7 @@ multiRFX3TplCiLoo <- sapply(mclapply(rownames(dataFrame), function(pd){
 			e <- new.env()
 			i <- which(rownames(dataFrame)==pd)
 			whichTrain <<- which(rownames(dataFrame)!=pd)
-			load(paste0("../../code/loo/",i,".RData"), env=e)			
+			load(paste0("../code/loo/",i,".RData"), env=e)			
 			multiRFX3TplCi <- MultiRFX3TplCi(e$rfxNrs, e$rfxRel, e$rfxPrs, data=data[i,colnames(e$rfxPrs$Z), drop=FALSE], x=3*365, nSim=200, prdData=prdData[prdData$index!=i,], mc.cores=1)
 		}, mc.cores=10), I, simplify="array")[,,,1,]
 
@@ -2512,7 +2512,7 @@ threePatientTplCiLoo <- sapply(patients, function(pd){
 			e <- new.env()
 			i <- which(rownames(dataFrame)==pd)
 			whichTrain <<- which(rownames(dataFrame)!=pd)
-			load(paste0("../../code/loo/",i,".RData"), env=e)			
+			load(paste0("../code/loo/",i,".RData"), env=e)			
 			multiRFX3TplCi <- MultiRFX3TplCi(e$rfxNrs, e$rfxRel, e$rfxPrs, data=data[i,colnames(e$rfxPrs$Z), drop=FALSE], x=3*365, nSim=1000, prdData=prdData[prdData$index!=i,], mc.cores=5)
 		}, simplify="array")
 
@@ -2672,14 +2672,14 @@ axis(side=3)
 
 
 #' #### Genetic imputation multi stage
-read_chunk('../../code/imputation.R', labels="imputationMultiRfx")
+read_chunk('../code/imputation.R', labels="imputationMultiRfx")
 #+ imputationMultiRfx, eval=FALSE
 
 #' Collect data
 #+ multiRfx5CvImputed, cache=TRUE
 multiRfx5CvImputed <- sapply(mclapply(1:nrow(data), function(i){
 			e <- new.env()
-			t <- try(load(paste0("../../code/imputed/",i,".RData"), env=e))
+			t <- try(load(paste0("../code/imputed/",i,".RData"), env=e))
 			if(class(t)=="try-error") return(rep(NA, length(genes)+1))
 			else colSums(e$multiRfx5Imputed[3*365,1:3,])
 		}, mc.cores=10), I)
@@ -2974,7 +2974,7 @@ legend(par("usr")[1],1.5, fill=set1[c(3,2,4,1,5,7)][1:ncol(allModelsCvRfxC)], le
 #' administered after diagnosis.
 
 #' The subsequent code is executed on our LSF cluster for 100 replicates
-read_chunk('../../code/cv100.R', labels="allModelsCVTDCode")
+read_chunk('../code/cv100.R', labels="allModelsCVTDCode")
 #+ allModelsCVTDCode, eval=FALSE
 
 
@@ -2983,7 +2983,7 @@ read_chunk('../../code/cv100.R', labels="allModelsCVTDCode")
 replicates <- 100
 allModelsCvTdPredictions <- mclapply(1:replicates, function(foo) try({
 			e <- new.env()
-			load(paste0("../../code/cv100/",foo,".RData"), envir=e)
+			load(paste0("../code/cv100/",foo,".RData"), envir=e)
 			set.seed(foo)
 			x <- list(
 					BIC=e$coxBICOsTD,
@@ -3194,8 +3194,8 @@ coxAICOsTD <- step(coxBICOsTD, scope=scopeStep, k = 2, trace=0)
 #' #### TCGA data
 #' Load data
 #+ tcgaData, cache=TRUE
-tcgaClinical <- read.table("../../data/TCGA_Clinical.txt", sep="\t", header=TRUE)
-tcgaGenetic <- read.table("../../data/TCGA_Genetic.txt", sep="\t", header=TRUE)
+tcgaClinical <- read.table("../data/TCGA_Clinical.txt", sep="\t", header=TRUE)
+tcgaGenetic <- read.table("../data/TCGA_Genetic.txt", sep="\t", header=TRUE)
 tcgaGenetic$TCGA_ID <- factor(as.character(tcgaGenetic$TCGA_ID), levels = levels(tcgaClinical$TCGA_ID))
 g <- as.character(tcgaGenetic$Hugo_Symbol)
 g[tcgaGenetic$Hugo_Symbol=="FLT3" & tcgaGenetic$Variant_Type == 'INS'] <- "FLT3_ITD"
@@ -3221,7 +3221,7 @@ tcgaData$MissingCyto <- (tcgaClinical$karyotype == '[Not Available]' )+0
 rm(t,w)
 tcgaSurvival <- Surv(tcgaClinical$OS/365, tcgaClinical$Status)
 
-tb <- read.xlsx("../../data/TCGA_SupplementalTable01.xlsx", 1, colIndex=1:29)
+tb <- read.xlsx("../data/TCGA_SupplementalTable01.xlsx", 1, colIndex=1:29)
 tb <- tb[order(tb$TCGA.Patient.ID),]
 
 tt <- strsplit(as.character(tb$Trnsplt), ", ")
@@ -3751,12 +3751,12 @@ save(coxRFXFitOsTDGGc, whichRFXOsTDGG, simDataFrame, simGroups, os, mainGroups, 
 #' ##### Simulation code
 #' The following code is run on the farm
 #+ farmulations, cache=FALSE
-read_chunk('../../code/Farmulations2.R', labels="farmulationsCode")
+read_chunk('../code/Farmulations2.R', labels="farmulationsCode")
 #+ farmulationsCode, eval=FALSE
 
 #' ##### Analysis
 #' Read files
-files <- dir("../../code/simRFX", pattern="Farmulations\\[1-1000\\]*", full.names = TRUE)
+files <- dir("../code/simRFX", pattern="Farmulations\\[1-1000\\]*", full.names = TRUE)
 tmp <- new.env()
 load(files[1], envir = tmp)
 
@@ -3828,7 +3828,7 @@ abline(h=CoxHD:::ConcordanceFromVariance(var(simRisk)))
 #' #### Figure 5C
 #' ##### Mean prediction error
 #+ predError100-10000, cache=TRUE
-load("../../code/sim2Data.RData")
+load("../code/sim2Data.RData")
 R <- sapply(files[1:100], function(f){
 			load(f, envir=.GlobalEnv)
 			r <- c(sapply(tmp$nData, function(n){
@@ -4121,16 +4121,16 @@ fAlloCR1Pers
 #' ### Data
 #' The following data is saved for running the webtool:
 #+ dataWebtool, eval=FALSE
-save(coxRFXRelTD, coxRFXNrdTD, coxRFXPrdTD, coxRFXOsCR, coxRFXNcdTD, coxRFXCrTD, cr, nrdData, relData, prdData, osData, crGroups, data, clinicalData, file="../../code/multistage/multistage.RData")
+save(coxRFXRelTD, coxRFXNrdTD, coxRFXPrdTD, coxRFXOsCR, coxRFXNcdTD, coxRFXCrTD, cr, nrdData, relData, prdData, osData, crGroups, data, clinicalData, file="../code/multistage/multistage.RData")
 
 #' ### server.R
 #' The server runs according to the following script
-read_chunk('../../code/multistage/server.R', labels="server.R")
+read_chunk('../code/multistage/server.R', labels="server.R")
 #+ server.R, eval=FALSE
 
 #' ### ui.R
 #' The shiny user interface is defined by the following script
-read_chunk('../../code/multistage/ui.R', labels="ui.R")
+read_chunk('../code/multistage/ui.R', labels="ui.R")
 #+ ui.R, eval=FALSE
 
 
