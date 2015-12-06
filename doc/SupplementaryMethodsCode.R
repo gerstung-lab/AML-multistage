@@ -124,6 +124,7 @@ clinicalData$TPL_date <- as.Date(as.character(clinicalData$TPL_date), "%d-%b-%y"
 clinicalData$Date_LF <- as.Date(as.character(clinicalData$Date_LF), "%d-%b-%y")
 clinicalData$Recurrence_date <- as.Date(as.character(clinicalData$Recurrence_date), "%d-%b-%y")
 levels(clinicalData$Study) <- c(`_07-04`="AMLSG0704" ,   `98A`="AMLHD98A" ,  `98B`="AMLHD98B")[levels(clinicalData$Study)]
+clinicalData$Study <- factor(as.character(clinicalData$Study))
 clinicalData$VPA[is.na(clinicalData$VPA)] <- 0
 clinicalData$ATRA_arm[is.na(clinicalData$ATRA_arm)] <- 0
 colnames(clinicalData) <- gsub('\\.',"",colnames(clinicalData))
