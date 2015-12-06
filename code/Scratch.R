@@ -1727,7 +1727,7 @@ points(c(0,1,2,3,4),c(0.067,0.267,0.500,0.767,0.900),col="red")
 
 
 ## Lazy load all knitr cache
-for(f in dir("cache", pattern=".rdx", full.names = TRUE))
+for(f in dir("SupplementaryMethodsCode_cache/html", pattern=".rdx", full.names = TRUE))
 	lazyLoad(sub(".rdx","",f))
 
 
@@ -2259,3 +2259,620 @@ predErr(c)
 
 
 
+# ELN LOO
+cvIdx <- 1:1540
+e <- cbind(osData[,c("time1","time2","status","index"),],data.frame(e=clinicalData$M_Risk[osData$index]))
+p <- Reduce("rbind", mclapply(cvIdx, function(i){
+					whichTrain <- which(cvIdx != i)
+					c <- coxph(Surv(time1,time2,status) ~ e, subset=index %in% whichTrain, data=e)
+					p <- as.data.frame(predict(c, newdata=e[!osData$index %in% whichTrain,], se.fit=TRUE))
+					s <- summary(survfit(Surv(osData$time1, osData$time2, osData$status)[osData$index %in% whichTrain] ~ 1), time=3*365)$surv
+					cbind(p, surv=s^exp(p$fit))
+				}, mc.cores=5))
+d <- duplicated(sub(".1$","",rownames(p)))
+elnLOO <- rbind(p[!d,], p[d,])
+rm(p,d)
+
+
+
+
+
+coxRFXFitOsTDGGc <- CoxRFX(dataFrameOsTD[,whichRFXOsTDGG], osTD, groups[whichRFXOsTDGG], which.mu=mainGroups) ## allow only the main groups to have mean different from zero.. 
+
+str <- "<?xml version='1.0' encoding='ISO-8859-1' ?>
+		
+		<picture version='3' xmlns:rgml='http://r-project.org/RGML' source='/Users/mg14/Documents/Untitled-1.eps' date='2015-10-12 16:23:26' creator='R (3.1.1)' >
+		
+		<path type='fill' id='1'>
+		<context>
+		<rgb r='1.0' g='1.0' b='1.0'/>
+		<style lwd='10.0' lty='' lineend='0' linemitre='10.0' linejoin='0'/>
+		</context>
+		
+		<move y='764.668' x='241.387'/>
+		<line y='750.828' x='240.105'/>
+		<line y='737.727' x='236.273'/>
+		<line y='725.359' x='229.891'/>
+		<line y='713.73' x='220.957'/>
+		<line y='703.867' x='210.23'/>
+		<line y='696.828' x='198.539'/>
+		<line y='692.605' x='185.871'/>
+		<line y='691.199' x='172.227'/>
+		<line y='692.605' x='158.566'/>
+		<line y='696.828' x='145.898'/>
+		<line y='703.867' x='134.207'/>
+		<line y='713.73' x='123.496'/>
+		<line y='725.359' x='114.547'/>
+		<line y='737.727' x='108.156'/>
+		<line y='750.828' x='104.324'/>
+		<line y='764.668' x='103.047'/>
+		<line y='778.121' x='104.301'/>
+		<line y='790.566' x='108.078'/>
+		<line y='801.996' x='114.375'/>
+		<line y='812.422' x='123.203'/>
+		<line y='821.102' x='133.813'/>
+		<line y='827.301' x='145.523'/>
+		<line y='831.02' x='158.328'/>
+		<line y='832.262' x='172.227'/>
+		<line y='831.02' x='185.871'/>
+		<line y='827.301' x='198.539'/>
+		<line y='821.102' x='210.23'/>
+		<line y='812.422' x='220.957'/>
+		<line y='801.996' x='229.891'/>
+		<line y='790.566' x='236.273'/>
+		<line y='778.121' x='240.105'/>
+		<line y='764.668' x='241.387'/>
+		<line y='764.668' x='241.387'/>
+		<move y='359.605' x='340.645'/>
+		<line y='351.688' x='340.145'/>
+		<line y='344.824' x='338.652'/>
+		<line y='339.016' x='336.16'/>
+		<line y='334.266' x='332.676'/>
+		<line y='330.566' x='328.191'/>
+		<line y='327.926' x='322.715'/>
+		<line y='326.344' x='316.238'/>
+		<line y='325.816' x='308.77'/>
+		<line y='326.344' x='301.297'/>
+		<line y='327.926' x='294.824'/>
+		<line y='330.566' x='289.344'/>
+		<line y='334.266' x='284.863'/>
+		<line y='339.016' x='281.375'/>
+		<line y='344.824' x='278.887'/>
+		<line y='351.688' x='277.391'/>
+		<line y='359.605' x='276.895'/>
+		<line y='587.363' x='276.895'/>
+		<line y='587.363' x='261.25'/>
+		<line y='38.7891' x='261.25'/>
+		<line y='30.8711' x='260.637'/>
+		<line y='24.0078' x='258.805'/>
+		<line y='18.1992' x='255.75'/>
+		<line y='13.4492' x='251.477'/>
+		<line y='9.75' x='245.977'/>
+		<line y='7.10938' x='239.258'/>
+		<line y='5.52734' x='231.313'/>
+		<line y='5.0' x='222.148'/>
+		<line y='5.52734' x='212.98'/>
+		<line y='7.10938' x='205.035'/>
+		<line y='9.75' x='198.316'/>
+		<line y='13.4492' x='192.816'/>
+		<line y='18.1992' x='188.543'/>
+		<line y='24.0078' x='185.488'/>
+		<line y='30.8711' x='183.656'/>
+		<line y='38.7891' x='183.047'/>
+		<line y='363.531' x='183.047'/>
+		<line y='363.531' x='162.598'/>
+		<line y='38.7891' x='162.598'/>
+		<line y='30.8711' x='161.984'/>
+		<line y='24.0078' x='160.148'/>
+		<line y='18.1992' x='157.094'/>
+		<line y='13.4492' x='152.816'/>
+		<line y='9.75' x='147.316'/>
+		<line y='7.10938' x='140.594'/>
+		<line y='5.52734' x='132.656'/>
+		<line y='5.0' x='123.496'/>
+		<line y='5.52734' x='114.328'/>
+		<line y='7.10938' x='106.383'/>
+		<line y='9.75' x='99.6641'/>
+		<line y='13.4492' x='94.1641'/>
+		<line y='18.1992' x='89.8906'/>
+		<line y='24.0078' x='86.8359'/>
+		<line y='30.8711' x='85.0039'/>
+		<line y='38.7891' x='84.3945'/>
+		<line y='587.363' x='84.3945'/>
+		<line y='587.363' x='68.75'/>
+		<line y='359.605' x='68.75'/>
+		<line y='351.688' x='68.25'/>
+		<line y='344.824' x='66.7578'/>
+		<line y='339.016' x='64.2656'/>
+		<line y='334.266' x='60.7813'/>
+		<line y='330.566' x='56.2969'/>
+		<line y='327.926' x='50.8203'/>
+		<line y='326.344' x='44.3438'/>
+		<line y='325.816' x='36.875'/>
+		<line y='326.344' x='29.4023'/>
+		<line y='327.926' x='22.9297'/>
+		<line y='330.566' x='17.4492'/>
+		<line y='334.266' x='12.9688'/>
+		<line y='339.016' x='9.48047'/>
+		<line y='344.824' x='6.99219'/>
+		<line y='351.688' x='5.49609'/>
+		<line y='359.605' x='5.0'/>
+		<line y='620.664' x='5.0'/>
+		<line y='635.586' x='6.35938'/>
+		<line y='648.52' x='10.4492'/>
+		<line y='659.465' x='17.2617'/>
+		<line y='668.422' x='26.7969'/>
+		<line y='675.387' x='39.0586'/>
+		<line y='680.363' x='54.0508'/>
+		<line y='683.352' x='71.7656'/>
+		<line y='684.348' x='92.207'/>
+		<line y='684.348' x='254.023'/>
+		<line y='683.352' x='274.324'/>
+		<line y='680.363' x='291.922'/>
+		<line y='675.387' x='306.809'/>
+		<line y='668.422' x='318.988'/>
+		<line y='659.465' x='328.465'/>
+		<line y='648.52' x='335.23'/>
+		<line y='635.586' x='339.289'/>
+		<line y='620.664' x='340.645'/>
+		<line y='359.605' x='340.645'/>
+		<line y='359.605' x='340.645'/>
+		</path>
+		
+		<path type='stroke' id='2'>
+		<context>
+		<rgb r='0.0' g='0.0' b='0.0'/>
+		<style lwd='10.0' lty='' lineend='0' linemitre='10.0' linejoin='0'/>
+		</context>
+		
+		<move y='764.668' x='241.387'/>
+		<line y='750.828' x='240.105'/>
+		<line y='737.727' x='236.273'/>
+		<line y='725.359' x='229.891'/>
+		<line y='713.73' x='220.957'/>
+		<line y='703.867' x='210.23'/>
+		<line y='696.828' x='198.539'/>
+		<line y='692.605' x='185.871'/>
+		<line y='691.199' x='172.227'/>
+		<line y='692.605' x='158.566'/>
+		<line y='696.828' x='145.898'/>
+		<line y='703.867' x='134.207'/>
+		<line y='713.73' x='123.496'/>
+		<line y='725.359' x='114.547'/>
+		<line y='737.727' x='108.156'/>
+		<line y='750.828' x='104.324'/>
+		<line y='764.668' x='103.047'/>
+		<line y='778.121' x='104.301'/>
+		<line y='790.566' x='108.078'/>
+		<line y='801.996' x='114.375'/>
+		<line y='812.422' x='123.203'/>
+		<line y='821.102' x='133.813'/>
+		<line y='827.301' x='145.523'/>
+		<line y='831.02' x='158.328'/>
+		<line y='832.262' x='172.227'/>
+		<line y='831.02' x='185.871'/>
+		<line y='827.301' x='198.539'/>
+		<line y='821.102' x='210.23'/>
+		<line y='812.422' x='220.957'/>
+		<line y='801.996' x='229.891'/>
+		<line y='790.566' x='236.273'/>
+		<line y='778.121' x='240.105'/>
+		<line y='764.668' x='241.387'/>
+		<line y='764.668' x='241.387'/>
+		<move y='359.605' x='340.645'/>
+		<line y='351.688' x='340.145'/>
+		<line y='344.824' x='338.652'/>
+		<line y='339.016' x='336.16'/>
+		<line y='334.266' x='332.676'/>
+		<line y='330.566' x='328.191'/>
+		<line y='327.926' x='322.715'/>
+		<line y='326.344' x='316.238'/>
+		<line y='325.816' x='308.77'/>
+		<line y='326.344' x='301.297'/>
+		<line y='327.926' x='294.824'/>
+		<line y='330.566' x='289.344'/>
+		<line y='334.266' x='284.863'/>
+		<line y='339.016' x='281.375'/>
+		<line y='344.824' x='278.887'/>
+		<line y='351.688' x='277.391'/>
+		<line y='359.605' x='276.895'/>
+		<line y='587.363' x='276.895'/>
+		<line y='587.363' x='261.25'/>
+		<line y='38.7891' x='261.25'/>
+		<line y='30.8711' x='260.637'/>
+		<line y='24.0078' x='258.805'/>
+		<line y='18.1992' x='255.75'/>
+		<line y='13.4492' x='251.477'/>
+		<line y='9.75' x='245.977'/>
+		<line y='7.10938' x='239.258'/>
+		<line y='5.52734' x='231.313'/>
+		<line y='5.0' x='222.148'/>
+		<line y='5.52734' x='212.98'/>
+		<line y='7.10938' x='205.035'/>
+		<line y='9.75' x='198.316'/>
+		<line y='13.4492' x='192.816'/>
+		<line y='18.1992' x='188.543'/>
+		<line y='24.0078' x='185.488'/>
+		<line y='30.8711' x='183.656'/>
+		<line y='38.7891' x='183.047'/>
+		<line y='363.531' x='183.047'/>
+		<line y='363.531' x='162.598'/>
+		<line y='38.7891' x='162.598'/>
+		<line y='30.8711' x='161.984'/>
+		<line y='24.0078' x='160.148'/>
+		<line y='18.1992' x='157.094'/>
+		<line y='13.4492' x='152.816'/>
+		<line y='9.75' x='147.316'/>
+		<line y='7.10938' x='140.594'/>
+		<line y='5.52734' x='132.656'/>
+		<line y='5.0' x='123.496'/>
+		<line y='5.52734' x='114.328'/>
+		<line y='7.10938' x='106.383'/>
+		<line y='9.75' x='99.6641'/>
+		<line y='13.4492' x='94.1641'/>
+		<line y='18.1992' x='89.8906'/>
+		<line y='24.0078' x='86.8359'/>
+		<line y='30.8711' x='85.0039'/>
+		<line y='38.7891' x='84.3945'/>
+		<line y='587.363' x='84.3945'/>
+		<line y='587.363' x='68.75'/>
+		<line y='359.605' x='68.75'/>
+		<line y='351.688' x='68.25'/>
+		<line y='344.824' x='66.7578'/>
+		<line y='339.016' x='64.2656'/>
+		<line y='334.266' x='60.7813'/>
+		<line y='330.566' x='56.2969'/>
+		<line y='327.926' x='50.8203'/>
+		<line y='326.344' x='44.3438'/>
+		<line y='325.816' x='36.875'/>
+		<line y='326.344' x='29.4023'/>
+		<line y='327.926' x='22.9297'/>
+		<line y='330.566' x='17.4492'/>
+		<line y='334.266' x='12.9688'/>
+		<line y='339.016' x='9.48047'/>
+		<line y='344.824' x='6.99219'/>
+		<line y='351.688' x='5.49609'/>
+		<line y='359.605' x='5.0'/>
+		<line y='620.664' x='5.0'/>
+		<line y='635.586' x='6.35938'/>
+		<line y='648.52' x='10.4492'/>
+		<line y='659.465' x='17.2617'/>
+		<line y='668.422' x='26.7969'/>
+		<line y='675.387' x='39.0586'/>
+		<line y='680.363' x='54.0508'/>
+		<line y='683.352' x='71.7656'/>
+		<line y='684.348' x='92.207'/>
+		<line y='684.348' x='254.023'/>
+		<line y='683.352' x='274.324'/>
+		<line y='680.363' x='291.922'/>
+		<line y='675.387' x='306.809'/>
+		<line y='668.422' x='318.988'/>
+		<line y='659.465' x='328.465'/>
+		<line y='648.52' x='335.23'/>
+		<line y='635.586' x='339.289'/>
+		<line y='620.664' x='340.645'/>
+		<line y='359.605' x='340.645'/>
+		<line y='359.605' x='340.645'/>
+		</path>
+		
+		<summary count='2' ymax='832.262' ymin='5.0' xmax='340.645' xmin='5.0'/>
+		
+		</picture>"
+
+
+
+load("../../code/dpClass.RData")
+#simpleClass <- read.table("../../data/reduced_classes.txt", header=TRUE, sep="\t")
+t <- read.table("../../data/Revised_Ulm_patient_classification.txt", header=TRUE, sep="\t")
+simpleClass <- t$Overall_classification
+t <- table( dpClass,simpleClass)
+s <- as.numeric(clue::solve_LSAP(t, maximum=TRUE))
+t[, c(s, setdiff(1:nlevels(simpleClass),s))]
+
+ho <- as.numeric(simpleClass)#hclust(dist(t(posteriorMeans)))$order[simpleClass]
+
+
+pdf("1024_patients.pdf", 8,8,pointsize=8)
+library(grImport2)
+set.seed(42)
+s <- sample(nrow(dataFrame),nStars^2) #1:(nStars^2)
+library(HilbertVis)
+nStars <- 32
+l <- "coxRFXFitOsTDGGc"
+t <- os#get(l)$surv
+p <- PartialRisk(get(l),  newZ=dataFrame[, colnames(get(l)$Z)])
+p <- p[,colnames(p)!="Nuisance"]
+locations <- hilbertCurve(log2(nStars))+1 
+mat <- matrix(order(locations[,1], locations[,2]), ncol=nStars)
+h <- hclust(dist(cbind(4*ho,p)[s,]))
+o <- rev(h$order)
+# Genotypes
+par(mar=c(0,0,0,0), bty="n")
+plot(NA,NA, xlim=c(0,1),ylim=c(0,1), xaxt="n", yaxt="n", xaxs="i", yaxs="i")
+u <- duplicated(genotype)
+genotype[genotype==""] <- "Normal"
+f <- as.factor(genotype[s][o])
+col <- c(brewer.pal(8,"Set1"), brewer.pal(8,"Dark2"))[1:nlevels(simpleClass)]
+names(col) <- levels(simpleClass)[order(table(simpleClass), decreasing=TRUE)]
+col["Ambiguous_classification"] <- col["No_drivers"]
+col["No_drivers"] <- "#999999"
+clg <- mapply(mg14:::colTrans, col[as.character(simpleClass)[s][o]], 2*as.numeric(f)/nlevels(f)-1)
+t <- table(genotype)
+r <- names(t[t>=10])
+nMar <- 8
+nLoc <- nStars + nMar
+for(i in 1:nStars^2){ # Fitted predictions
+	cl <- ifelse(t[genotype[s][o[i]]] >= 10, clg[i], "grey")
+	grid.picture(pic, x=locations[i,1]/nLoc-.5/nLoc, y=locations[i,2]/nLoc-.5/nLoc, gpFUN=function(x){x$fill=cl; x$lwd=0; x$col="#00000000"; x}, width=1/nLoc, height=1/nLoc )
+}
+w <- sapply(r, function(x) which(genotype[s][o]==x)[1])
+for(i in 1:(length(r)+1)){
+	cl <- c("grey", clg[w])[i]
+	l <- c("rare", r)[i]
+	grid.picture(pic, x=(nStars+1)/nLoc, y=i/nLoc-.5/nLoc, gpFUN=function(x){x$fill=cl; x$lwd=0; x$col="#00000000"; x}, width=1/nLoc, height=1/nLoc )
+	text(x=(nStars+2)/nLoc-.5/nLoc, y=i/nLoc-.5/nLoc, labels=l, pos=4)
+}
+# simplified classes
+plot(NA, NA, xlim=c(0,1),ylim=c(0,1), xaxt="n", yaxt="n", xaxs="i", yaxs="i")
+for(i in 1:nStars^2){ # Fitted predictions
+	grid.picture(pic, x=locations[i,1]/nLoc-.5/nLoc, y=locations[i,2]/nLoc-.5/nLoc, gpFUN=function(x){x$fill=clg[i]; x$lwd=0; x$col="#00000000"; x}, width=1/nLoc, height=1/nLoc )
+}
+#genes <- apply(posteriorQuantiles["50%",,], 2, function(x) paste(ifelse(x>10,rownames(posteriorMeans),"")[order(x, decreasing = TRUE)[1:5]], collapse=";"))
+#genes <- gsub(";+$","",genes)
+for(i in 1:length(col)){
+	cl <- col[i]
+	l <- names(col)[i]#paste(i-1, genes[i])
+	grid.picture(pic, x=(nStars+1)/nLoc, y=i/nLoc-.5/nLoc, gpFUN=function(x){x$fill=cl; x$lwd=0; x$col="#00000000"; x}, width=1/nLoc, height=1/nLoc )
+	text(x=(nStars+2)/nLoc-.5/nLoc, y=i/nLoc-.5/nLoc, labels=l, pos=4)
+}
+# Sediment plots
+m <- matrix(0, ncol=nLoc, nrow=nLoc)
+m[1:nStars + nMar,1:nStars] <- mat[nStars:1,]
+layout(m)
+par(mar=c(0,0,0,0),+.5, bty="n")
+for(i in 1:nStars^2){ # Leave-one-out predictions
+	sedimentPlot(-multiRfx5Loo[seq(1,length(times),5),1:5,s[o[i]]], x=times[seq(1,length(times),5)],y0=1, y1=0,  col=c(pastel1[c(1:3,5,4)], "#DDDDDD"), xlab="time",ylab="fraction", xaxt="n", yaxt="n")
+	lines(x=times[seq(1,length(times),5)], y=1-rowSums(multiRfx5Loo[seq(1,length(times),5),1:3,s[o[i]]]), lwd=2)
+	i <- s[o[i]]
+	lineStage(clinicalData$CR_date[i], clinicalData$Recurrence_date[i], clinicalData$Date_LF[i], clinicalData$ERDate[i], clinicalData$Status[i], col=c(brewer.pal(8,"Dark2")[8], set1[c(4:5,1:3)]), lwd=2, pch.trans=NA, y=0.05)	
+}
+# Risk constellations
+t <- os#get(l)$surv
+x <- p - rep(colMeans(p), each=nrow(p))
+x <- x/(2*sd(x)) + 1
+c <- cut(t[s,1][h$order], quantile(t[,1], seq(0,1,0.1), na.rm=TRUE))
+if(l=="coxRFXFitOsTDGGc")
+	x <- x[,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical")]
+mg14:::stars(x[s,][o,]/2, scale=FALSE, locations=locations, key.loc=c(0,-3), col.lines=ifelse(t[s,2][o],1,NA), col.stars = (brewer.pal(11,'RdBu'))[c], density=ifelse(t[s,2][o],NA,NA))
+symbols(locations[,1], locations[,2], circles=rep(.5,(nStars^2)), inches=FALSE, fg="grey", add=TRUE, lty=1)
+title(main=l)
+dev.off()
+
+pdf("simpleClassSurv.pdf", 6,6, pointsize=8)
+par(mar=c(3,3,1,1), mgp=c(2,0.5,0), bty="L", mfrow=c(4,4))
+for(l in levels(simpleClass)){
+	cl <- col[order(names(col))]
+	cl[names(cl)!=l] <- "grey"
+	plot(survfit(osYr ~ simpleClass), col=cl, mark=NA, xlim=c(0,5), lwd=(levels(simpleClass)==l)+1)
+	title(main=l, line=0)
+}
+dev.off()
+
+
+pdf("triplet_FLT3.pdf", 4,4, pointsize=8)
+par(mar=c(3,3,1,1), mgp=c(1.5,0.5,0), bty="L", mfrow=c(2,2))
+for(i in c(0,1)) for(j in c(0,1)){
+	cl <- rev(c(set1[1], "grey"))
+	plot(survfit(osYr ~ FLT3_ITD, data=dataFrame, subset=NPM1==i & DNMT3A==j), col=cl, mark=NA, xlim=c(0,5), lwd=(levels(simpleClass)==l)+1, xlab="Years after diagnosis")
+	if(j==0 & i==0) legend("bottomleft", col=cl, lty=1,bty="n", c("FLT3 wt", "FLT3 ITD"))
+	title(main=paste0("NPM1=",i,", DNMT3A=",j), line=0)
+}
+dev.off()
+
+
+
+s <- colSums(aperm(multiRfx5Loo[,1:3,], c(2,1,3)), dim=1)
+p <- apply(s, 2, function(x) times[pmin(101,which(c(x>=.5,TRUE))[1])])
+
+
+p <- sapply(c(1,2), function(i) sapply(1:100, function(foo) {
+						N <- 100
+						size=100
+						p <- if(i==1) rep(1e-2, N) else rbeta(N, 0.1, 10)
+						x <- rbinom(n=N, prob=p, size=size)
+						#plot(x, type='h')
+						#pbinom(sum(x), size=N*size, prob=mean(p), lower.tail=FALSE)
+						pchisq(-sum(pbinom(x, size=size, prob=mean(p), lower.tail=FALSE, log=TRUE)), df=2*length(x), lower.tail=FALSE)
+					}))
+
+
+p <- sapply(seq(-0.05, 0.15, 0.01), function(cc){
+			q <- c(min(d), cc, max(d)) 
+			c <- cut(d, breaks=q, include.lowest=TRUE)# , paste0("[",names(q)[-length(q)],",",names(q)[-1],")"))
+			f <- survfit(Surv(time1/365, time2/365, status) ~ group +  transplantCR1, data=cbind(osData, group=c[osData$index]), subset=osData$index %in% w)
+			summary(f, time=3)$surv
+		})
+
+
+p <- sapply(c("Ncd","Cr","Nrd","Rel","Prd"), function(m){
+			x <- get(paste("coxRFX",m,"TD", sep=""))
+			WaldTest(x)[,"p.value"]})
+rownames(p) <- names(coef(coxRFXNrdTD))
+p["transplantCR1",1:2] <- NA
+p["transplantRel",1:4] <- NA
+pp <- pchisq(-2*rowSums(log(p), na.rm=TRUE), df=2*colSums(!apply(p,1,is.na)), lower.tail=FALSE)
+
+t <- WaldTest(coxRFXFitOsTDGGc)
+
+
+
+
+
+
+
+
+
+tcgaData$TPL_os <- tcgaTpl[,"transplantCR1"]
+tcgaDataTdImputed <- as.data.frame(ImputeMissing(dataFrame[mainIdxOsTD], newX=tcgaData[mainIdxOsTD]))
+tcgaRiskTD <- data.frame(
+		coxBICTD = predict(coxBICOsTD, newdata=tcgaDataTdImputed),
+		coxAICTD = predict(coxAICOsTD, newdata=tcgaDataTdImputed),
+		coxRFXTD = PredictRiskMissing(coxRFXFitOsTDGGc, tcgaData)[,1]
+)
+tcgaConcordanceTD <- sapply(tcgaRiskTD, function(x) unlist(survConcordance(tcgaSurvival ~ x)[c("concordance","std.err")]))
+tcgaConcordanceTD
+
+
+sum(nrdData$transplantCR1)
+nrdData$transplantRD <- 0
+nrdData$transplantRD[nrdData$index %in% which(clinicalData$TPL_Phase %in% c("PR1","RD1"))] <- 1
+
+coxRFXNrdTD <- CoxRFX(nrdData[c(names(crGroups),"transplantRD")], Surv(nrdData$time1, nrdData$time2, nrdData$status), groups=c(crGroups,"Nuisance"), which.mu = intersect(mainGroups, unique(crGroups)))
+coxRFXNrdTD$coefficients["transplantRel"] <- 0
+
+WaldTest(coxRFXNrdTD)
+
+
+#' ### 7. BT model
+copyNumbers = cbind(dataList$Cytogenetics[grep(c("minus|plus|mono"), colnames(dataList$Cytogenetics))], clinicalData$gender)
+copyNumbers$minus7 <- (copyNumbers$minus7 | copyNumbers$minus7q) +0
+copyNumbers$minus7q <- NULL
+for(i in 1:ncol(copyNumbers)){
+	if(grepl("plus", colnames(copyNumbers)[i]))
+		copyNumbers[,i] = copyNumbers[,i] * 3
+}
+copyNumbers[copyNumbers==0 | is.na(copyNumbers)] = 2
+colnames(copyNumbers) = c(5,7,8,9,12,13,17,18,20,21,22,"Y",11,4,"X")
+rownames(copyNumbers) <- clinicalData$PDID
+copyNumbers$Y <- copyNumbers$Y - c(2,1)[copyNumbers$X]
+
+cn = sapply(1:nrow(mutationData), function(i) {c=copyNumbers[mutationData$SAMPLE_NAME[i],match(mutationData$CHR[i], colnames(copyNumbers))]; if(length(c)==0) 2 else c})
+vaf <- as.numeric(as.character(mutationData$X._MUT_IN_TUM))
+depth <- as.numeric(as.character(mutationData$TUM_DEPTH))
+
+dataFLT3_ITD <- read.table("../../data/FLT3_ITD_data_for_Moritz_and_Elli.txt", sep="\t", header=TRUE)
+dataFLT3_ITD$Sample <- sub("WGA_","", dataFLT3_ITD$Sample)
+
+vafCn <- vaf/100*cn ## Approx mutant cell fraction
+vafCn[which(vafCn > 1.25)] <- vaf[which(vafCn > 1.25)] ## Wrong CN adjust
+vafCn[vafCn > 1] <- 1 ## Random
+genesClonal <- dataFrame[groups=="Genetics"]
+precedence <- matrix(0, nrow=ncol(genesClonal), ncol = ncol(genesClonal) , dimnames=list(colnames(genesClonal), colnames(genesClonal)))
+plist <- list()
+lesions <- as.character(mutationData$GENE)
+lesions[mutationData$GENE=='IDH2' & grepl("172", mutationData$AA_CHANGE)] <- "IDH2_p172"
+lesions[mutationData$GENE=='IDH2' & grepl("140", mutationData$AA_CHANGE)] <- "IDH2_p140"
+lesions[mutationData$GENE=='FLT3' & grepl(paste(835:841, collapse="|"), mutationData$AA_CHANGE)] <- "FLT3_TKD"
+lesions[mutationData$GENE=='FLT3' & grepl("ITD", mutationData$AA_CHANGE)] <- "FLT3_ITD"
+lesions[lesions=="FLT3"] <- "FLT3_other"
+
+# Add FLT3_ITD VAF
+i <- lesions == "FLT3_ITD"
+m <- match(mutationData$SAMPLE_NAME[i], dataFLT3_ITD$Sample)
+vafCn[i] <- as.numeric(as.character(dataFLT3_ITD$Read_count[m]))/dataFLT3_ITD$Coverage[m]
+depth[i] <- dataFLT3_ITD$Coverage[m]
+
+ix= lesions %in% colnames(precedence) & mutationData$Result %in% c("ONCOGENIC","POSSIBLE")# & !mutationData$CONSEQUENCE %in% c("ITD","PTD","deletion","insertion", "deletion_frameshift","insertion_frameshift","na")
+for(s in clinicalData$PDID){
+	l <- list()
+	for(i in which(mutationData$SAMPLE_NAME==s & ix))
+		for(j in which(mutationData$SAMPLE_NAME==s & ix)){
+			if(!is.na(cn[i]) & !is.na(cn[j]) & i!=j){
+				m <- round(matrix(c(
+										vafCn[i]*depth[i],
+										depth[i]-vafCn[i]*depth[i], 
+										vafCn[j]*depth[j],
+										depth[j]-vafCn[j]*depth[j]),
+								ncol=2))
+				f <- try(fisher.test(m, alternative="greater")$p.value< 0.01 , silent=TRUE) ## Fisher test
+				if(class(f)!="try-error")
+					if(f & vafCn[i] >= 1 - vafCn[j]){ ## Pidgeonhole
+						precedence[as.character(lesions[i]),as.character(lesions[j])] <- precedence[as.character(lesions[i]),as.character(lesions[j])] + 1
+						l <- c(l, list(c(as.character(lesions[i]),as.character(lesions[j]))))
+						genesClonal[s, as.character(lesions[i])] <- 2
+						genesClonal[s, as.character(lesions[j])] <- 3
+					}
+				
+			}
+		}
+	plist[[s]] <- l
+}
+
+makeDesign <- function(I) {
+	w <- which(lower.tri(I), arr.ind=TRUE)
+	x <- matrix(0, nrow(w), nrow(I))
+	for(i in 1:nrow(w)){
+		x[i,w[i,1]] <- 1
+		x[i,w[i,2]] <- -1
+	}
+	return(x)
+}
+
+btModel <- function(I){
+	y <- cbind(I[lower.tri(I)], t(I)[lower.tri(I)])
+	x <- makeDesign(I = I)
+	glm.fit(x=x[,-1],y=y, family=binomial())
+}
+
+nCasesGene <- table(factor(unlist(sapply(plist, function(x) unique(unlist(x)))), levels=colnames(precedence)))
+w <- which(nCasesGene > 5)
+
+fit <- btModel(precedence[w,w]+.01)
+c <- c(0,coef(fit))
+names(c) <- colnames(precedence)[w]
+o <- rank(c)
+v <- pmin(2,sqrt(c(0,diag(chol2inv(fit$qr$qr)))))
+
+#+ bradleyTerryAML, fig.width=4, fig.height=2.5
+l <- names(c)
+m <- paste("n=",nCasesGene[w], sep="")
+plot(-c, o, xlab="Relative time", yaxt="n", pch=19, col="grey", ylab="", xlim=range(-c+3*c(-v,v)))
+segments(-c-v, o,-c+v,o, col="grey")
+text(-c-v ,o,l, font=3, pos=2)
+text(-c+v ,o,m, font=1, pos=4)
+
+#sapply(split(mutationData$CHR, mutationData$GENE) ,unique)
+
+#+ subcloneAML, fig.width=2.5, fig.height=2.5
+t <- table(sapply(plist, length)>0)
+pie(t, labels=paste(t, c("clonal/NA","polyclonal")))
+
+pdf("kmSubclonal.pdf", 8,8, pointsize=8)
+par(mfrow=c(8,8), mar=c(1.5,2.5,1.5,0.5), mgp=c(2,0.5,0), bty="L", xpd=TRUE, las=1, tcl=-0.2, cex.axis=1.25)
+for(g in colnames(genesClonal)){
+	p <- try(pchisq(survdiff(osYr ~ genesClonal[,g] == 3, subset=genesClonal[,g]>0)$chisq,1,lower.tail=FALSE))
+	plot(survfit(osYr ~ factor(genesClonal[,g], levels=0:3)), col=set1[c(9,c(4,2,1))], mark=NA, xlim=c(0,5))
+	mtext(side=3, paste0(g, ifelse(class(p)!="try-error",mg14::sig2star(p),"")), line=0, font=4)
+}
+plot.new(); par(xpd=NA)
+legend("topleft", col=set1[c(9,c(2,4,1))], lty=1, c("wt","clonal","indetermined","subclonal"), cex=1.5, bty="n")
+plot.new(); par(xpd=NA)
+legend("topleft", c(".","*","**","***", "P (0.05, 0.1]", "P (0.01, 0.05]", "P (0.001, 0.01]", "P < 0.001"), ncol=2, cex=1.5, bty="n", text.width= 0.1)
+dev.off()
+
+
+
+x <- 1:100
+y <- rpois(100, sqrt(x))
+fit <- gam(y ~ x + s(x),  family=poisson())
+summary(fit)
+plot(x,y)
+p <- predict(fit, se=TRUE)
+lines(x, exp(p$fit))
+lines(x,exp(p$fit -  2*p$se.fit))
+lines(x,exp(p$fit +  2*p$se.fit))
+lines(x, sqrt(x), lty=3)
+
+pdf("dpClasses.pdf", 8, 10, pointsize=8)
+o <- order(colSums(genotypesImputed), decreasing=TRUE)
+layout(matrix(1:12, ncol=1))
+par(mar=c(1,3,1,1)+.1, cex=1, mgp=c(2,0.5,0))
+t <- table(dpClass)
+i <- 0; for(c in levels(dpClass)){i <- 1+i 
+	b <- barplot(posteriorQuantiles[2,o,c]/t[i], col=col[i], las=2, legend=FALSE, border=NA,  names.arg=rep("", ncol(genotypesImputed)), main=paste("Class", i-1,t[i], "Patients","f =",round(t[i]/1540,2)), ylim=c(0,1), xaxs="i", ylab="Probability")
+	segments(b, posteriorQuantiles[1,o,c]/t[i], b, posteriorQuantiles[2,o,c]/t[i], col="white")
+	segments(b, posteriorQuantiles[2,o,c]/t[i], b, posteriorQuantiles[3,o,c]/t[i], col=col[i])
+}
+par(cex=.8)
+rotatedLabel(b, labels=colnames(genotypesImputed)[o])
+dev.off()
