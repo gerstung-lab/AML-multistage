@@ -2523,17 +2523,18 @@ threePatientTplCiLoo <- sapply(patients, function(pd){
 #+mortalityReductionLoo, fig.width=3.5, fig.height=2.5
 par(mar=c(3,3,1,3), las=2, mgp=c(2,.5,0), bty="n")
 benefit <- multiRFX3TplLoo[,2]-multiRFX3TplLoo[,3]
+benefitGroup <- factor(benefit > 0.1, labels=c("Low","High"))
 absrisk <- multiRFX3TplLoo[,1]
 names(absrisk) <- names(benefit) <- rownames(dataFrame)
-s <- clinicalData$AOD < 60 & !is.na(clinicalData$CR_date)#sample(1:1540,100)
+s <- clinicalData$AOD < 60 & !is.na(clinicalData$CR_date) &! clinicalData$TPL_Phase %in% c("RD1","PR1")
 x <- 1-absrisk
 y <- benefit
 plot(x[s], y[s], pch=NA, ylab="Mortality reduction from allograft", xlab="3yr mortality with standard chemo", col=riskCol[clinicalData$M_Risk], cex=.8, las=1, ylim=range(benefit))
 abline(h=seq(-.1,.3,.1), col='grey', lty=3)
 abline(v=seq(.2,.9,0.2), col='grey', lty=3)
 points(x[s], y[s], pch=16,  col=riskCol[clinicalData$M_Risk[s]], cex=.8)
-segments(1-threePatientTplCiLoo["none","lower","os",1,patients], y[patients],1-threePatientTplCiLoo["none","upper","os",1,patients],y[patients])
-segments(x[patients], threePatientTplCiLoo["dCr1Rel","lower","os",1,patients],x[patients], threePatientTplCiLoo["dCr1Rel","upper","os",1,patients])
+#segments(1-threePatientTplCiLoo["none","lower","os",1,patients], y[patients],1-threePatientTplCiLoo["none","upper","os",1,patients],y[patients])
+#segments(x[patients], threePatientTplCiLoo["dCr1Rel","lower","os",1,patients],x[patients], threePatientTplCiLoo["dCr1Rel","upper","os",1,patients])
 xn <- seq(0,1,0.01)
 p <- predict(loess(y~x, data=data.frame(x=x[s], y=y[s])), newdata=data.frame(x=xn), se=TRUE)
 yn <- c(p$fit + 2*p$se.fit,rev(p$fit - 2*p$se.fit))
@@ -2556,7 +2557,7 @@ y <- h$y/diff(range(h$y))*.05 + par("usr")[3]
 par(xpd=FALSE)
 xx <- c(h$x, rev(h$x))
 yy <- c(h$y, -rev(h$y))
-v <- xx <= q[2] 
+v <- xx <= 0.1 #q[2] 
 plot(yy,xx, pch=NA, ylab="Predicted benefit", xlab="", xaxt="n")
 polygon(yy[v], xx[v], border=NA, col=set1[1])
 polygon(yy[!v], xx[!v], border=NA, col=set1[2])
@@ -2566,16 +2567,16 @@ lines(yy, xx)
 #' KM plot of the high v low benefit groups
 #+ survival_hsct, fig.width=3, fig.height=2.5
 par(mar=c(3,3,1,1), mgp=c(2,0.5,0), bty="L")
-f <- survfit(Surv(time1/365, time2/365, status) ~ group +  transplantCR1, data=cbind(osData, group=benefit[osData$index]<=0.1), subset=osData$index %in% w)
+f <- survfit(Surv(time1/365, time2/365, status) ~ group +  transplantCR1, data=cbind(osData, group=benefitGroup[osData$index]), subset=osData$index %in% which(s))
 summary(f, time=3)
-plot(f, col=rep(set1[1:nlevels(c)],each=2), lty=rep(c(1,2), nlevels(c)), xlab="TIme after CR", ylab="Survival", xlim=c(0,5), cex=.5)
-t <- table(w %in% osData$index[osData$transplantCR1==1],c[w],!is.na(clinicalData$CR_date[w]))[,,"TRUE"]
-legend("topright", legend=as.numeric(t), col=rep(set1[1:nlevels(c)],each=2), lty=rep(c(1,2), nlevels(c)), bty="n")
+plot(f, col=rep(set1[1:nlevels(benefitGroup)],each=2), lty=rep(c(1,2), nlevels(benefitGroup)), xlab="TIme after CR", ylab="Survival", xlim=c(0,5), cex=.5)
+t <- table(which(s) %in% osData$index[osData$transplantCR1==1],benefitGroup[s],!is.na(clinicalData$CR_date[s]))[,,"TRUE"]
+legend("topright", legend=as.numeric(t), col=rep(set1[1:nlevels(benefitGroup)],each=2), lty=rep(c(1,2), nlevels(benefitGroup)), bty="n")
 
 
 #' The bottom line is that we are able to confidently isolate a quarter of patients with high benefit of allografts (about 12% absolute benefit). The breakdown across 
 #' ELN risk groups is:
-table(benefit[s]>0.1, paste(clinicalData$M_Risk[s]))
+table(benefitGroup[s], paste(clinicalData$M_Risk[s]), allograft=data$transplantCR1[s])
 
 #' ##### Leave one out cross-validation for RFX on post-CR OS 
 #+ coxRFXOsCrLOO, cache=TRUE
@@ -4068,7 +4069,8 @@ abline(0,0.5)
 #' Benefit v number of allografts in CR1
 #+ survNallo10000
 par(bty="L")
-fAlloRelapse <- sum(prdData$transplantRel & clinicalData$AOD[ !is.na(clinicalData$Recurrence_date)][prdData$index] < 60)/sum(relData$status & !relData$transplantCR1 & clinicalData$AOD[relData$index] < 60 ) # fraction of patients that have received a salvage transplant
+s <- clinicalData$AOD < 60 & !is.na(clinicalData$CR_date) & !clinicalData$TPL_Phase %in% c("PR1","RD1")
+fAlloRelapse <- sum(prdData$transplantRel & s[!is.na(clinicalData$Recurrence_date)][prdData$index])/sum(relData$status & !relData$transplantCR1 & s[relData$index]) # fraction of patients that have received a salvage transplant
 benefitAllo <- multiRFX3TplLoo[,"cr1"] - (fAlloRelapse*multiRFX3TplLoo[,"rel"] +(1-fAlloRelapse)*multiRFX3TplLoo[,"none"])
 o <- order(-benefitAllo + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clinicalData$AOD>=60,NA,0), na.last=NA)
 pRelapse <- 1+multiRFX3TplCiLoo[1:2,1,"aar",] - multiRFX3TplCiLoo[1:2,1,"rs",] ## Relapse probabilities
