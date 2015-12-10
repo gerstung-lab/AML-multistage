@@ -343,8 +343,8 @@ text(-c+v ,o,m, font=1, pos=4)
 
 
 
-#' #### Supplemenary Figure S6
-#' ' Here we generate a panel overview of all genetic lesions and their impact on outcome.
+#' #### Supplemenary Figure S7
+#' ' Here we generate a panel overview of all genetic lesions and their impact on outcome, split by clonal and subclonal status.
 
 #+ subcloneKM, fig.width=8, fig.height=8 
 par(mfrow=c(8,8), mar=c(1.5,2.5,1.5,0.5), mgp=c(2,0.5,0), bty="L", xpd=TRUE, las=1, tcl=-0.2, cex.axis=1.25)
@@ -788,7 +788,7 @@ points(VarianceComponents(coxRFXFitOsTDGGc),  pch=19)
 rm(parBoot)
 
 #' ### Risk constellation plots
-#' #### Supplementary Figure S3A
+#' #### Supplementary Figure S2A
 #' Plot of log hazard v outcome
 #+ logHazOutcome, fig.width=3, fig.height=2
 par(mar=c(3,3,3,1), mgp=c(2,.5,0))
@@ -806,7 +806,7 @@ image(x=q/max(q)*500, y=c(u[4]-(u[4]-u[3])/20, u[4]), matrix(1:10), col= (brewer
 axis(side=3, at=pretty(q/365)/max(q)*365*500, labels=pretty(q/365))
 lines(ksmooth(seq_along(o),t[o,2]==0, bandwidth=50))
 
-#' #### Supplementary Figure S3C
+#' #### Supplementary Figure S2C
 #' Risk constellation plots using the `stars()` function
 #+ stars, fig.width=12, fig.height=12
 set.seed(42)
@@ -829,7 +829,7 @@ symbols(locations[,1], locations[,2], circles=rep(.5,(nStars^2)), inches=FALSE, 
 title(main=l)
 
 
-#' #### Supplementary Figure S3B
+#' #### Supplementary Figure S2B
 #' Randomly select 5 patients according to their genotype/outcome
 #+ patientStars, fig.width=4, fig.height=3
 patients <- c(
@@ -1527,7 +1527,7 @@ ape(1-colSums(multiRfx5Loo[times == 3*365,1:3,]), os, 3*365)
 
 
 #' #### Figure 2
-#' We plot all predictions as sediments plots, laid out in the same way as the risk constellation plot, Supplementary Figure S3C
+#' We plot all predictions as sediments plots, laid out in the same way as the risk constellation plot, Supplementary Figure S2C
 #+ fiveStagePredictedHilbert, fig.width=12, fig.height=12
 set.seed(42)
 s <- sample(nrow(dataFrame),nStars^2) #1:(nStars^2)
@@ -2533,8 +2533,8 @@ plot(x[s], y[s], pch=NA, ylab="Mortality reduction from allograft", xlab="3yr mo
 abline(h=seq(-.1,.3,.1), col='grey', lty=3)
 abline(v=seq(.2,.9,0.2), col='grey', lty=3)
 points(x[s], y[s], pch=16,  col=riskCol[clinicalData$M_Risk[s]], cex=.8)
-#segments(1-threePatientTplCiLoo["none","lower","os",1,patients], y[patients],1-threePatientTplCiLoo["none","upper","os",1,patients],y[patients])
-#segments(x[patients], threePatientTplCiLoo["dCr1Rel","lower","os",1,patients],x[patients], threePatientTplCiLoo["dCr1Rel","upper","os",1,patients])
+segments(1-threePatientTplCiLoo["none","lower","os",1,patients], y[patients],1-threePatientTplCiLoo["none","upper","os",1,patients],y[patients])
+segments(x[patients], threePatientTplCiLoo["dCr1Rel","lower","os",1,patients],x[patients], threePatientTplCiLoo["dCr1Rel","upper","os",1,patients])
 xn <- seq(0,1,0.01)
 p <- predict(loess(y~x, data=data.frame(x=x[s], y=y[s])), newdata=data.frame(x=xn), se=TRUE)
 yn <- c(p$fit + 2*p$se.fit,rev(p$fit - 2*p$se.fit))
@@ -2558,7 +2558,7 @@ par(xpd=FALSE)
 xx <- c(h$x, rev(h$x))
 yy <- c(h$y, -rev(h$y))
 v <- xx <= 0.1 #q[2] 
-plot(yy,xx, pch=NA, ylab="Predicted benefit", xlab="", xaxt="n")
+plot(yy,xx, pch=NA, ylab="Predicted benefit", xlab="", xaxt="n", ylim=range(benefit))
 polygon(yy[v], xx[v], border=NA, col=set1[1])
 polygon(yy[!v], xx[!v], border=NA, col=set1[2])
 lines(yy, xx)
@@ -2567,16 +2567,39 @@ lines(yy, xx)
 #' KM plot of the high v low benefit groups
 #+ survival_hsct, fig.width=3, fig.height=2.5
 par(mar=c(3,3,1,1), mgp=c(2,0.5,0), bty="L")
-f <- survfit(Surv(time1/365, time2/365, status) ~ group +  transplantCR1, data=cbind(osData, group=benefitGroup[osData$index]), subset=osData$index %in% which(s))
+f <- survfit(Surv(time1/365, time2/365, status) ~ group +  transplantCR1, data=cbind(osData, group=benefitGroup[osData$index]), subset=osData$index %in% which(s) & !clinicalData$M_Risk[osData$index] %in% c("Favorable"))
 summary(f, time=3)
-plot(f, col=rep(set1[1:nlevels(benefitGroup)],each=2), lty=rep(c(1,2), nlevels(benefitGroup)), xlab="TIme after CR", ylab="Survival", xlim=c(0,5), cex=.5)
+plot(f, col=rep(pastel1[1:nlevels(benefitGroup)],each=2), lty=rep(c(1,2), nlevels(benefitGroup)), xlab="TIme after CR", ylab="Survival", xlim=c(0,5), cex=.5)
 t <- table(which(s) %in% osData$index[osData$transplantCR1==1],benefitGroup[s],!is.na(clinicalData$CR_date[s]))[,,"TRUE"]
-legend("topright", legend=as.numeric(t), col=rep(set1[1:nlevels(benefitGroup)],each=2), lty=rep(c(1,2), nlevels(benefitGroup)), bty="n")
+legend("topright", legend=paste(rep(levels(benefitGroup), each=2), rep(c("no HSCT","w. HSCT"), 2), as.numeric(t), sep=", "), col=rep(pastel1[1:nlevels(benefitGroup)],each=2), lty=rep(c(1,2), nlevels(benefitGroup)), bty="n")
 
+
+#' #### Supplementary Figure S3
+#' KM plot of the high v low benefit groups
+#+ survival_hsct_eln, fig.width=6, fig.height=7.5
+par(mar=c(3,3,2,1), mgp=c(2,0.5,0), bty="L", mfrow=c(3,2), cex=1)
+e <- factor(paste(clinicalData$M_Risk))
+for(l in levels(e)){
+	f <- survfit(Surv(time1/365, time2/365, status) ~ group +  transplantCR1, data=cbind(osData, group=benefitGroup[osData$index]), subset=osData$index %in% which(s) & e[osData$index] == l)
+	summary(f, time=3)
+	plot(f, col=rep(pastel1[1:nlevels(benefitGroup)],each=2), lty=rep(c(1,2), nlevels(benefitGroup)), xlab="TIme after CR", ylab="Survival", xlim=c(0,5), cex=.5, main=l)
+	t <- table(which(s) %in% osData$index[osData$transplantCR1==1],benefitGroup[s],!is.na(clinicalData$CR_date[s]), e[s])[,,"TRUE",l]
+	legend("topright", legend=paste(rep(levels(benefitGroup), each=2), rep(c("no HSCT","w. HSCT"), 2), as.numeric(t), sep=", "), col=rep(pastel1[1:nlevels(benefitGroup)],each=2), lty=rep(c(1,2), nlevels(benefitGroup)), bty="n")
+}
 
 #' The bottom line is that we are able to confidently isolate a quarter of patients with high benefit of allografts (about 12% absolute benefit). The breakdown across 
 #' ELN risk groups is:
 table(benefitGroup[s], paste(clinicalData$M_Risk[s]), allograft=data$transplantCR1[s])
+
+summary(coxph(Surv(time1/365, time2/365, status) ~ transplantCR1 + AOD_10 + clinicalData$M_Risk[osData$index] , data=osData, subset=osData$index %in% which(s) & benefitGroup[osData$index]=="Low"))
+summary(coxph(Surv(time1/365, time2/365, status) ~ transplantCR1 + AOD_10 + clinicalData$M_Risk[osData$index] , data=osData, subset=osData$index %in% which(s) & benefitGroup[osData$index]=="High"))
+
+#' Distribution of genetic variables
+#+ benefitGenes, fig.width=8, fig.height=3
+par(mar=c(6,3,1,1))
+o <- order(-colSums(dataFrame[s,groups %in% c("Genetics","CNA","Fusions")]))
+t <- t(sapply(split(dataFrame[s,groups %in% c("Genetics","CNA","Fusions")], benefitGroup[s]), colSums))
+barplot(t[,o], col=pastel1[1:2], legend=TRUE, las=2, xaxs="i", cex.lab=0.66, args.legend=list(title="Benefit", bty="n", border=NA), border=NA)
 
 #' ##### Leave one out cross-validation for RFX on post-CR OS 
 #+ coxRFXOsCrLOO, cache=TRUE
@@ -2686,7 +2709,7 @@ multiRfx5CvImputed <- sapply(mclapply(1:nrow(data), function(i){
 			else colSums(e$multiRfx5Imputed[3*365,1:3,])
 		}, mc.cores=10), I)
 
-#' #### Supplementary Figure S4B
+#' #### Supplementary Figure S5B
 #' Imputed accuracy
 #+ multiRfx5CvImputedPlot, cache=TRUE, fig.width=5, fig.height=2.5
 par(mar=c(3,3,3,1))
@@ -3677,7 +3700,7 @@ rangeplot3(x=subsets, y = sapply(subsetPatients, function(x) sapply(x, function(
 #				})) , col=1, xlab="Cohort", ylab="Concordance", ylim=c(0.65,.75))
 #
 
-#' #### Supplementary Figure S4A
+#' #### Supplementary Figure S5A
 #' Subsampling genes
 #+ subsetGenes, cache=TRUE
 set.seed(42)
@@ -3762,7 +3785,7 @@ files <- dir("../code/simRFX", pattern="Farmulations\\[1-1000\\]*", full.names =
 tmp <- new.env()
 load(files[1], envir = tmp)
 
-#' #### Supplementary Figure S5B
+#' #### Supplementary Figure S6B
 #' ##### P-values
 #' Plot the P-values as a function of Npu^2.
 #+ pVarSchoenfeld, fig.width=2, fig.height=2, cache=TRUE
@@ -3787,6 +3810,7 @@ power <- function(beta, N, p, psi=0.5, alpha=0.05){
 	pnorm(sqrt(N*psi*beta^2*p*(1-p))-qnorm(1-alpha/2))
 }
 
+#' #### Supplementary Figure S6A
 #' Plot for observed cases and overlay a few usual suspects
 #+ power1540, fig.width=3, fig.height=3
 x <- seq(-2,2,0.01)
