@@ -25,6 +25,9 @@ jobIndex <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
 
 load(paste0("loo/",jobIndex,".RData"))
 
+cvIdx <- 1:nrow(dataFrame)
+whichTrain <- which(cvIdx != jobIndex)
+
 multiRFX3TplCiCorLoo <- sapply(1:nSim, function(foo){
 			set.seed(foo)
 			cNrd <- rfxNrs
@@ -33,7 +36,7 @@ multiRFX3TplCiCorLoo <- sapply(1:nSim, function(foo){
 			cRel$coefficients <- mvtnorm::rmvnorm(1, mean=cRel$coefficients, sigma=coxRFXRelTD$var2, method="chol")[1,]
 			cPrd <- rfxPrs
 			cPrd$coefficients <- mvtnorm::rmvnorm(1, mean=cPrd$coefficients, sigma=coxRFXPrdTD$var2, method="chol")[1,]
-			multiRFX3Tpl <- MultiRFX3(cNrd, cRel, cPrd, data=allDataTpl[3*jobIndex + (-2:0),], x=3*365, prdData=prdData)
+			multiRFX3Tpl <- MultiRFX3(cNrd, cRel, cPrd, data=allDataTpl[3*jobIndex + (-2:0),], x=3*365, prdData=prdData[prdData$index %in% whichTrain,])
 			multiRFX3Tpl <- matrix(multiRFX3Tpl$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse")))
 		})
 
