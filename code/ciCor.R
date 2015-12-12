@@ -36,9 +36,10 @@ multiRFX3TplCiCorLoo <- sapply(1:nSim, function(foo){
 			cRel$coefficients <- mvtnorm::rmvnorm(1, mean=cRel$coefficients, sigma=coxRFXRelTD$var2, method="chol")[1,]
 			cPrd <- rfxPrs
 			cPrd$coefficients <- mvtnorm::rmvnorm(1, mean=cPrd$coefficients, sigma=coxRFXPrdTD$var2, method="chol")[1,]
-			multiRFX3Tpl <- MultiRFX3(cNrd, cRel, cPrd, data=allDataTpl[3*jobIndex + (-2:0),], x=3*365, prdData=prdData[prdData$index %in% whichTrain,])
-			multiRFX3Tpl <- matrix(multiRFX3Tpl$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse")))
-		})
+			multiRFX3Tpl <- as.matrix(MultiRFX3(cNrd, cRel, cPrd, data=allDataTpl[3*jobIndex + (-2:0),], x=3*365, prdData=prdData[prdData$index %in% whichTrain,])[,c("os","cir","nrs","rs")])
+			rownames(multiRFX3Tpl) <- c("None","CR1","Relapse")
+			return(multiRFX3Tpl)
+		}, simplify='array')
 
 save(multiRFX3TplCiCorLoo, file=paste0("ciCorLoo/",jobIndex,".RData"))
 
