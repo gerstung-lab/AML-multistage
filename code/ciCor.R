@@ -3,7 +3,22 @@ library(mg14)
 library(CoxHD)
 library(Rcpp)
 
-#save(allDataTpl, coxRFXNrdTD, coxRFXPrdTD, coxRFXRelTD, MultiRFX3, prdData,  file="../code/ciCor.RData")
+#save(allDataTpl, coxRFXNrdTD, coxRFXPrdTD, coxRFXRelTD, MultiRFX3, prdData, relData, nrdData, crGroups, file="../code/ciCor.RData")
+
+cppFunction('NumericVector computeTotalPrsC(NumericVector x, NumericVector diffCir, NumericVector prsP, NumericVector tdPrmBaseline, double risk) {
+				int xLen = x.size();
+				double hj;
+				double r = exp(risk);
+				NumericVector rs(xLen);
+				for(int i = 0; i < xLen; ++i) rs[i] = 1;
+				for(int j = 1; j < xLen; ++j){ 
+				hj = tdPrmBaseline[j-1] * r;
+				for(int i = j; i < xLen; ++i){
+				rs[i] += diffCir[j-1] * (1-pow(prsP[i-j], hj));
+				}
+				}
+				return rs;
+				}', rebuild=TRUE)
 
 jobIndex <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
 
