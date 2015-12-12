@@ -1,5 +1,5 @@
 #/bin/sh
-#BSUB -J ciCor[1-100]
+#BSUB -J ciCor[1-1540]
 #BSUB -o logs/ciCor.out%J
 #BSUB -e logs/ciCor.err%J
 #BSUB -M 1000
