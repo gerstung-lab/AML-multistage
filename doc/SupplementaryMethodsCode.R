@@ -2517,6 +2517,18 @@ threePatientTplCiLoo <- sapply(patients, function(pd){
 			multiRFX3TplCi <- MultiRFX3TplCi(e$rfxNrs, e$rfxRel, e$rfxPrs, data=data[i,colnames(e$rfxPrs$Z), drop=FALSE], x=3*365, nSim=1000, prdData=prdData[prdData$index!=i,], mc.cores=5)
 		}, simplify="array")
 
+#' #### LOO predictions of HSCT with CI's accounting for correlation
+#' The following code is run on the cluster
+nSim <- 200
+read_chunk('../code/ciCor.R', labels="ciCor")
+#+ ciCor, eval=FALSE
+
+#' Collect the results
+multiRFX3TplCiCorLoo <- simplify2array(mclapply(1:nrow(dataFrame), function(foo) try({
+								e <- new.env()
+								load(paste0("../code/ciCorLoo/",foo,".RData"), envir=e)
+								return(e$multiRFX3TplCiCorLoo[,"os",])
+							}), mc.cores=4))
 
 #' #### Figure 4A
 #' The figure shows the mortality reduction of allograft CR1 v none, allograft in Rel v none, and CR1 v Relapse, for LOO predictions similar to above.
@@ -2535,11 +2547,21 @@ abline(v=seq(.2,.9,0.2), col='grey', lty=3)
 points(x[s], y[s], pch=16,  col=riskCol[clinicalData$M_Risk[s]], cex=.8)
 segments(1-threePatientTplCiLoo["none","lower","os",1,patients], y[patients],1-threePatientTplCiLoo["none","upper","os",1,patients],y[patients])
 segments(x[patients], threePatientTplCiLoo["dCr1Rel","lower","os",1,patients],x[patients], threePatientTplCiLoo["dCr1Rel","upper","os",1,patients])
-xn <- seq(0,1,0.01)
-p <- predict(loess(y~x, data=data.frame(x=x[s], y=y[s])), newdata=data.frame(x=xn), se=TRUE)
-yn <- c(p$fit + 2*p$se.fit,rev(p$fit - 2*p$se.fit))
-polygon(c(xn, rev(xn))[!is.na(yn)],yn[!is.na(yn)], border=NA, col="#00000044", lwd=1)
-lines(xn,p$fit, col='black', lwd=2)
+# Add loess fit, accounting for correlations of errors
+xn <- seq(0.01,0.99,0.01)
+fit <- sapply(1:nSim, function(i){
+			benefit <- multiRFX3TplCiCorLoo[2,i,]-multiRFX3TplCiCorLoo[3,i,]
+			absrisk <- multiRFX3TplCiCorLoo[1,i,]
+			s <- clinicalData$AOD < 60 & !is.na(clinicalData$CR_date) &! clinicalData$TPL_Phase %in% c("RD1","PR1")
+			x <- 1-absrisk
+			y <- benefit
+			p <- predict(loess(y~x, data=data.frame(x=x[s], y=y[s])), newdata=data.frame(x=xn), se=TRUE)
+			yn <- c(p$fit + 2*p$se.fit,rev(p$fit - 2*p$se.fit))
+			p$fit
+		})
+q <- apply(fit, 1, quantile, c(0.025, 0.5, 0.975), na.rm=TRUE)
+polygon(c(xn, rev(xn)), c(q[1,], rev(q[3,])), border=NA, col="#00000044", lwd=1)
+lines(xn, rowMeans(fit, na.rm=TRUE))
 legend("topleft", pch=c(16,16,16,16,NA),lty=c(NA,NA,NA,NA,1), col=c(riskCol[c(2,4,3,1)],1),fill=c(NA,NA,NA,NA,"grey"), border=NA, c(names(riskCol)[c(2,4,3,1)],"loess average"), box.lty=0)
 n <- c(100,50,20,10,5,4,3)
 axis(side=4, at=1/n, labels=n, las=1)
@@ -2570,7 +2592,7 @@ par(mar=c(3,3,1,1), mgp=c(2,0.5,0), bty="L")
 f <- survfit(Surv(time1/365, time2/365, status) ~ group +  transplantCR1, data=cbind(osData, group=benefitGroup[osData$index]), subset=osData$index %in% which(s) & !clinicalData$M_Risk[osData$index] %in% c("Favorable"))
 summary(f, time=3)
 plot(f, col=rep(pastel1[1:nlevels(benefitGroup)],each=2), lty=rep(c(1,2), nlevels(benefitGroup)), xlab="TIme after CR", ylab="Survival", xlim=c(0,5), cex=.5)
-t <- table(which(s) %in% osData$index[osData$transplantCR1==1],benefitGroup[s],!is.na(clinicalData$CR_date[s]))[,,"TRUE"]
+t <- table(which(s) %in% osData$index[osData$transplantCR1==1],benefitGroup[s],!is.na(clinicalData$CR_date[s]), !clinicalData$M_Risk[s] %in% c("Favorable"))[,,"TRUE","TRUE"]
 legend("topright", legend=paste(rep(levels(benefitGroup), each=2), rep(c("no HSCT","w. HSCT"), 2), as.numeric(t), sep=", "), col=rep(pastel1[1:nlevels(benefitGroup)],each=2), lty=rep(c(1,2), nlevels(benefitGroup)), bty="n")
 
 
