@@ -37,5 +37,5 @@ multiRFX3TplCiCorLoo <- sapply(1:nSim, function(foo){
 			multiRFX3Tpl <- matrix(multiRFX3Tpl$os, ncol=3, byrow=TRUE, dimnames=list(NULL, c("None","CR1","Relapse")))
 		})
 
-save(multiRFX3TplCiCorLoo, file=paste0("ciCor/",jobIndex,".RData"))
+save(multiRFX3TplCiCorLoo, file=paste0("ciCorLoo/",jobIndex,".RData"))
 
