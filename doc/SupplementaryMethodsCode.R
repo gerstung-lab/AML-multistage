@@ -343,7 +343,7 @@ text(-c+v ,o,m, font=1, pos=4)
 
 
 
-#' #### Supplemenary Figure S7
+#' #### Supplemenary Figure S9
 #' ' Here we generate a panel overview of all genetic lesions and their impact on outcome, split by clonal and subclonal status.
 
 #+ subcloneKM, fig.width=8, fig.height=8 
@@ -1633,49 +1633,101 @@ allDataTpl$transplantRel <- rep(c(0,0,1), nrow(dataFrame))
 
 
 #' #### Figure 3A-F
-#' With and without TPL
-#+ threePatientsAllo, fig.width=3, fig.height=2.5
+#' Here we show survival predictions for three selected patients
+#+ threePatientsAllo, fig.width=7.5, fig.height=7.5
 xmax=2000
 patients <- c("PD11104a","PD8314a","PD10941a")
-fiveStagePredictedTplLoo <- sapply(patients, function(pd){
-			e <- new.env()
-			i <- which(rownames(dataFrame)==pd)
-			load(paste0("../code/loo/",i,".RData"), env=e)
-			
-			cvIdx <- 1:nrow(dataFrame)
-			whichTrain <<- which(cvIdx != i)
-			xx <- 0:2000
-			coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(prdData, time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index])[prdData$index %in% whichTrain,]) 
-			tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1])))						
-			
-			coxphOs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))[osData$index %in% whichTrain,]) 
-			tdOsBaseline <- exp(pmin(predict(coxphOs, newdata=data.frame(time0=500)),predict(coxphOs, newdata=data.frame(time0=xx[-1])))) ## cap predictions at induction length 500 days.
-			m <- MultiRFX5(e$rfxEs, e$rfxCr, e$rfxNrs, e$rfxRel, e$rfxPrs, allDataTpl[grep(pd, rownames(allDataTpl)),], tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)			
-		}, simplify="array")
-#par(mfrow=c(2,2))
-par(mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0)) 
-w <- seq(1,2001,10)
-at <- ceiling(1:5 * 365.5)
-x <- (w-1)/365.25
-for(pd in patients)
-	for(i in c(2,3)){
-		sedimentPlot(-fiveStagePredictedTplLoo[w,6:8,i,pd],x=x, y0=1, y1=0,  col=pastel1[c(2:3,5,4)], xlab="Years from CR",ylab="Probability", xaxs='i', yaxs='i')
-		o <- 1-rowSums(fiveStagePredictedTplLoo[w,6:7,i,pd])
+layout(matrix(1:(3*length(patients)), byrow=TRUE, ncol=3), width=c(0.5,1,1))
+par(mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0), cex=1) 
+for(pd in patients){
+	e <- new.env()
+	i <- which(rownames(dataFrame)==pd)
+	load(paste0("../code/loo/",i,".RData"), env=e)
+	
+	cvIdx <- 1:nrow(dataFrame)
+	whichTrain <<- which(cvIdx != i)
+	xx <- 0:2000
+	coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(prdData, time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index])[prdData$index %in% whichTrain,]) 
+	tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1])))						
+	
+	coxphOs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))[osData$index %in% whichTrain,]) 
+	tdOsBaseline <- exp(pmin(predict(coxphOs, newdata=data.frame(time0=500)),predict(coxphOs, newdata=data.frame(time0=xx[-1])))) ## cap predictions at induction length 500 days.
+	newdata <- allDataTpl[grep(pd, rownames(allDataTpl)),]
+	m <- MultiRFX5(e$rfxEs, e$rfxCr, e$rfxNrs, e$rfxRel, e$rfxPrs, newdata, tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)			
+	
+	w <- seq(1,2001,10)
+	at <- ceiling(1:5 * 365.5)
+	x <- (w-1)/365.25
+	plot.new()
+	p <- which(rownames(dataFrame)==pd)
+	mtext(side=2, paste0(c(pd, clinicalData$AOD[p], c("male","female")[clinicalData$gender[p]], gsub(";","\n",genotype[p]), paste("ELN", clinicalData$M_Risk[p])), collapse="\n"), las=1, adj=0)
+	
+	for(i in c(3,2)){
+		sedimentPlot(-m[w,6:8,i],x=x, y0=1, y1=0,  col=pastel1[c(2:3,5,4)], xlab="Years from CR",ylab="Probability", xaxs='i', yaxs='i')
+		o <- 1-rowSums(m[w,6:7,i])
 		abline(v=c(1:5), col="white", lty=3)
 		abline(h=seq(0.2,0.8,0.2), col="white", lty=3)
 		lines(x,o, lwd=2)
-		lines(x,o ^ exp(qnorm(0.975) * fiveStagePredictedTplLoo[w,9,i,pd]))
-		lines(x,o ^ exp(-qnorm(0.975) * fiveStagePredictedTplLoo[w,9,i,pd]))
-		text(x=rep(0,3), c(0.1,0.2,0.3), c("rel./al.", "rel./death", "n.r./death") )
-		text(x=1:5, y=rep(0.3, 5), round(fiveStagePredictedTplLoo[at,6,i,pd],2))
-		text(x=1:5, y=rep(0.2, 5), round(fiveStagePredictedTplLoo[at,7,i,pd],2))
-		text(x=1:5, y=rep(0.1, 5), round(fiveStagePredictedTplLoo[at,8,i,pd],2))
+		lines(x,o ^ exp(qnorm(0.975) * m[w,9,i]))
+		lines(x,o ^ exp(-qnorm(0.975) * m[w,9,i]))
+		text(x=rep(0,3), c(0.1,0.2,0.3), c("AAR", "RD", "NRD") )
+		text(x=1:5, y=rep(0.3, 5), round(m[at,6,i],2))
+		text(x=1:5, y=rep(0.2, 5), round(m[at,7,i],2))
+		text(x=1:5, y=rep(0.1, 5), round(m[at,8,i],2))
 		#text(x=at, y=rep(0.1, 5), round(fiveStagePredictedTpl[w,6,i],2))
-		p <- which(rownames(dataFrame)==pd)
 		lineStage(CR_date=0, as.numeric(clinicalData$Recurrence_date[p]-clinicalData$CR_date[p])/365.25, as.numeric(clinicalData$Date_LF[p]-clinicalData$CR_date[p])/365.25, ERDate=0, clinicalData$Status[p], col=c(brewer.pal(8,"Dark2")[8], set1[c(4:5,1:3)]), lwd=4, pch.trans=NA, y=0.05, cex=4)
-		mtext(side=3, line=-1, pd, las=1)
-	}
+		points(x=as.numeric(clinicalData$TPL_date[p]-clinicalData$CR_date[p])/365.25, y=0.05, pch=4, cex=1.5, lwd=1)
+		
+	}}
 
+
+#' #### Supplementary Figure S3
+#' Here we show results for an additional 4 patients, the first three being chosen as counterparts to the patients shown in Figure 3. The fourth patient is a patients with ASXL1 mutations.
+#+ fourPatientsAllo, fig.width=7.5, fig.height=10
+xmax=2000
+patients <- c("PD10828a","PD10844a","PD10829a","PD10996a")
+layout(matrix(1:(3*length(patients)), byrow=TRUE, ncol=3), width=c(0.5,1,1))
+par(mar=c(3,3,1,1), bty="n", mgp=c(2,.5,0), cex=1) 
+for(pd in patients){
+	e <- new.env()
+	i <- which(rownames(dataFrame)==pd)
+	load(paste0("../code/loo/",i,".RData"), env=e)
+	
+	cvIdx <- 1:nrow(dataFrame)
+	whichTrain <<- which(cvIdx != i)
+	xx <- 0:2000
+	coxphPrs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(prdData, time0=as.numeric(clinicalData$Recurrence_date-clinicalData$CR_date)[prdData$index])[prdData$index %in% whichTrain,]) 
+	tdPrmBaseline <- exp(predict(coxphPrs, newdata=data.frame(time0=xx[-1])))						
+	
+	coxphOs <- coxph(Surv(time1, time2, status)~ pspline(time0, df=10), data=data.frame(osData, time0=pmin(500,cr[osData$index,1]))[osData$index %in% whichTrain,]) 
+	tdOsBaseline <- exp(pmin(predict(coxphOs, newdata=data.frame(time0=500)),predict(coxphOs, newdata=data.frame(time0=xx[-1])))) ## cap predictions at induction length 500 days.
+	newdata <- allDataTpl[grep(pd, rownames(allDataTpl)),]
+	m <- MultiRFX5(e$rfxEs, e$rfxCr, e$rfxNrs, e$rfxRel, e$rfxPrs, newdata, tdPrmBaseline = tdPrmBaseline, tdOsBaseline = tdOsBaseline, x=2000)			
+	
+	w <- seq(1,2001,10)
+	at <- ceiling(1:5 * 365.5)
+	x <- (w-1)/365.25
+	plot.new()
+	p <- which(rownames(dataFrame)==pd)
+	mtext(side=2, paste0(c(pd, clinicalData$AOD[p], c("male","female")[clinicalData$gender[p]], gsub(";","\n",genotype[p]), paste("ELN", clinicalData$M_Risk[p])), collapse="\n"), las=1, adj=0)
+	
+	for(i in c(3,2)){
+		sedimentPlot(-m[w,6:8,i],x=x, y0=1, y1=0,  col=pastel1[c(2:3,5,4)], xlab="Years from CR",ylab="Probability", xaxs='i', yaxs='i')
+		o <- 1-rowSums(m[w,6:7,i])
+		abline(v=c(1:5), col="white", lty=3)
+		abline(h=seq(0.2,0.8,0.2), col="white", lty=3)
+		lines(x,o, lwd=2)
+		lines(x,o ^ exp(qnorm(0.975) * m[w,9,i]))
+		lines(x,o ^ exp(-qnorm(0.975) * m[w,9,i]))
+		text(x=rep(0,3), c(0.1,0.2,0.3), c("AAR", "RD", "NRD") )
+		text(x=1:5, y=rep(0.3, 5), round(m[at,6,i],2))
+		text(x=1:5, y=rep(0.2, 5), round(m[at,7,i],2))
+		text(x=1:5, y=rep(0.1, 5), round(m[at,8,i],2))
+		#text(x=at, y=rep(0.1, 5), round(fiveStagePredictedTpl[w,6,i],2))
+		lineStage(CR_date=0, as.numeric(clinicalData$Recurrence_date[p]-clinicalData$CR_date[p])/365.25, as.numeric(clinicalData$Date_LF[p]-clinicalData$CR_date[p])/365.25, ERDate=0, clinicalData$Status[p], col=c(brewer.pal(8,"Dark2")[8], set1[c(4:5,1:3)]), lwd=4, pch.trans=NA, y=0.05, cex=4)
+		points(x=as.numeric(clinicalData$TPL_date[p]-clinicalData$CR_date[p])/365.25, y=0.05, pch=4, cex=1.5, lwd=1)
+		
+	}}
 
 
 #' ### Predicting outcome after CR
@@ -2646,7 +2698,7 @@ fAlloCR1Pers <- (x + (1-x)*fRelapse*fAlloRelapse)[j]
 names(fAlloCR1Pers) <- names(j)
 fAlloCR1Pers
 
-#' #### Supplementary Figure S4
+#' #### Supplementary Figure S5
 #' As there is some uncertainty related to the overall benefit of early vs late allografts, the following plots show the benefit at the extremes of the
 #' expected distribution. Plots are shown for the 5%, 50% and 95% quantiles.
 #+ survNalloCi
@@ -2801,7 +2853,7 @@ multiRfx5CvImputed <- sapply(mclapply(1:nrow(data), function(i){
 			else colSums(e$multiRfx5Imputed[3*365,1:3,])
 		}, mc.cores=10), I)
 
-#' #### Supplementary Figure S6B
+#' #### Supplementary Figure S7B
 #' Imputed accuracy
 #+ multiRfx5CvImputedPlot, cache=TRUE, fig.width=5, fig.height=2.5
 par(mar=c(3,3,3,1))
@@ -3792,7 +3844,7 @@ rangeplot3(x=subsets, y = sapply(subsetPatients, function(x) sapply(x, function(
 #				})) , col=1, xlab="Cohort", ylab="Concordance", ylim=c(0.65,.75))
 #
 
-#' #### Supplementary Figure S6A
+#' #### Supplementary Figure S7A
 #' Subsampling genes
 #+ subsetGenes, cache=TRUE
 set.seed(42)
@@ -3877,7 +3929,7 @@ files <- dir("../code/simRFX", pattern="Farmulations\\[1-1000\\]*", full.names =
 tmp <- new.env()
 load(files[1], envir = tmp)
 
-#' #### Supplementary Figure S7B
+#' #### Supplementary Figure S8B
 #' ##### P-values
 #' Plot the P-values as a function of Npu^2.
 #+ pVarSchoenfeld, fig.width=2, fig.height=2, cache=TRUE
@@ -3902,7 +3954,7 @@ power <- function(beta, N, p, psi=0.5, alpha=0.05){
 	pnorm(sqrt(N*psi*beta^2*p*(1-p))-qnorm(1-alpha/2))
 }
 
-#' #### Supplementary Figure S7A
+#' #### Supplementary Figure S8A
 #' Plot for observed cases and overlay a few usual suspects
 #+ power1540, fig.width=3, fig.height=3
 x <- seq(-2,2,0.01)
