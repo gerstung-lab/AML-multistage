@@ -2527,7 +2527,7 @@ read_chunk('../code/ciCor.R', labels="ciCor")
 multiRFX3TplCiCorLoo <- simplify2array(mclapply(1:nrow(dataFrame), function(foo) try({
 								e <- new.env()
 								load(paste0("../code/ciCorLoo/",foo,".RData"), envir=e)
-								return(e$multiRFX3TplCiCorLoo[,"os",])
+								return(e$multiRFX3TplCiCorLoo)
 							}), mc.cores=4))
 
 #' #### Figure 4A
@@ -2550,8 +2550,8 @@ segments(x[patients], threePatientTplCiLoo["dCr1Rel","lower","os",1,patients],x[
 # Add loess fit, accounting for correlations of errors
 xn <- seq(0.01,0.99,0.01)
 fit <- sapply(1:nSim, function(i){
-			benefit <- multiRFX3TplCiCorLoo[2,i,]-multiRFX3TplCiCorLoo[3,i,]
-			absrisk <- multiRFX3TplCiCorLoo[1,i,]
+			benefit <- multiRFX3TplCiCorLoo[2,"os",i,]-multiRFX3TplCiCorLoo[3,"os",i,]
+			absrisk <- multiRFX3TplCiCorLoo[1,"os",i,]
 			s <- clinicalData$AOD < 60 & !is.na(clinicalData$CR_date) &! clinicalData$TPL_Phase %in% c("RD1","PR1")
 			x <- 1-absrisk
 			y <- benefit
@@ -2608,6 +2608,76 @@ for(l in levels(e)){
 	t <- table(which(s) %in% osData$index[osData$transplantCR1==1],benefitGroup[s],!is.na(clinicalData$CR_date[s]), e[s])[,,"TRUE",l]
 	legend("topright", legend=paste(rep(levels(benefitGroup), each=2), rep(c("no HSCT","w. HSCT"), 2), as.numeric(t), sep=", "), col=rep(pastel1[1:nlevels(benefitGroup)],each=2), lty=rep(c(1,2), nlevels(benefitGroup)), bty="n")
 }
+
+#' #### Figure 4D
+#' The following plot shows the hypothetical population-level survival gains of the knowledge bank.
+#+ survNallo
+par(bty="L")
+s <- clinicalData$AOD < 60 & !is.na(clinicalData$CR_date) & !clinicalData$TPL_Phase %in% c("PR1","RD1")
+fAlloRelapse <- sum(prdData$transplantRel & s[!is.na(clinicalData$Recurrence_date)][prdData$index])/sum(relData$status & !relData$transplantCR1 & s[relData$index]) # fraction of patients that have received a salvage transplant
+benefitAllo <- multiRFX3TplLoo[,"cr1"] - (fAlloRelapse*multiRFX3TplLoo[,"rel"] +(1-fAlloRelapse)*multiRFX3TplLoo[,"none"])
+o <- order(-benefitAllo + ifelse(!s ,NA,0), na.last=NA)
+pRelapse <- 1+multiRFX3TplCiLoo[1:2,1,"aar",] - multiRFX3TplCiLoo[1:2,1,"rs",] ## Relapse probabilities
+fRelapse <- sapply(seq_along(o), function(i) mean(c(pRelapse[2,o[1:i]], pRelapse[1,o[-(1:i)]]), na.rm=TRUE)) # Personalised
+
+sIdeal <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplLoo[o[1:i],"cr1"], (1-fAlloRelapse)*multiRFX3TplLoo[o[-(1:i)],"none"] + fAlloRelapse*multiRFX3TplLoo[o[-(1:i)],"rel"]), na.rm=TRUE))
+x <- seq_along(sIdeal)/length(sIdeal)
+plot(x + (1-x)*fRelapse*fAlloRelapse,sIdeal, type='l', xlab="Total fraction of allografts", ylab="Survival of eligible patients 3yrs after CR", col=set1[1], xaxs="i", yaxs="i", lty=1)
+
+p <- order(na.zero(c(1,4,2,3)[clinicalData$M_Risk])  + dataFrame$AOD_10/20 + ifelse(!s,NA,0) + ifelse(clinicalData$AOD>=60,NA,0), na.last=NA)
+fRelapseEln <- sapply(seq_along(p), function(i) mean(c(pRelapse[2,p[1:i]], pRelapse[1,p[-(1:i)]]), na.rm=TRUE)) # ELN
+sEln <- sapply(seq_along(p), function(i) mean(c(multiRFX3TplLoo[p[1:i],"cr1"], (1-fAlloRelapse)*multiRFX3TplLoo[p[-(1:i)],"none"] + fAlloRelapse*multiRFX3TplLoo[p[-(1:i)],"rel"]), na.rm=TRUE))
+x <- seq_along(sEln)/length(sEln)
+
+lines(x + (1-x)*fRelapseEln*fAlloRelapse,sEln, sEln, type='l', col=set1[2])
+legend("bottomright", c("Priorisation based on", "Knowledge bank", "ELN and age"),  col=set1[c(NA,1,2)],lty=c(NA,1,1), bty="n", text.font=c(2,1,1))
+
+#' Total numbers of transplants
+fAlloCR1 <- 0.3 ## Assume 30% allografts in CR1
+i <- which(x > fAlloCR1)[1] - 1
+c(`Knowlege bank`=(x + (1-x)*fRelapse*fAlloRelapse)[i], ELN=(x + (1-x)*fRelapseEln*fAlloRelapse)[i])
+
+#' Projected survival at 3yrs
+c(ELN=sEln[i], `Knowledge bank`=sIdeal[i])
+
+#' Achieve same survival as ELN with the following number of allografts
+j <- c(`Knowledge bank`=which(sIdeal >= sEln[i])[1]-1)
+fAlloCR1Pers <- (x + (1-x)*fRelapse*fAlloRelapse)[j]
+names(fAlloCR1Pers) <- names(j)
+fAlloCR1Pers
+
+#' #### Supplementary Figure S4
+#' As there is some uncertainty related to the overall benefit of early vs late allografts, the following plots show the benefit at the extremes of the
+#' expected distribution. Plots are shown for the 5%, 50% and 95% quantiles.
+#+ survNalloCi
+par(bty="L")
+
+benefitCiLoo <- multiRFX3TplCiCorLoo[3,"os",,] - multiRFX3TplCiCorLoo[2,"os",,]
+r <- rank(rowMeans(benefitCiLoo))
+
+s <- clinicalData$AOD < 60 & !is.na(clinicalData$CR_date) & !clinicalData$TPL_Phase %in% c("PR1","RD1")
+
+for(q in c(10, 50, 190)){
+	w <- which(r==q)
+	fAlloRelapse <- sum(prdData$transplantRel & s[!is.na(clinicalData$Recurrence_date)][prdData$index])/sum(relData$status & !relData$transplantCR1 & s[relData$index]) # fraction of patients that have received a salvage transplant
+	o <- order(-benefitAllo + ifelse(!s,NA,0), na.last=NA)
+	pRelapse <-  1-multiRFX3TplCiCorLoo[,"cir",w,] ## Relapse probabilities
+	fRelapse <- sapply(seq_along(o), function(i) mean(c(pRelapse[2,o[1:i]], pRelapse[1,o[-(1:i)]]), na.rm=TRUE)) # Personalised
+	
+	sIdeal <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplCiCorLoo["CR1","os",w,o[1:i]], (1-fAlloRelapse)*multiRFX3TplCiCorLoo["None","os",w,o[-(1:i)]] + fAlloRelapse*multiRFX3TplCiCorLoo["Relapse","os",w, o[-(1:i)]]), na.rm=TRUE))
+	x <- seq_along(sIdeal)/length(sIdeal)
+	plot(x + (1-x)*fRelapse*fAlloRelapse,sIdeal, type='l', xlab="Total fraction of allografts", ylab="Survival of eligible patients 3yrs after CR", col=set1[1], xaxs="i", yaxs="i", lty=1)
+	
+	p <- order(na.zero(c(1,4,2,3)[clinicalData$M_Risk])  + dataFrame$AOD_10/20 + ifelse(!s,NA,0) + ifelse(!s,NA,0), na.last=NA)
+	fRelapseEln <- sapply(seq_along(p), function(i) mean(c(pRelapse[2,p[1:i]], pRelapse[1,p[-(1:i)]]), na.rm=TRUE)) # ELN
+	sEln <- sapply(seq_along(p), function(i) mean(c(multiRFX3TplCiCorLoo["CR1","os",w,p[1:i]], (1-fAlloRelapse)*multiRFX3TplCiCorLoo["None","os",w,p[-(1:i)]] + fAlloRelapse*multiRFX3TplCiCorLoo["Relapse","os",w, p[-(1:i)]]), na.rm=TRUE))
+	
+	x <- seq_along(sEln)/length(sEln)
+	
+	lines(x + (1-x)*fRelapseEln*fAlloRelapse,sEln, sEln, type='l', col=set1[2])
+	legend("bottomright", c("Priorisation based on", "Knowledge bank", "ELN and age"),  col=set1[c(NA,1,2)],lty=c(NA,1,1), bty="n", text.font=c(2,1,1))
+}
+
 
 #' The bottom line is that we are able to confidently isolate a quarter of patients with high benefit of allografts (about 12% absolute benefit). The breakdown across 
 #' ELN risk groups is:
@@ -2731,7 +2801,7 @@ multiRfx5CvImputed <- sapply(mclapply(1:nrow(data), function(i){
 			else colSums(e$multiRfx5Imputed[3*365,1:3,])
 		}, mc.cores=10), I)
 
-#' #### Supplementary Figure S5B
+#' #### Supplementary Figure S6B
 #' Imputed accuracy
 #+ multiRfx5CvImputedPlot, cache=TRUE, fig.width=5, fig.height=2.5
 par(mar=c(3,3,3,1))
@@ -3722,7 +3792,7 @@ rangeplot3(x=subsets, y = sapply(subsetPatients, function(x) sapply(x, function(
 #				})) , col=1, xlab="Cohort", ylab="Concordance", ylim=c(0.65,.75))
 #
 
-#' #### Supplementary Figure S5A
+#' #### Supplementary Figure S6A
 #' Subsampling genes
 #+ subsetGenes, cache=TRUE
 set.seed(42)
@@ -3807,7 +3877,7 @@ files <- dir("../code/simRFX", pattern="Farmulations\\[1-1000\\]*", full.names =
 tmp <- new.env()
 load(files[1], envir = tmp)
 
-#' #### Supplementary Figure S6B
+#' #### Supplementary Figure S7B
 #' ##### P-values
 #' Plot the P-values as a function of Npu^2.
 #+ pVarSchoenfeld, fig.width=2, fig.height=2, cache=TRUE
@@ -3832,7 +3902,7 @@ power <- function(beta, N, p, psi=0.5, alpha=0.05){
 	pnorm(sqrt(N*psi*beta^2*p*(1-p))-qnorm(1-alpha/2))
 }
 
-#' #### Supplementary Figure S6A
+#' #### Supplementary Figure S7A
 #' Plot for observed cases and overlay a few usual suspects
 #+ power1540, fig.width=3, fig.height=3
 x <- seq(-2,2,0.01)
@@ -4111,7 +4181,6 @@ abline(0,0.5)
 #' #### HSCTs
 #' Here we reassess the effect of HSCTs, also cosidering the magnitude of prediction errors in the current data set and based on extrapolated errors.
 #' 
-#' #### Figure 4D
 #' Benefit v number of allografts in CR1
 #+ survNallo10000
 par(bty="L")
@@ -4122,9 +4191,9 @@ o <- order(-benefitAllo + ifelse(is.na(clinicalData$CR_date),NA,0) + ifelse(clin
 pRelapse <- 1+multiRFX3TplCiLoo[1:2,1,"aar",] - multiRFX3TplCiLoo[1:2,1,"rs",] ## Relapse probabilities
 fRelapse <- sapply(seq_along(o), function(i) mean(c(pRelapse[2,o[1:i]], pRelapse[1,o[-(1:i)]]), na.rm=TRUE)) # Personalised
 
-s <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplLoo[o[1:i],"cr1"], (1-fAlloRelapse)*multiRFX3TplLoo[o[-(1:i)],"none"] + fAlloRelapse*multiRFX3TplLoo[o[-(1:i)],"rel"]), na.rm=TRUE))
-x <- seq_along(s)/length(s)
-plot(x + (1-x)*fRelapse*fAlloRelapse,s, type='l', xlab="Total fraction of allografts", ylab="Survival of eligible patients 3yrs after CR", col=set1[1], xaxs="i", yaxs="i", lty=3)
+sIdeal <- sapply(seq_along(o), function(i) mean(c(multiRFX3TplLoo[o[1:i],"cr1"], (1-fAlloRelapse)*multiRFX3TplLoo[o[-(1:i)],"none"] + fAlloRelapse*multiRFX3TplLoo[o[-(1:i)],"rel"]), na.rm=TRUE))
+x <- seq_along(sIdeal)/length(sIdeal)
+plot(x + (1-x)*fRelapse*fAlloRelapse,sIdeal, type='l', xlab="Total fraction of allografts", ylab="Survival of eligible patients 3yrs after CR", col=set1[1], xaxs="i", yaxs="i", lty=3)
 
 ci <- multiRFX3TplCiLoo["dCr1Rel","upper","os",]-multiRFX3TplCiLoo["dCr1Rel","lower","os",] # 1540 patients
 sCi1540 <- rowMeans(sapply(1:10, function(foo){ set.seed(foo)
