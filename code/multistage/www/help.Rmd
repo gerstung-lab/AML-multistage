@@ -1,0 +1,51 @@
+# AML multistage predictions
+
+This webtool generates predictions according to the multistage random effects model presented in 
+_Personally tailored cancer management based on knowledge banks of genomic and clinical data_ (Gerstung et al., submitted manuscript).
+
+Using genomic and clinical variables, the tool models the transitions from **induction** to either:
+ 
+   * **death without remission** (non-complete remission death, NCD) or 
+   * **complete remission** (CR), and also the subsequent transitions to 
+      * **death without relapse** (non-relapse death, NRD), 
+      * **relapse** (Rel), as well as 
+         * **post relapse deaths** (PRD).
+
+Based on these rates the probability to be alive or die in either stage are computed for each patient, based on his individual genomic and clinical profile.
+
+![Screen shot](screenshot.png)
+
+### Sidebar
+The left navigation panel has the following elements:
+
+* **Help** Displays this page.
+* **Select sample** You can select a sample from the drop down list to load the values of each his prognostic variables. 
+* **Prognostic variables** You may also manually enter the values of prognostic variables. For genomic lesions the choices are given by radio buttons. Other variables
+are entered as a numeric value. The valid range is denoted by square brackets.
+* **Confidence intervals**. You can choose between numerical and analytically computed confidence intervals. Currently latter only works for predictions after remission, but
+is considerably faster.
+
+If you set a value to NA, or leave the field blank, the corresponding value will be **imputed** using the covariance with the other variables. 
+This usually makes the prediction more similar
+to the prediction for a hypothetical individual with all variables being average, and increases the confidence intervals due to the greater uncertainty. 
+
+The prediction for an average patient is shown if you select 'reset' under **Select sample**. Note that 
+the prediction for an average individual is very similar, but not 100% identical to the average of all predictions. 
+
+After changing any input parameters, please click **Compute survival** to update the predictions. 
+
+### Main panel
+#### Top figures
+The main panels display the time-dependent multistage probabilities as two sediment plots. The left shows the outcome as predicted from diagnosis, 
+the right shows the predictions after first complete remission.
+
+#### Tables
+Two tables are shown underneath the figures: 
+
+* The first displays the **risk** (log hazard) of transition from one stage to the next, broken down into risk categories. Note that for CR, high
+values denote a fast transition to CR, which is favourable, unlike the other, unfavourable transitions.
+
+* The second tab shows the **coefficients** for each _covariate_ X and transition. _Input_ shows the value entered (some are rescaled),  _Imputed_ contains the imputed value if the variable was missing.
+The subsequent columns show the _coef_ficients beta and _values_ = X * beta for each variable and transitions. The latter denotes the contribution to the log hazard of each variable. 
+
+Version 0.0.3 (2015-09-21)
