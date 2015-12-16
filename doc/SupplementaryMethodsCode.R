@@ -1321,7 +1321,7 @@ pairs(allStagesRisk, panel=f, pch=19)
 #' Non-complete remission deaths
 w <- WaldTest(coxRFXNcdTD)
 w$Q.BH <- p.adjust(w$p.value, "BH")
-w$Q.BY <- p.adjust(w$p.value, "BH")
+w$Q.BY <- p.adjust(w$p.value, "BY")
 datatable(w)
 sheet  <- createSheet(wb, sheetName="Non-complete remission deaths")
 addDataFrame(w, 
@@ -1333,7 +1333,7 @@ addDataFrame(w,
 #' Complete remission
 w <- WaldTest(coxRFXCrTD)
 w$Q.BH <- p.adjust(w$p.value, "BH")
-w$Q.BY <- p.adjust(w$p.value, "BH")
+w$Q.BY <- p.adjust(w$p.value, "BY")
 datatable(w)
 sheet  <- createSheet(wb, sheetName="Complete remission")
 addDataFrame(w, 
