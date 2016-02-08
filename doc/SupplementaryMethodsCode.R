@@ -28,7 +28,7 @@
 #' 
 #' |Group        | Symbol |   p|Variables                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 #' |:------------|:-------------|---:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-#' |Fusion genes      | Fusions    |   9|t_MLL, inv3_t3_3, t_9_22, t_15_17, t_8_21, inv16_t16_16, t_6_9, t_9_11, t_v_11                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+#' |Fusion genes      | Fusions    |   8| inv3_t3_3, t_9_22, t_15_17, t_8_21, inv16_t16_16, t_6_9, t_9_11, t_v_11                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 #' |Copy number alterations  | CNA       |  18|minus5_5q, minus7, minus7q, abn7other, plus8_8q, minus9q, mono12_12p_abn12p, plus13, mono17_17p_abn17p, minus18_18q, minus20_20q, plus21, plus22, minusY, abn3q_other, plus11_11q, mono4_4q_abn4q, complex                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 #' |Point mutations in single genes | Genetics    |  58|ASXL1, ATRX, BCOR, BRAF, CBL, CBLB, CDKN2A, CREBBP, CUX1, DNMT3A, EP300, ETV6, EZH2, FBXW7, GATA2, GNAS, IDH1, IKZF1, JAK2, KDM5A, KDM6A, KIT, KRAS, MLL, MLL2, MLL3, MLL5, MPL, MYC, NF1, NPM1, NRAS, PHF6, PRPF40B, PTEN, PTPN11, RAD21, RB1, RUNX1, SF1, SF3A1, SF3B1, SFRS2, SH2B3, STAG2, TET2, TP53, U2AF1, U2AF2, WT1, ZRSR2, CEBPA_mono, CEBPA_bi, FLT3_ITD, FLT3_TKD, FLT3_other, IDH2_p172, IDH2_p140                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 #' |Gene:Gene product terms | Gene:Gene    | 126|BCOR:DNMT3A, ASXL1:EZH2, DNMT3A:IDH1, DNMT3A:KRAS, DNMT3A:MLL, IDH1:MLL, DNMT3A:MYC, DNMT3A:NF1, CBL:NPM1, DNMT3A:NPM1, GATA2:NPM1, IDH1:NPM1, KIT:NPM1, KRAS:NPM1, MYC:NPM1, NF1:NPM1, ASXL1:NRAS, BCOR:NRAS, DNMT3A:NRAS, EZH2:NRAS, GATA2:NRAS, IDH1:NRAS, KIT:NRAS, KRAS:NRAS, MLL:NRAS, NPM1:NRAS, NPM1:PHF6, DNMT3A:PTPN11, IDH1:PTPN11, KRAS:PTPN11, NPM1:PTPN11, NRAS:PTPN11, DNMT3A:RAD21, NPM1:RAD21, NRAS:RAD21, PTPN11:RAD21, ASXL1:RUNX1, BCOR:RUNX1, DNMT3A:RUNX1, EZH2:RUNX1, IDH1:RUNX1, MLL:RUNX1, NRAS:RUNX1, PHF6:RUNX1, NRAS:SF3B1, ASXL1:SFRS2, DNMT3A:SFRS2, IDH1:SFRS2, NPM1:SFRS2, NRAS:SFRS2, RUNX1:SFRS2, ASXL1:STAG2, DNMT3A:STAG2, EZH2:STAG2, MLL:STAG2, NPM1:STAG2, NRAS:STAG2, RUNX1:STAG2, SFRS2:STAG2, ASXL1:TET2, DNMT3A:TET2, KIT:TET2, MLL:TET2, NPM1:TET2, NRAS:TET2, PTPN11:TET2, RUNX1:TET2, SFRS2:TET2, STAG2:TET2, DNMT3A:TP53, NRAS:TP53, NRAS:U2AF1, NPM1:WT1, NRAS:WT1, DNMT3A:CEBPA_mono, NPM1:CEBPA_mono, TET2:CEBPA_mono, GATA2:CEBPA_bi, NRAS:CEBPA_bi, WT1:CEBPA_bi, DNMT3A:FLT3_ITD, EZH2:FLT3_ITD, IDH1:FLT3_ITD, MLL:FLT3_ITD, MYC:FLT3_ITD, NPM1:FLT3_ITD, NRAS:FLT3_ITD, PHF6:FLT3_ITD, PTPN11:FLT3_ITD, RAD21:FLT3_ITD, RUNX1:FLT3_ITD, STAG2:FLT3_ITD, TET2:FLT3_ITD, WT1:FLT3_ITD, CEBPA_mono:FLT3_ITD, CEBPA_bi:FLT3_ITD, DNMT3A:FLT3_TKD, IDH1:FLT3_TKD, MLL:FLT3_TKD, NPM1:FLT3_TKD, NRAS:FLT3_TKD, RAD21:FLT3_TKD, RUNX1:FLT3_TKD, TET2:FLT3_TKD, WT1:FLT3_TKD, FLT3_ITD:FLT3_TKD, DNMT3A:FLT3_other, NPM1:FLT3_other, NRAS:FLT3_other, PTPN11:FLT3_other, RUNX1:FLT3_other, TET2:FLT3_other, FLT3_ITD:FLT3_other, DNMT3A:IDH2_p172, ASXL1:IDH2_p140, DNMT3A:IDH2_p140, MLL:IDH2_p140, NPM1:IDH2_p140, NRAS:IDH2_p140, PTPN11:IDH2_p140, RUNX1:IDH2_p140, SFRS2:IDH2_p140, STAG2:IDH2_p140, FLT3_ITD:IDH2_p140, FLT3_TKD:IDH2_p140, NPM1:FLT3_ITD:DNMT3A |
@@ -343,7 +343,7 @@ text(-c+v ,o,m, font=1, pos=4)
 
 
 
-#' #### Supplemenary Figure S9
+#' #### Supplemenary Figure S8
 #' ' Here we generate a panel overview of all genetic lesions and their impact on outcome, split by clonal and subclonal status.
 
 #+ subcloneKM, fig.width=8, fig.height=8 
@@ -788,7 +788,6 @@ points(VarianceComponents(coxRFXFitOsTDGGc),  pch=19)
 rm(parBoot)
 
 #' ### Risk constellation plots
-#' #### Supplementary Figure S2A
 #' Plot of log hazard v outcome
 #+ logHazOutcome, fig.width=3, fig.height=2
 par(mar=c(3,3,3,1), mgp=c(2,.5,0))
@@ -806,7 +805,7 @@ image(x=q/max(q)*500, y=c(u[4]-(u[4]-u[3])/20, u[4]), matrix(1:10), col= (brewer
 axis(side=3, at=pretty(q/365)/max(q)*365*500, labels=pretty(q/365))
 lines(ksmooth(seq_along(o),t[o,2]==0, bandwidth=50))
 
-#' #### Supplementary Figure S2C
+#' #### Figure 2
 #' Risk constellation plots using the `stars()` function
 #+ stars, fig.width=12, fig.height=12
 set.seed(42)
@@ -829,22 +828,15 @@ symbols(locations[,1], locations[,2], circles=rep(.5,(nStars^2)), inches=FALSE, 
 title(main=l)
 
 
-#' #### Supplementary Figure S2B
-#' Randomly select 5 patients according to their genotype/outcome
-#+ patientStars, fig.width=4, fig.height=3
-patients <- c(
-		which(dataFrame$`TP53`==1 & dataFrame$complex==1 & os[,1] < 300 & os[,2]==1)[1],
-		which(dataFrame$`NPM1:FLT3_ITD:DNMT3A`==1 & os[,1] < 300 & os[,2]==1)[1],
-		which(dataFrame$SFRS2==1 & clinicalData$WHOcat=='no' & os[,2]==1)[1],
-		which(dataFrame$NPM1==1 & dataFrame$FLT3_ITD==0 & dataFrame$DNMT3A==0 & os[,1] > 2000)[1],
-		which(dataFrame$t_15_17==1 & os[,1] > 2000)[1]
-)
+#' #### Figure 2B
+#' Risk constellation examples
+#+ patientStars, fig.width=7, fig.height=3
+patients <- match(c("PD11104a", "PD8314a","PD10941a","PD10828a","PD10844a","PD10829a","PD10996a","PD10840a"), rownames(dataFrame))
 genotype <- apply(dataFrame[groups %in% c("Fusions","CNA","Genetics")]==1, 1,function(x) paste(names(which(x)), collapse=";"))
 
 t <- os
 p <- PartialRisk(coxRFXFitOsTDGGc, newZ=dataFrame[, whichRFXOsTDGG])
 p <- p[,colnames(p)!="Nuisance"]
-locations <- 1.5*hilbertCurve(log2(nStars)) #2*expand.grid(1:nStars,1:nStars)
 x <- p - rep(colMeans(p), each=nrow(p))
 x <- x/(2*sd(x)) + 1
 c <- cut(t[patients,1], quantile(t[,1], seq(0,1,0.1), na.rm=TRUE))
@@ -1526,7 +1518,7 @@ survConcordance(os ~ colSums(multiRfx5Loo[times == 3*365,1:3,]))
 ape(1-colSums(multiRfx5Loo[times == 3*365,1:3,]), os, 3*365)
 
 
-#' #### Figure 2
+#' #### Figure 3
 #' We plot all predictions as sediments plots, laid out in the same way as the risk constellation plot, Supplementary Figure S2C
 #+ fiveStagePredictedHilbert, fig.width=12, fig.height=12
 set.seed(42)
@@ -1601,12 +1593,19 @@ axis(side=3, at=pretty(q/365)/max(q)*365*500, labels=pretty(q/365))
 lines(ksmooth(seq_along(o),t[o,2]==0, bandwidth=50))
 
 #' #### Supplementary Figure S1B-D
-#' Plots of concordance and absolute prediction measures
+#' Plots of concordance and absolute prediction measures for baseline error, ELN, RFX and multistage models. 
 #+ errorsMultiRfxOsLoo, fig.width=2.5, fig.height=2.5
 multiRfx5C <- sapply(seq_along(times), function(i) survConcordance(os ~ colSums(multiRfx5Loo[i,1:3,]))$concordance[1])
-plot(times/365.25, multiRfx5C, type='l', xlab="Time", ylab="Concordance", ylim=c(0.65, 0.73), col=set1[1])
+eln <- factor( paste(clinicalData$M_Risk))
+
+plot(times/365.25, multiRfx5C, type='l', xlab="Time", ylab="Concordance", ylim=c(0.5, 0.73), col=set1[1])
 abline(h=survConcordance(os ~ rfx5Loo[6,])$concordance, col=set1[2], lwd=1)
-legend("bottomright",c("RFX OS","RFX Multistage"), col=set1[1:2], lty=1, bty="n")
+abline(h=survConcordance(os ~ predict(coxph(os ~ eln)))$concordance, col=set1[3], lwd=1)
+
+legend("bottomright",c("ELN","RFX OS","RFX Multistage"), col=set1[c(3:1)], lty=1, bty="n")
+
+ss <- sapply(levels(eln),function(e) summary(survfit(os ~ 1, subset=eln==e), times=times)$surv)
+ee <- sapply(times, function(t) ape(ss[times==t,eln], os, t))
 
 a <- sapply(times, function(t) ape(1-colSums(multiRfx5Loo[times == t,1:3,]), os, t))
 s <- summary(survfit(coxRFXFitOsTDGGc), times=times)
@@ -1616,8 +1615,10 @@ for(i in 1:4){
 	plot(times/365.25, e[i,], type='l', xlab="Time (yr)", ylab=rownames(a)[i], col=set1[9])
 	lines(times/365.25, a[i,], col=set1[1])
 	lines(times/365.25, b[i,], col=set1[2])
-	legend("bottomright",c("Kaplan-Meier","Multistage","RFX OS"), col=set1[c(9,1:2)], lty=1, bty="n")
+	lines(times/365.25, ee[i,], col=set1[3])
+	legend("bottomright",c("Kaplan-Meier","ELN","Multistage","RFX OS"), col=set1[c(9,3,1:2)], lty=1, bty="n")
 }
+
 
 #' Figure of predicted survival for 100 patients, comparing multistage and OS predictions
 #+ survivalMultiRfxOsLoo, fig.width=2.5, fig.height=2.5
@@ -1632,7 +1633,7 @@ allDataTpl$transplantCR1 <- rep(c(0,1,0), nrow(dataFrame))
 allDataTpl$transplantRel <- rep(c(0,0,1), nrow(dataFrame))
 
 
-#' #### Figure 3A-F
+#' #### Figure 4A-F
 #' Here we show survival predictions for three selected patients
 #+ threePatientsAllo, fig.width=7.5, fig.height=7.5
 xmax=2000
@@ -1681,8 +1682,8 @@ for(pd in patients){
 	}}
 
 
-#' #### Supplementary Figure S3
-#' Here we show results for an additional 4 patients, the first three being chosen as counterparts to the patients shown in Figure 3. The fourth patient is a patients with ASXL1 mutations.
+#' #### Supplementary Figure S2
+#' Here we show results for an additional 4 patients, the first three being chosen as counterparts to the patients shown in Figure 4. The fourth patient is a patients with ASXL1 mutations.
 #+ fourPatientsAllo, fig.width=7.5, fig.height=10
 xmax=2000
 patients <- c("PD10828a","PD10844a","PD10829a","PD10996a")
@@ -2582,7 +2583,7 @@ multiRFX3TplCiCorLoo <- simplify2array(mclapply(1:nrow(dataFrame), function(foo)
 								return(e$multiRFX3TplCiCorLoo)
 							}), mc.cores=4))
 
-#' #### Figure 4A
+#' #### Figure 5A
 #' The figure shows the mortality reduction of allograft CR1 v none, allograft in Rel v none, and CR1 v Relapse, for LOO predictions similar to above.
 #+mortalityReductionLoo, fig.width=3.5, fig.height=2.5
 par(mar=c(3,3,1,3), las=2, mgp=c(2,.5,0), bty="n")
@@ -2622,7 +2623,7 @@ axis(side=4, at=-1/n, labels=n, las=1)
 mtext("Number needed to harm", side=4, at=-.1, line=2, las=0)
 
 
-#' #### Figure 4B
+#' #### Figure 5B
 #' Violins plot of the predicted survival gain
 #+ benefit_hsct, fig.width=1, fig.height=2.5
 par(mar=c(3,3,1,1), mgp=c(2,0.5,0), bty="n")
@@ -2637,7 +2638,7 @@ polygon(yy[v], xx[v], border=NA, col=set1[1])
 polygon(yy[!v], xx[!v], border=NA, col=set1[2])
 lines(yy, xx)
 
-#' #### Figure 4C
+#' #### Figure 5C
 #' KM plot of the high v low benefit groups
 #+ survival_hsct, fig.width=3, fig.height=2.5
 par(mar=c(3,3,1,1), mgp=c(2,0.5,0), bty="L")
@@ -2661,7 +2662,7 @@ for(l in levels(e)){
 	legend("topright", legend=paste(rep(levels(benefitGroup), each=2), rep(c("no HSCT","w. HSCT"), 2), as.numeric(t), sep=", "), col=rep(pastel1[1:nlevels(benefitGroup)],each=2), lty=rep(c(1,2), nlevels(benefitGroup)), bty="n")
 }
 
-#' #### Figure 4D
+#' #### Figure 5D
 #' The following plot shows the hypothetical population-level survival gains of the knowledge bank.
 #+ survNallo
 par(bty="L")
@@ -2698,7 +2699,7 @@ fAlloCR1Pers <- (x + (1-x)*fRelapse*fAlloRelapse)[j]
 names(fAlloCR1Pers) <- names(j)
 fAlloCR1Pers
 
-#' #### Supplementary Figure S5
+#' #### Supplementary Figure S4
 #' As there is some uncertainty related to the overall benefit of early vs late allografts, the following plots show the benefit at the extremes of the
 #' expected distribution. Plots are shown for the 5%, 50% and 95% quantiles.
 #+ survNalloCi
@@ -2853,7 +2854,7 @@ multiRfx5CvImputed <- sapply(mclapply(1:nrow(data), function(i){
 			else colSums(e$multiRfx5Imputed[3*365,1:3,])
 		}, mc.cores=10), I)
 
-#' #### Supplementary Figure S7B
+#' #### Supplementary Figure S6B
 #' Imputed accuracy
 #+ multiRfx5CvImputedPlot, cache=TRUE, fig.width=5, fig.height=2.5
 par(mar=c(3,3,3,1))
@@ -3470,12 +3471,13 @@ survConcordance(tcgaSurvival[tcgaNkIdx] ~ tcgaRiskCPSSOs[tcgaNkIdx])
 
 #' ELN score [@DohnerB2010]
 ELN <- function(X, nkIdx){
-	factor(ifelse(X$inv3_t3_3==1 | X$t_6_9==1 | X$minus5_5q==1 | X$mono17_17p_abn17p==1 | X$minus7==1 | X$complex==1 | X$t_v_11==1,
-					"Adverse",
-					ifelse(X$t_15_17==1 | X$t_8_21==1 | X$inv16_t16_16==1 | ((X$CEBPA_bi==1 |  X$CEBPA_mono==1 | (X$NPM1==1 & X$FLT3_ITD==0)) & nkIdx),
-							"Favorable",
-							ifelse(nkIdx & (X$FLT3_ITD==1 | X$NPM1==0 & X$FLT3_ITD==0), 
-									"Inter-1", "Inter-2"))), levels=rev(c("Adverse","Inter-1","Inter-2","Favorable")))
+	factor(ifelse(X$MissingCyto, NA, 
+					ifelse(X$inv3_t3_3==1 | X$t_6_9==1 | X$minus5_5q==1 | X$mono17_17p_abn17p==1 | X$minus7==1 | X$complex==1 | X$t_v_11==1,
+							"Adverse",
+							ifelse(X$t_15_17==1 | X$t_8_21==1 | X$inv16_t16_16==1 | ((X$CEBPA_bi==1 |  X$CEBPA_mono==1 | (X$NPM1==1 & X$FLT3_ITD==0)) & nkIdx),
+									"Favorable",
+									ifelse(nkIdx & (X$FLT3_ITD==1 | X$NPM1==0 & X$FLT3_ITD==0), 
+											"Inter-1", "Inter-2")))), levels=rev(c("Adverse","Inter-1","Inter-2","Favorable")))
 }
 
 table(clinicalData$M_Risk, ELN(dataFrame, nkIdx))
@@ -3547,6 +3549,7 @@ legend("topright", levels(tcgaClinical$C_Risk)[c(2,3,1)], fill=set1[c(3,2,1)], b
 
 
 #' ### Multistage models
+#+multiRfx5Tcga, cache=TRUE
 d <- tcgaData
 d$transplantRel <- tcgaTpl[,"transplantRel"]
 d$transplantCR1 <- tcgaTpl[,"transplantCR1"]
@@ -3576,24 +3579,33 @@ plot(survfit(tcgaSurvival ~ 1))
 lines(seq(0,2000)/365.25/1.25,1-s)
 
 multiRfx5TcgaC <- sapply(seq(1,2000,10), function(i) survConcordance(tcgaSurvival ~  colSums(multiRfx5Tcga[i,1:3,]))$concordance)
-plot(seq(1,2000,10)/365.25,multiRfx5TcgaC, type='l', xlab="Years after diagnosis", ylab="Concordance", col=set1[1])
+plot(seq(1,2000,10)/365.25,multiRfx5TcgaC, type='l', xlab="Years after diagnosis", ylab="Concordance", col=set1[1], ylim=c(0.5, 0.73))
 abline(h=tcgaConcordanceTD[1,"coxRFXTD"],col=set1[2])
-legend("bottomright",c("RFX OS","RFX Multistage"), col=set1[2:1], lty=1, bty="n")
+tcgaEln <- ELN(tcgaDataImputed, tcgaNkIdx)
+abline(h=survConcordance(tcgaSurvival ~ predict(coxph(os ~ ELN, data.frame(ELN=paste(clinicalData$M_Risk))), newdata=data.frame(ELN=tcgaEln)))$concordance,col=set1[3])
+legend("bottomright",c("ELN","RFX OS","RFX Multistage"), col=set1[3:1], lty=1, bty="n")
 
 
 #' #### Supplementary Figure S1F-G
 #+ tcgaMultistageError, fig.width=2.5, fig.height=2.5
 times <- seq(1,2000,10)
-s <- summary(survfit(tcgaSurvival ~ 1), times=times/365.25)
+ss <- sapply(levels(eln),function(e) summary(survfit(os ~ 1, subset=eln==e), times=times)$surv)
+ee <- sapply(times, function(t) ape(ss[times==t,paste(tcgaEln)], tcgaSurvival, t/365.25))
+
+s0 <- summary(survfit(tcgaSurvival ~ 1), times=times/365.25)
+s <- summary(survfit(os ~ 1), times=times)
 c <- summary(survfit(coxRFXFitOsTDGGc), times=times)
+e0 <- sapply(times, function(t) ape(s0$surv[times==t], tcgaSurvival, t/365.25))
 e <- sapply(times, function(t) ape(s$surv[times==t], tcgaSurvival, t/365.25))
 a <- sapply(times, function(t) ape(1-colSums(multiRfx5Tcga[t,1:3,]), tcgaSurvival, t/365.25))
 b <- sapply(times, function(t) ape(c$surv[times==t] ^ exp(tcgaRiskTD$coxRFXTD - mean(coxRFXFitOsTDGGc$means %*% coxRFXFitOsTDGGc$coefficients)), tcgaSurvival, t/365.25))
 for(i in 1:4){
 	plot(times/365.25, e[i,], type='l', xlab="Time (yr)", ylab=rownames(a)[i], col=set1[9])
+	lines(times/365.25, e0[i,], col=set1[9], lty=3)
 	lines(times/365.25, a[i,], col=set1[1])
 	lines(times/365.25, b[i,], col=set1[2])
-	legend("bottomright",c("Kaplan-Meier","Multistage","RFX"), col=set1[c(9,1:2)], lty=1, bty="n")
+	lines(times/365.25, ee[i,], col=set1[3])
+	legend("bottomright",c("Kaplan-Meier (AML)", "Kaplan-Meier (TCGA)", "ELN","Multistage","RFX"), col=set1[c(9,9,3,1:2)], lty=c(1,3,1,1,1), bty="n")
 }
 
 #' #### Supplementary Figure S1A
@@ -3780,7 +3792,7 @@ legend(par("usr")[1],1.5, fill=clr[1:nrow(r)], legend=1:nrow(r), bty="n", border
 #' ## Code
 
 #' ### Interpolations
-#' #### Figure 5B
+#' #### Figure 6B
 #' Subsampling patients
 #+ subsetPatients, cache=TRUE
 library(survivalROC)
@@ -3844,7 +3856,7 @@ rangeplot3(x=subsets, y = sapply(subsetPatients, function(x) sapply(x, function(
 #				})) , col=1, xlab="Cohort", ylab="Concordance", ylim=c(0.65,.75))
 #
 
-#' #### Supplementary Figure S7A
+#' #### Supplementary Figure S6A
 #' Subsampling genes
 #+ subsetGenes, cache=TRUE
 set.seed(42)
@@ -3929,7 +3941,7 @@ files <- dir("../code/simRFX", pattern="Farmulations\\[1-1000\\]*", full.names =
 tmp <- new.env()
 load(files[1], envir = tmp)
 
-#' #### Supplementary Figure S8B
+#' #### Supplementary Figure S7B
 #' ##### P-values
 #' Plot the P-values as a function of Npu^2.
 #+ pVarSchoenfeld, fig.width=2, fig.height=2, cache=TRUE
@@ -3954,7 +3966,7 @@ power <- function(beta, N, p, psi=0.5, alpha=0.05){
 	pnorm(sqrt(N*psi*beta^2*p*(1-p))-qnorm(1-alpha/2))
 }
 
-#' #### Supplementary Figure S8A
+#' #### Supplementary Figure S7A
 #' Plot for observed cases and overlay a few usual suspects
 #+ power1540, fig.width=3, fig.height=3
 x <- seq(-2,2,0.01)
@@ -3995,7 +4007,7 @@ boxplot(t(C), staplewex=0, pch=16, lty=1, ylab="", ylab="Concordance", xaxt="n")
 rotatedLabel(labels=(sub(".concordant","", rownames(C))))
 abline(h=CoxHD:::ConcordanceFromVariance(var(simRisk)))
 
-#' #### Figure 5C
+#' #### Figure 6C
 #' ##### Mean prediction error
 #+ predError100-10000, cache=TRUE
 load("../code/sim2Data.RData")
@@ -4046,7 +4058,7 @@ points(exp(coef(coxRFXFitOsTDGGc)[effects]), colMeans(dataFrame[effects]), col=c
 text(labels=effects,exp(coef(coxRFXFitOsTDGGc)[effects]), colMeans(dataFrame[effects]), pos=ifelse(sign(coef(coxRFXFitOsTDGGc)[effects])==1,4,2))
 #legend("bottom", lty=c(1,NA,NA,NA,NA,NA),pch=c(NA,19,22,22,22,22), c("Power","Selected variables", paste("Dist.", g)), col=c(colLevels[10], "black", colGroups[g]), bty="n", ncol=2)
 
-#' #### Figure 5B
+#' #### Figure 6B
 #' Number of cases needed
 #+ cases, fig.width=2.2, fig.height=2
 par(mar=c(3,5,1,1), bty='n', mgp=c(2.5,0.5,0))
