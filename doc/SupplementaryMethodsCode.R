@@ -1262,7 +1262,7 @@ title(main="Non-relapse deaths")
 PlotVarianceComponents(coxRFXPrdTD, col=colGroups, order=o)
 title(main="Post-relapse deaths")
 
-#' #### Figure 1C
+#' #### Figure 1E
 #' As barplot
 #+ allVarCompBar, fig.width=2, fig.height=2
 par(mar=c(4,3,1,5))
@@ -1574,6 +1574,40 @@ survConcordance(Surv(cr[,1], cr[,2]==2) ~ rfx5Loo[1,])
 survConcordance(Surv(cr[,1], cr[,2]==1) ~ rfx5Loo[2,])
 survConcordance(os ~ rfx5Loo[6,])
 
+#' #### Figure 1C
+#' Model schematic with heatmaps of all coefficients, all data and resulting logfc transition rates
+#+ overview, fig.width=1.5, fig.heigt=2.5
+layout(matrix(c(1,2,4,3), nrow=2), width=c(3,1),height=c(1,4))
+par(bty="n", mar=c(0,3,3,2), mgp=c(2,.5,0), tcl=-.25)
+
+allCoef <- sapply(c("NcdTD","CrTD","NrdTD","RelTD","PrdTD"), function(x){
+			m <- get(paste0("coxRFX",x))$coef})
+
+s <- c(Fusions=1, CNA=2, Genetics=3, GeneGene=4, Clinical=5, Demographics=6, Treatment=7, Nuisance=8)
+o <- order(s[crGroups], 1/apply(allCoef,1,var)/apply(data,2,var))
+image(y=1:5, x=1:nrow(allCoef), z=as.matrix(allCoef[o,]), useRaster=TRUE, col=colorRampPalette(rev(brewer.pal(9,"RdBu")))(100), xaxt="n", ylab="transition")
+t <- table(crGroups)[names(s)]
+par(xpd=NA)
+segments(x0=cumsum(c(0.5, t))[-length(t)-1] , x1=cumsum(t)+.5, col=colGroups[names(s)], y0=6, y1=6, lend=1, lwd=2)
+
+colRamp <- sapply(colGroups[names(s)], function(x) c(colorRampPalette(c("white",x))(11)[-1]))
+
+par(bty="L", mar=c(3,3,1,2))
+times <- round(seq(0,5,0.05)*365)
+p <- order(colSums(multiRfx5Loo[times == 3*365,1:3,]))
+Z <- data[p,o]
+Z <- t(Z) + apply(Z,2,min)
+Z <- Z/apply(Z,1,max)
+
+image(x=1:nrow(Z),y=1:ncol(Z),Z*.9 + as.numeric(s[crGroups][o])-1 + 1e-5, useRaster=TRUE, 
+		col=colRamp, 
+		breaks=seq(0,length(unique(crGroups)), 0.1),  ylab="Patients",xlab="Variable", xlim=c(0,nrow(Z)), ylim=c(0,ncol(Z)))
+
+par(bty="n", mar=c(3,0,1,2))
+image(x=1:5, z=t(as.matrix(allStagesRisk[p,]) - rep(colMeans(allStagesRisk), each=ncol(allStagesRisk))), useRaster=TRUE, col=rev(brewer.pal(9,"RdBu")), yaxt="n", xlab="rate (logFC)")
+
+
+
 #' #### Figure 1D
 #' Plot of absolute risk at 3yr, leave-one-out cross validated v outcome
 #+ survival_risk, fig.width=3, fig.height=1.5
@@ -1583,7 +1617,7 @@ q <- quantile(t[,1], seq(0,1,.1))# q <- splinefun( s$surv, s$time,"monoH.FC")(se
 c <- cut(t[,1], q, na.rm=TRUE)
 h <- colSums(multiRfx5Loo[times == 3*365,1:3,])
 o <- order(h)
-plot(h[o], col= (brewer.pal(10,'RdBu'))[c[o]], type='h', xaxt="n", xlab='', las=2, ylab="Survival at 3 years")
+plot(1-h[o], col= (brewer.pal(10,'RdBu'))[c[o]], type='h', xaxt="n", xlab='', las=2, ylab="Survival at 3 years")
 mtext(side=1, line=1, "Patient")
 u <- par("usr")
 q <- pmin(q,365*12)
@@ -1619,6 +1653,11 @@ for(i in 1:4){
 	legend("bottomright",c("Kaplan-Meier","ELN","Multistage","RFX OS"), col=set1[c(9,3,1:2)], lty=1, bty="n")
 }
 
+i <- 2; ## R2
+plot(times/365.25, 1 - a[i,]/e[i,], type='l', xlab="Time (yr)", ylab="R2", col=set1[1], ylim=c(0,.3))
+lines(times/365.25,  1 - b[i,]/e[i,], col=set1[2])
+lines(times/365.25,  1 - ee[i,]/e[i,], col=set1[3])
+legend("bottomright",c("ELN","Multistage","RFX OS"), col=set1[c(3,1:2)], lty=1, bty="n")
 
 #' Figure of predicted survival for 100 patients, comparing multistage and OS predictions
 #+ survivalMultiRfxOsLoo, fig.width=2.5, fig.height=2.5
@@ -3607,6 +3646,13 @@ for(i in 1:4){
 	lines(times/365.25, ee[i,], col=set1[3])
 	legend("bottomright",c("Kaplan-Meier (AML)", "Kaplan-Meier (TCGA)", "ELN","Multistage","RFX"), col=set1[c(9,9,3,1:2)], lty=c(1,3,1,1,1), bty="n")
 }
+
+i <- 2; ## R2
+plot(times/365.25, 1 - a[i,]/e[i,], type='l', xlab="Time (yr)", ylab="R2", col=set1[1], ylim=c(0,.3))
+lines(times/365.25,  1 - b[i,]/e[i,], col=set1[2])
+lines(times/365.25,  1 - ee[i,]/e[i,], col=set1[3])
+legend("bottomright",c("ELN","Multistage","RFX OS"), col=set1[c(3,1:2)], lty=1, bty="n")
+
 
 #' #### Supplementary Figure S1A
 #' Here we generate the overview shown in Supplementary Figure S1A.
