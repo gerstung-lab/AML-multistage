@@ -15,6 +15,8 @@ fluidPage(
 
 		# Application title
 		titlePanel("AML multistage predictions (beta)"),
+		div(HTML('<h4 style="color:red;""> For research use only</h4>')),
+		
 		
 		fluidRow(
 				# Sidebar with a slider input for number of observations
@@ -33,7 +35,8 @@ fluidPage(
 								tags$hr(),
 								radioButtons("ciType", tags$b("Confidence intervals"), choices=c("analytical (fast, CR only)"="analytical","simulated (slow)"="simulated"), selected = "analytical"), ## CI type
 								tags$hr(),
-								div(HTML('<b><a href="help.html">Help</a></b>')))
+								div(HTML('<b><a href="help.html">Help</a></b>')),
+							    div(HTML('<b><a href="disclaimer.html">Disclaimer</a></b>')))
 				),
 				
 				# Show a plot of the generated distribution

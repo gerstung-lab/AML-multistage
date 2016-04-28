@@ -1,0 +1,2 @@
+# Disclaimer
+This webtool is designed for **research use only** and **not intended for direct clinical application**.
