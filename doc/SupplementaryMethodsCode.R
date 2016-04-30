@@ -805,7 +805,7 @@ image(x=q/max(q)*500, y=c(u[4]-(u[4]-u[3])/20, u[4]), matrix(1:10), col= (brewer
 axis(side=3, at=pretty(q/365)/max(q)*365*500, labels=pretty(q/365))
 lines(ksmooth(seq_along(o),t[o,2]==0, bandwidth=50))
 
-#' #### Figure 2
+#' #### Figure S1A
 #' Risk constellation plots using the `stars()` function
 #+ stars, fig.width=12, fig.height=12
 set.seed(42)
@@ -828,7 +828,7 @@ symbols(locations[,1], locations[,2], circles=rep(.5,(nStars^2)), inches=FALSE, 
 title(main=l)
 
 
-#' #### Figure 2B
+#' #### Figure S1B
 #' Risk constellation examples
 #+ patientStars, fig.width=7, fig.height=3
 patients <- match(c("PD11104a", "PD8314a","PD10941a","PD10828a","PD10844a","PD10829a","PD10996a","PD10840a"), rownames(dataFrame))
@@ -865,7 +865,7 @@ text(locations[,1], locations[,2]+1,labels=paste(gsub(";","\n",genotype[patients
 #' 
 #' ### Transitions
 #' 
-#' We use a hierarchical multistage model to quantify the rates at which a patient progresses from one disease/treatment stage to another (Figure 1A).
+#' We use a hierarchical multistage model to quantify the rates at which a patient progresses from one disease/treatment stage to another (Figure 2A).
 #' After learning the marginal time-dependent transition probabilities for each event, we can combine these into a time-dependent joint probability. 
 #' 
 #' In particular, we model the following transition times:
@@ -923,7 +923,7 @@ text(locations[,1], locations[,2]+1,labels=paste(gsub(";","\n",genotype[patients
 #' ## Static multistage models
 #' 
 #' To estimate the population average transition probabilities and absolute incidence of each each individual stage we use the `msSurv` R package [@FergusonJOSS2012]. 
-#' The resulting time-dependent joint distribution $P(X_t)$ is shown in Figure 1B.
+#' The resulting time-dependent joint distribution $P(X_t)$ is shown in Figure 2B.
 #' 
 #' ## Multistage random effects modelling
 #' 
@@ -1140,7 +1140,7 @@ text(locations[,1], locations[,2]+1,labels=paste(gsub(";","\n",genotype[patients
 #' ## Code
 #' 
 #' ### Static multistage model
-#' #### Figure 1B 
+#' #### Figure 2B 
 #' Multi-state using msSurv  [@FergusonJOSS2012].
 #+ mstate, fig.width=3,fig.height=2.5
 library(msSurv)
@@ -1262,7 +1262,7 @@ title(main="Non-relapse deaths")
 PlotVarianceComponents(coxRFXPrdTD, col=colGroups, order=o)
 title(main="Post-relapse deaths")
 
-#' #### Figure 1E
+#' #### Figure 2E
 #' As barplot
 #+ allVarCompBar, fig.width=2, fig.height=2
 par(mar=c(4,3,1,5))
@@ -1574,7 +1574,7 @@ survConcordance(Surv(cr[,1], cr[,2]==2) ~ rfx5Loo[1,])
 survConcordance(Surv(cr[,1], cr[,2]==1) ~ rfx5Loo[2,])
 survConcordance(os ~ rfx5Loo[6,])
 
-#' #### Figure 1C
+#' #### Figure 2C
 #' Model schematic with heatmaps of all coefficients, all data and resulting logfc transition rates
 #+ overview, fig.width=1.5, fig.heigt=2.5
 layout(matrix(c(1,2,4,3), nrow=2), width=c(3,1),height=c(1,4))
@@ -1608,7 +1608,7 @@ image(x=1:5, z=t(as.matrix(allStagesRisk[p,]) - rep(colMeans(allStagesRisk), eac
 
 
 
-#' #### Figure 1D
+#' #### Figure 2D
 #' Plot of absolute risk at 3yr, leave-one-out cross validated v outcome
 #+ survival_risk, fig.width=3, fig.height=1.5
 par(mar=c(3,3,2,1), mgp=c(1.5,.5,0), bty="n")
@@ -1626,7 +1626,16 @@ image(x=q/max(q)*500, y=c(u[4]-(u[4]-u[3])/20, u[4]), matrix(1:10), col= (brewer
 axis(side=3, at=pretty(q/365)/max(q)*365*500, labels=pretty(q/365))
 lines(ksmooth(seq_along(o),t[o,2]==0, bandwidth=50))
 
-#' #### Supplementary Figure S1B-D
+#' #### Figure 2E
+#+ mosaic_risk, fig.width=2.5, fig.height=2.5
+par(mar=c(3,5,3,1), mgp=c(2,.5,0), las=2)
+s <- 1-colSums(multiRfx5Loo[times == 3*365,1:3,])
+surv365Quantiles <- cut(s, seq(0,1,0.25), include.lowest=TRUE, labels=c("0-25%","25-50%","50-75%","75-100%"))
+t <- table(`ELN risk group`=eln,`3-year survival`=surv365Quantiles)[5:1,4:1]
+mosaicplot(t, col=RColorBrewer::brewer.pal(9,"Set1")[c(3,2,4,1,9)], dir=c("v","h"), main="")
+
+
+#' #### Figure 1B
 #' Plots of concordance and absolute prediction measures for baseline error, ELN, RFX and multistage models. 
 #+ errorsMultiRfxOsLoo, fig.width=2.5, fig.height=2.5
 multiRfx5C <- sapply(seq_along(times), function(i) survConcordance(os ~ colSums(multiRfx5Loo[i,1:3,]))$concordance[1])
@@ -2663,6 +2672,14 @@ mtext("Number needed to harm", side=4, at=-.1, line=2, las=0)
 
 
 #' #### Figure 5B
+#' Mosaic plot of benefit v eln risk category
+#+ mosaic_hsct, fig.width=2.5, fig.height=2.5
+benefit4 <- cut(benefit, c(-Inf, 0, .05, .1, Inf), labels=c("<0%", "0-5%","5-10%",">10%"))
+e <- factor(paste(clinicalData$M_Risk), levels=rev(c("NA","Adverse","Inter-1","Inter-2","Favorable")))
+w <- clinicalData$AOD < 60 & !is.na(clinicalData$CR_date) & !clinicalData$TPL_Phase %in% c("PR1","RD1")
+mosaicplot(table(`ELN risk group`=e[w],`Mortality Reduction`=benefit4[w])[5:1,4:1], col=RColorBrewer::brewer.pal(7,"RdBu")[6:3], main="")
+
+
 #' Violins plot of the predicted survival gain
 #+ benefit_hsct, fig.width=1, fig.height=2.5
 par(mar=c(3,3,1,1), mgp=c(2,0.5,0), bty="n")
@@ -3611,7 +3628,7 @@ tcgaRiskTD <- data.frame(
 tcgaConcordanceTD <- sapply(tcgaRiskTD, function(x) unlist(survConcordance(tcgaSurvival ~ x)[c("concordance","std.err")]))
 
 
-#' #### Supplementary Figure S1E
+#' Concordance
 #+ tcgaMultistage, fig.width=2.5, fig.height=2.5
 s <- rowMeans(colSums(aperm(multiRfx5Tcga[,1:3,],c(2,1,3))))
 plot(survfit(tcgaSurvival ~ 1))
@@ -3625,7 +3642,7 @@ abline(h=survConcordance(tcgaSurvival ~ predict(coxph(os ~ ELN, data.frame(ELN=p
 legend("bottomright",c("ELN","RFX OS","RFX Multistage"), col=set1[3:1], lty=1, bty="n")
 
 
-#' #### Supplementary Figure S1F-G
+#' #### Figure 1C
 #+ tcgaMultistageError, fig.width=2.5, fig.height=2.5
 times <- seq(1,2000,10)
 ss <- sapply(levels(eln),function(e) summary(survfit(os ~ 1, subset=eln==e), times=times)$surv)
@@ -3654,8 +3671,8 @@ lines(times/365.25,  1 - ee[i,]/e[i,], col=set1[3])
 legend("bottomright",c("ELN","Multistage","RFX OS"), col=set1[c(3,1:2)], lty=1, bty="n")
 
 
-#' #### Supplementary Figure S1A
-#' Here we generate the overview shown in Supplementary Figure S1A.
+#' #### Figure 1A
+#' Here we generate the overview shown in Figure 1A.
 #+ concordanceCvTcga, fig.width=3.5, fig.height=2.5
 library(abind)
 par(mar=c(3,3.5,.5,.5),bty="n", mgp=c(2.5,.5,0), las=2,  lend=1, xpd=FALSE)
