@@ -4,8 +4,11 @@ load("multistage.RData", envir=globalenv())
 
 
 # Define UI for application that plots random distributions 
-
 fluidPage(
+		tags$head(
+				includeHTML("www/popup.html")
+		),
+		includeHTML("www/disclaimer.html"),
 		# Style
 		tags$header(tags$style(
 						type = 'text/css',
@@ -36,7 +39,7 @@ fluidPage(
 								radioButtons("ciType", tags$b("Confidence intervals"), choices=c("analytical (fast, CR only)"="analytical","simulated (slow)"="simulated"), selected = "analytical"), ## CI type
 								tags$hr(),
 								div(HTML('<b><a href="help.html">Help</a></b>')),
-							    div(HTML('<b><a href="disclaimer.html">Disclaimer</a></b>')))
+							    div(HTML('<b><a id="disclaimer">Disclaimer</a></b>')))
 				),
 				
 				# Show a plot of the generated distribution

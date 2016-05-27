@@ -1,0 +1,30 @@
+<script src="jquery-ui-1.11.4/jquery-ui.js"></script>
+<link rel="stylesheet" href="jquery-ui-1.11.4/jquery-ui.css">
+<link rel="stylesheet" href="popup.css">
+
+<script language="javascript">		
+$(function() {
+    $( "#dialog" ).dialog({
+      dialogClass: "no-close",
+      resizable: false,
+      width: 600,
+      modal: true,
+      buttons: {
+        "Ok": function() {
+          $( this ).dialog( "close" );
+        }
+      }
+    });
+  });
+ $('#disclaimer').click(function(){ dialog; return false; });
+
+ $(document).ready(function () {
+        $("#dialog").dialog({ autoOpen: true });
+        $("#disclaimer").click(
+            function () {
+                $("#dialog").dialog('open');
+                return false;
+            }
+        );
+    });
+    </script> 
