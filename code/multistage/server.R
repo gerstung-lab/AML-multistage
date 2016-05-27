@@ -80,11 +80,13 @@ cppFunction('NumericVector computeHierarchicalSurvival(NumericVector x, NumericV
 				double h;
 				NumericVector overallSurvival(xLen);
 				for(int i = 0; i < xLen; ++i) overallSurvival[i] = 1;
-				for(int j = 1; j < xLen; ++j){
-				h = haz1TimeDep[j-1];
-				for(int i = j; i < xLen; ++i){
-				overallSurvival[i] += diffS0[j-1] * (1-pow(S1Static[i-j], h));
-				}
+					for(int j = 1; j < xLen; ++j){
+					if(diffS0[j-1] != 0){
+						h = haz1TimeDep[j-1];
+						for(int i = j; i < xLen; ++i){
+							overallSurvival[i] += diffS0[j-1] * (1-pow(S1Static[i-j], h));
+						}
+					}
 				}
 				return overallSurvival;
 				}')
