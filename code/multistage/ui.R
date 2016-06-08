@@ -25,7 +25,9 @@ fluidPage(
 				# Sidebar with a slider input for number of observations
 				column(3, 
 						wellPanel(
-								selectInput("pdid", tags$b("Select sample"), c("reset",rownames(data)), selected = "reset", multiple=FALSE)
+								selectInput("pdid", tags$b("Select sample"), c("reset",rownames(data)), selected = "reset", multiple=FALSE),
+								tags$hr(),
+								actionButton("compute", "Compute survival")
 						),
 						wellPanel(								
 								tags$b("Prognostic variables"),
@@ -34,8 +36,7 @@ fluidPage(
 								uiOutput("ui"),
 								HTML("</div>")
 						),
-						wellPanel(actionButton("compute", "Compute survival"),
-								tags$hr(),
+						wellPanel(
 								radioButtons("ciType", tags$b("Confidence intervals"), choices=c("analytical (fast, CR only)"="analytical","simulated (slow)"="simulated"), selected = "analytical"), ## CI type
 								tags$hr(),
 								div(HTML('<b><a href="help.html">Help</a></b>')),

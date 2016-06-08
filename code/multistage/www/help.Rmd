@@ -48,4 +48,4 @@ values denote a fast transition to CR, which is favourable, unlike the other, un
 * The second tab shows the **coefficients** for each _covariate_ X and transition. _Input_ shows the value entered (some are rescaled),  _Imputed_ contains the imputed value if the variable was missing.
 The subsequent columns show the _coef_ficients beta and _values_ = X * beta for each variable and transitions. The latter denotes the contribution to the log hazard of each variable. 
 
-Version 0.0.4 (2016-03-24)
+Version 0.0.5 (2016-06-08)
