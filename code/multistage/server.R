@@ -253,11 +253,7 @@ shinyServer(function(input, output) {
 				cumsum(c(1,diff(inc1) * splinefun(time, inc2)(time[-1])))
 			}
 			
-			output$KM <- renderPlot({
-						par(bty="n", mar=c(3,3,2,1), mgp=c(2,0.5,0), tcl=-.25, xaxs="i", yaxs="i")
-						layout(matrix(1:3, ncol=3), widths=c(1,1,0.5))
-						par(cex=1)
-						
+			computeAbsoluteProbabilities <- reactive({
 						## KM incidence of NCD and CR
 						kmNcd <- computeIncidence(coxRFX = coxRFXNcdTD, r = riskMissing()[["Ncd"]], x=x)
 						kmCr <- computeIncidence(coxRFX = coxRFXCrTD, r = riskMissing()[["Cr"]], x=x)
@@ -269,7 +265,7 @@ shinyServer(function(input, output) {
 						## KM incidence of Relapse and NRD
 						kmRel <- computeIncidence(coxRFX = coxRFXRelTD, r = riskMissing()[["Rel"]], x=x)
 						kmNrd <-  computeIncidence(coxRFX = coxRFXNrdTD, r = riskMissing()[["Nrd"]], x=x)
-
+						
 						## Correct KM estimate for competing risk
 						relCr <- crAdjust(x= kmRel, time=x, y=kmNrd) ## Correct KM estimate for competing risk
 						nrsCr <- crAdjust(x = kmNrd, time = x, y = kmRel)
@@ -287,35 +283,6 @@ shinyServer(function(input, output) {
 						rsDiag <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = rsCr, haz1TimeDep = tdOsBaseline)
 						relDiag <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = relCr, haz1TimeDep = tdOsBaseline)
 						
-						xLen <- length(x)
-						
-						scale <- 365.25/12
-						xScaled <- x/scale
-						
-						## Plot probabilities
-						plot(xScaled, 1-(1-ncd)-(1-osDiag), type="l", xlab="Months from diagnosis", ylab="Probability", main="Outcome after diagnosis", ylim=c(0,1), lwd=3, lty=0) 
-						y0 <- 1
-						y <- ncd
-						polygon(c(xScaled, xScaled[xLen]), c(y,y0), border=NA, col=pastel1[1])
-						y0 <- y0 - (1-ncd)
-						y <- y - (1-nrsDiag)
-						polygon(c(xScaled, rev(xScaled)), c(y, rev(y0))  , border=NA, col=pastel1[2])
-						y0 <- y0 - (1-nrsDiag)
-						y <- y - (1-rsDiag)
-						osDiag <- y
-						polygon(c(xScaled, rev(xScaled)), c(y, rev(y0)),  border=NA, col=pastel1[3])
-						y0 <- y0 - (1-rsDiag)
-						y <- y - (1-relDiag) + (1-rsDiag) 
-						polygon(c(xScaled, rev(xScaled)), c(y, rev(y0)),  border=NA, col=pastel1[5])
-						polygon(c(xScaled, rev(xScaled)), c(cr - (1-ncd), rev(y)),  border=NA, col=pastel1[4])
-						polygon(c(xScaled, rev(xScaled)), c(cr - (1-ncd), rev(rep(0, length(xScaled)))),  border=NA, col="#DDDDDD")
-						lines(xScaled, osDiag, lwd=3)
-
-						z <- round(c(365.25,3*365.25))
-						y <- (osDiag)[z+1]
-						points(z/scale,y, pch=16, col=1)
-						text(z/scale, y, labels=round(y,2), pos=1)
-						addGrid(scale)
 						
 						## Confidence intervals
 						osLoDiag <- osUpDiag <- rep(NA, length(osDiag))
@@ -349,7 +316,52 @@ shinyServer(function(input, output) {
 							osUpCr <- osCrMcQ[2,,1]
 							osLoDiag <- osCrMcQ[1,,2]
 							osUpDiag <- osCrMcQ[2,,2]
-						}		
+						}
+						
+						absolutePredictions=data.frame(x=x, cr=cr, ncd=ncd, osDiag=osDiag, nrsDiag=nrsDiag, rsDiag=rsDiag, relDiag=relDiag, osCr=osCr, nrsCr=nrsCr, relCr=relCr, osUpCr=osUpCr, osLoCr=osLoCr, osLoDiag=osLoDiag, osUpDiag=osUpDiag)
+						
+						return(absolutePredictions)
+						
+						
+					})
+			
+			output$KM <- renderPlot({
+						par(bty="n", mar=c(3,3,2,1), mgp=c(2,0.5,0), tcl=-.25, xaxs="i", yaxs="i")
+						layout(matrix(1:3, ncol=3), widths=c(1,1,0.5))
+						par(cex=1)
+						
+						with(computeAbsoluteProbabilities(),{
+						
+						xLen <- length(x)
+						
+						scale <- 365.25/12
+						xScaled <- x/scale
+						
+						## Plot probabilities
+						plot(xScaled, 1-(1-ncd)-(1-osDiag), type="l", xlab="Months from diagnosis", ylab="Probability", main="Outcome after diagnosis", ylim=c(0,1), lwd=3, lty=0) 
+						y0 <- 1
+						y <- ncd
+						polygon(c(xScaled, xScaled[xLen]), c(y,y0), border=NA, col=pastel1[1])
+						y0 <- y0 - (1-ncd)
+						y <- y - (1-nrsDiag)
+						polygon(c(xScaled, rev(xScaled)), c(y, rev(y0))  , border=NA, col=pastel1[2])
+						y0 <- y0 - (1-nrsDiag)
+						y <- y - (1-rsDiag)
+						osDiag <- y
+						polygon(c(xScaled, rev(xScaled)), c(y, rev(y0)),  border=NA, col=pastel1[3])
+						y0 <- y0 - (1-rsDiag)
+						y <- y - (1-relDiag) + (1-rsDiag) 
+						polygon(c(xScaled, rev(xScaled)), c(y, rev(y0)),  border=NA, col=pastel1[5])
+						polygon(c(xScaled, rev(xScaled)), c(cr - (1-ncd), rev(y)),  border=NA, col=pastel1[4])
+						polygon(c(xScaled, rev(xScaled)), c(cr - (1-ncd), rev(rep(0, length(xScaled)))),  border=NA, col="#DDDDDD")
+						lines(xScaled, osDiag, lwd=3)
+
+						z <- round(c(365.25,3*365.25))
+						y <- (osDiag)[z+1]
+						points(z/scale,y, pch=16, col=1)
+						text(z/scale, y, labels=round(y,2), pos=1)
+						addGrid(scale)
+						
 						
 						## CI
 						lines(xScaled, osUpDiag, col=1, lty=2)
@@ -378,6 +390,7 @@ shinyServer(function(input, output) {
 						plot(NA,NA, xlab="",ylab="", xaxt="n", yaxt="n", xlim=c(0,1), ylim=c(0,1))
 						legend(x=0,y=1, col=c(NA,NA,NA,NA,NA,NA,"black","black"), lty=c(NA,NA,NA,NA,NA,NA,1,4), fill=c(pastel1[c(1,2,3,5,4)],"#DDDDDD",NA,NA), border=c(1,1,1,1,1,1,NA,NA), lwd=c(NA,NA,NA,NA,NA,NA,3,1), y.intersp = 1.5, c("Death without \nremission","Death without \nrelapse","Death after \nrelapse","Alive after \nrelapse","Alive in CR1", "Alive in \ninduction", "Overall survival", "95% C.I."), box.lwd = 0,  bg="#FFFFFF88", seg.len=1)
 
+						})
 					})
 			
 		})
