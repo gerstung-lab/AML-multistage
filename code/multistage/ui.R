@@ -25,7 +25,11 @@ fluidPage(
 				# Sidebar with a slider input for number of observations
 				column(3, 
 						wellPanel(
-								selectInput("pdid", tags$b("Select sample"), c("reset",rownames(data)), selected = "reset", multiple=FALSE),
+								selectizeInput(inputId="pdid", label=tags$b("Select sample"), choices=c("reset",rownames(data)[order(as.numeric(gsub("[A-z]","", rownames(data))))]),  multiple=FALSE, 
+										options = list(maxOptions = nrow(data)+1,
+												placeholder = 'Please select',
+												onInitialize = I('function() { this.setValue(""); }'))),
+								tags$em("Preselect patient data may be rounded for privacy reasons."),								
 								tags$hr(),
 								actionButton("compute", "Compute survival")
 						),
