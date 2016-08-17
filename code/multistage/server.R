@@ -91,9 +91,9 @@ cppFunction('NumericVector computeHierarchicalSurvival(NumericVector x, NumericV
 				return overallSurvival;
 				}')
 
-addGrid <- function() {
+addGrid <- function(scale=1) {
 	abline(h=seq(0,1,.2), lty=3)
-	abline(v=seq(0,2000,365), lty=3)
+	abline(v=seq(0,2000,365.25)/scale, lty=3)
 }
 
 # Define server logic required to generate and plot a random distribution
@@ -136,7 +136,7 @@ shinyServer(function(input, output) {
 						defaults <- as.numeric(defaults)
 						
 						## Obfuscation
-						defaults <- round(defaults * 5)/5
+						defaults <- signif(defaults * 20,1)/20
 						
 						names(defaults) <- colnames(data)
 						defaults[VARIABLES] <- defaults[VARIABLES] * SCALEFACTORS
@@ -190,29 +190,8 @@ shinyServer(function(input, output) {
 				#p <- PartialRisk(coxRFX, dataImputed)
 				return(list(inc=inc, r=r, x=x, hazardDist=hazardDist, r0 = r0, ciup=ciup, cilo=cilo, ciup2=ciup2, cilo2=cilo2))
 			}
-			
-			plotRisk <- function(coxRFX, incidence, p, xlab="Days after diagnosis", ylab="Incidence", col="#FF0000",mark=NA, lty=2) {
-				plot(survfit(coxRFX), xlab=xlab, ylab=ylab, mark=mark, conf.int=FALSE, fun=function(x) 1-x, ylim=c(0,1), xlim=c(0,2000), lty=3)
-				#lines(survfit(coxRFX$surv ~ 1), lty=3, mark=NA, fun=function(x) 1-x)
-				polygon( c(incidence$x, rev(incidence$x)), 1-c(incidence$ciup2, rev(incidence$cilo2)), col=paste0(col,"44"), border=NA)
-				addGrid()
-				#polygon( c(risk$x, rev(risk$x)), 1-c(ciup, rev(cilo)), col=paste0(col,"44"), border=NA)
-				lines( incidence$x, 1-incidence$inc, col=col, lwd=2, lty=lty)
-				legend(ifelse((1-incidence$inc[length(incidence$inc)])>.5, "bottomright","topright"), c("Population avg","Predicted","95% CI"),bty="n", lty=c(2,1,NA), fill=c(NA,NA,paste0(col,"44")), border=c(NA,NA,NA), col=c(1,col,NA))
-				u <- par("usr")
-				par(new=T)
-				m <- colMeans(PartialRisk(coxRFX))
-				rds <- .05
-				p <- (matrix(p, nrow=1) - m)/10 + rds
-				colnames(p) <- names(m)
-				l <- cbind(x=0.25,y=ifelse((1-incidence$inc[length(incidence$inc)])>.8,0.3,.85))
-				c <- cut(incidence$r[,1]-incidence$r0, quantile(coxRFX$linear.predictor,seq(0,1,l=12)))
-				stars((p[,c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical"), drop=FALSE]), scale=FALSE, locations = l, xlim=c(0,1), ylim=c(0,1), lwd=1, col.stars=rev(brewer.pal(11,"RdBu"))[c])
-				symbols(l, circles=rds, inches=FALSE, add=TRUE)
-				text(l[1]+cos(2*pi*0:6/7)*2*rds,l[2]+sin(2*pi*0:6/7)*2*rds,substr(c("Demographics","Treatment","Fusions","CNA","Genetics","GeneGene","Clinical"),1,5), cex=.66)
-				par(usr=u)
-			}
-			
+
+	
 			dataImputed <- reactive({
 						ImputeMissing(data[1:1540,], getData()[,colnames(data)])
 					})
@@ -308,32 +287,35 @@ shinyServer(function(input, output) {
 						rsDiag <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = rsCr, haz1TimeDep = tdOsBaseline)
 						relDiag <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = relCr, haz1TimeDep = tdOsBaseline)
 						
-						xLen <- length(x)						
+						xLen <- length(x)
+						
+						scale <- 365.25/12
+						xScaled <- x/scale
 						
 						## Plot probabilities
-						plot(x, 1-(1-ncd)-(1-osDiag), type="l", xlab="Days from diagnosis", ylab="Probability", main="Outcome after diagnosis", ylim=c(0,1), lwd=3, lty=0) 
+						plot(xScaled, 1-(1-ncd)-(1-osDiag), type="l", xlab="Months from diagnosis", ylab="Probability", main="Outcome after diagnosis", ylim=c(0,1), lwd=3, lty=0) 
 						y0 <- 1
 						y <- ncd
-						polygon(c(x, x[xLen]), c(y,y0), border=NA, col=pastel1[1])
+						polygon(c(xScaled, xScaled[xLen]), c(y,y0), border=NA, col=pastel1[1])
 						y0 <- y0 - (1-ncd)
 						y <- y - (1-nrsDiag)
-						polygon(c(x, rev(x)), c(y, rev(y0))  , border=NA, col=pastel1[2])
+						polygon(c(xScaled, rev(xScaled)), c(y, rev(y0))  , border=NA, col=pastel1[2])
 						y0 <- y0 - (1-nrsDiag)
 						y <- y - (1-rsDiag)
 						osDiag <- y
-						polygon(c(x, rev(x)), c(y, rev(y0)),  border=NA, col=pastel1[3])
+						polygon(c(xScaled, rev(xScaled)), c(y, rev(y0)),  border=NA, col=pastel1[3])
 						y0 <- y0 - (1-rsDiag)
 						y <- y - (1-relDiag) + (1-rsDiag) 
-						polygon(c(x, rev(x)), c(y, rev(y0)),  border=NA, col=pastel1[5])
-						polygon(c(x, rev(x)), c(cr - (1-ncd), rev(y)),  border=NA, col=pastel1[4])
-						polygon(c(x, rev(x)), c(cr - (1-ncd), rev(rep(0, length(x)))),  border=NA, col="#DDDDDD")
-						lines(x, osDiag, lwd=3)
+						polygon(c(xScaled, rev(xScaled)), c(y, rev(y0)),  border=NA, col=pastel1[5])
+						polygon(c(xScaled, rev(xScaled)), c(cr - (1-ncd), rev(y)),  border=NA, col=pastel1[4])
+						polygon(c(xScaled, rev(xScaled)), c(cr - (1-ncd), rev(rep(0, length(xScaled)))),  border=NA, col="#DDDDDD")
+						lines(xScaled, osDiag, lwd=3)
 
-						z <- c(365,3*365)
+						z <- round(c(365.25,3*365.25))
 						y <- (osDiag)[z+1]
-						points(z,y, pch=16, col=1)
-						text(z, y, labels=round(y,2), pos=1)
-						addGrid()
+						points(z/scale,y, pch=16, col=1)
+						text(z/scale, y, labels=round(y,2), pos=1)
+						addGrid(scale)
 						
 						## Confidence intervals
 						osLoDiag <- osUpDiag <- rep(NA, length(osDiag))
@@ -370,27 +352,26 @@ shinyServer(function(input, output) {
 						}		
 						
 						## CI
-						lines(x, osUpDiag, col=1, lty=2)
-						lines(x, osLoDiag, col=1, lty=2)
+						lines(xScaled, osUpDiag, col=1, lty=2)
+						lines(xScaled, osLoDiag, col=1, lty=2)
 
 						## Plot outcome after remission
-						plot(NA,NA, xlab="Days from remission", ylab="Probability",  xlim=c(0,2000), ylim=c(0,1), lty=2)
-						polygon(c(x, x[xLen]), c(nrsCr,1)  , border=NA, col=pastel1[2])
-						polygon(c(x, rev(x)), c(nrsCr, rev(osCr)),  border=NA, col=pastel1[3])
-						polygon(c(x, rev(x)), c(osCr, rev(1-(1-nrsCr)-(1-relCr))),  border=NA, col=pastel1[5])
-						polygon(c(x, rev(x)), c(1-(1-nrsCr)-(1-relCr), rep(0,length(x))),  border=NA, col=pastel1[4])
-						abline(h=seq(0,1,.2), lty=3)
-						abline(v=seq(0,2000,365), lty=3)
-						lines(x, osCr, col=1, lwd=3)
+						plot(NA,NA, xlab="Months from remission", ylab="Probability",  xlim=c(0,2000)/scale, ylim=c(0,1), lty=2)
+						polygon(c(xScaled, xScaled[xLen]), c(nrsCr,1)  , border=NA, col=pastel1[2])
+						polygon(c(xScaled, rev(xScaled)), c(nrsCr, rev(osCr)),  border=NA, col=pastel1[3])
+						polygon(c(xScaled, rev(xScaled)), c(osCr, rev(1-(1-nrsCr)-(1-relCr))),  border=NA, col=pastel1[5])
+						polygon(c(xScaled, rev(xScaled)), c(1-(1-nrsCr)-(1-relCr), rep(0,length(xScaled))),  border=NA, col=pastel1[4])
+						addGrid(scale)
+						lines(xScaled, osCr, col=1, lwd=3)
 						title("Outcome after remission")
 						
 						y <- (osCr)[z+1]
-						points(z,y, pch=16, col=1)
-						text(z, y, labels=round(y,2), pos=1)
+						points(z/scale,y, pch=16, col=1)
+						text(z/scale, y, labels=round(y,2), pos=1)
 
 						## CI
-						lines(x, osUpCr, col=1, lty=2)
-						lines(x, osLoCr, col=1, lty=2)
+						lines(xScaled, osUpCr, col=1, lty=2)
+						lines(xScaled, osLoCr, col=1, lty=2)
 
 						
 						par(mar=c(0,0,0,0))
