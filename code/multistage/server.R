@@ -142,34 +142,58 @@ shinyServer(function(input, output) {
 						defaults[VARIABLES] <- defaults[VARIABLES] * SCALEFACTORS
 						#cat(defaults,"\n")
 						
-						c(list(tags$em(tags$b(crGroups[VARIABLES[1]]))),
-								lapply(VARIABLES, 
-										function(x) {
-											d <- defaults[x]
-											f <- if(x %in% unlist(COMPVAR)){
-														if(!COMPIDX[x]) return(NULL)
-														s <- defaults[COMPVAR[[VAR2COMP[x]]][-1]]
-														w <- if(any(is.na(s))) 'N/A' else if(all(s==0)) 1 else if(any(!s %in% c(0,1))) 'N/A' else which(s==1)+1
-														c <- c(COMPVAR[[VAR2COMP[x]]], "N/A"="N/A")
-														radioButtons(VAR2COMP[x], label=VAR2COMP[x], choices=c, selected=c[w])
-													}else if(crGroups[x] %in% c("Genetics","CNA","Fusions","Treatment")){
-														if(!d %in% c(0,1)) d <- NA
-														d <- paste(d)
-														radioButtons(x, label=if(crGroups[x]=="Genetics") tags$em(LABELS[x]) else LABELS[x], choices=c("present"= "1", "absent"="0", "N/A"="NA"), selected=d)
-													}else{
-														r <- round(quantile(data[,x]*SCALEFACTORS[x], c(0.05,0.95), na.rm=TRUE),1)
-														if(is.null(CATEGORIES[[x]]))
-															numericInput(inputId=x, label=LABELS[x], value=d, min=r[1], max=r[2], step = if(round(min(data[,x]*SCALEFACTORS[x], na.rm=TRUE),1) %% 1 ==0) 1 else 0.1)
-														else{
-															if(!d %in% 0:10) d <- NA
-															d <- paste(d)
-															radioButtons(x, label=LABELS[x], choices=c(CATEGORIES[[x]],"N/A"="NA"), selected=d)
-														}
-													}
-											h <- if(NEWGRP[x]) list(tags$hr(), tags$em(tags$b(crGroups[x]))) else NULL
-											list(h,f)}
-								
-								))
+						makeMenu <- function(x) {
+							d <- defaults[x]
+							f <- if(x %in% unlist(COMPVAR)){
+										if(!COMPIDX[x]) return(NULL)
+										s <- defaults[COMPVAR[[VAR2COMP[x]]][-1]]
+										w <- if(any(is.na(s))) 'N/A' else if(all(s==0)) 1 else if(any(!s %in% c(0,1))) 'N/A' else which(s==1)+1
+										c <- c(COMPVAR[[VAR2COMP[x]]], "N/A"="NA")
+										radioButtons(VAR2COMP[x], label=VAR2COMP[x], choices=c, selected=c[w], inline=FALSE)
+									}else if(crGroups[x] %in% c("Genetics","CNA","Fusions","Treatment")){
+										if(!d %in% c(0,1)) d <- NA
+										d <- paste(d)
+										radioButtons(x, label=if(crGroups[x]=="Genetics") tags$em(LABELS[x]) else LABELS[x], choices=c("present"= "1", "absent"="0", "N/A"="NA"), selected=d, inline=TRUE)
+									}else{
+										r <- round(quantile(data[,x]*SCALEFACTORS[x], c(0.05,0.95), na.rm=TRUE),1)
+										if(is.null(CATEGORIES[[x]]))
+											numericInput(inputId=x, label=LABELS[x], value=d, min=r[1], max=r[2], step = if(round(min(data[,x]*SCALEFACTORS[x], na.rm=TRUE),1) %% 1 ==0) 1 else 0.1)
+										else{
+											if(!d %in% 0:10) d <- NA
+											d <- paste(d)
+											radioButtons(x, label=LABELS[x], choices=c(CATEGORIES[[x]],"N/A"="NA"), selected=d, inline=TRUE)
+										}
+									}
+							h <- if(NEWGRP[x]) list(tags$em(tags$b(crGroups[x]))) else NULL
+							list(h,f)}
+						
+						list(wellPanel(	list(							
+												tags$b("Clinical variables"),
+												tags$hr(),
+												HTML('<div class="special">'),
+												tags$em(tags$b(crGroups[VARIABLES[1]])),
+												lapply(VARIABLES[crGroups[VARIABLES] %in% c("Clinical","Demographics")], makeMenu),
+												HTML("</div>")
+										)
+								),
+								wellPanel(	list(							
+												tags$b("Genomic variables"),
+												tags$hr(),
+												HTML('<div class="special">'),
+												#tags$em(tags$b(crGroups[VARIABLES[1]])),
+												lapply(VARIABLES[crGroups[VARIABLES] %in% c("Genetics","Fusions","CNA")], makeMenu),
+												HTML("</div>")
+										)
+								),
+								wellPanel(	list(							
+												tags$b("Treatment"),
+												#tags$hr(),
+												HTML('<div class="special">'),
+												lapply(VARIABLES[crGroups[VARIABLES] == "Treatment"], makeMenu),
+												HTML("</div>")
+										)
+								)
+						)
 					})
 			x <- 0:2000
 			
@@ -278,7 +302,7 @@ shinyServer(function(input, output) {
 						osCr <- 1-(1-nrsCr)-(1-rsCr)
 						
 						## Outcome from diagnosis
-						osDiag <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = osCr, haz1TimeDep = tdOsBaseline)
+						osDiag <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = osCr, haz1TimeDep = tdOsBaseline) - (1-ncd)
 						nrsDiag <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = nrsCr, haz1TimeDep = tdOsBaseline)
 						rsDiag <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = rsCr, haz1TimeDep = tdOsBaseline)
 						relDiag <- computeHierarchicalSurvival(x = x, diffS0 = diff(cr), S1Static = relCr, haz1TimeDep = tdOsBaseline)
@@ -318,7 +342,7 @@ shinyServer(function(input, output) {
 							osUpDiag <- osCrMcQ[2,,2]
 						}
 						
-						absolutePredictions=data.frame(x=x, cr=cr, ncd=ncd, osDiag=osDiag, nrsDiag=nrsDiag, rsDiag=rsDiag, relDiag=relDiag, osCr=osCr, nrsCr=nrsCr, relCr=relCr, osUpCr=osUpCr, osLoCr=osLoCr, osLoDiag=osLoDiag, osUpDiag=osUpDiag)
+						absolutePredictions=data.frame(x=x, cr=cr, ncd=ncd, osDiag=osDiag, nrsDiag=nrsDiag, rsDiag=rsDiag, relDiag=relDiag, osCr=osCr, nrsCr=nrsCr, relCr=relCr, rsCr=rsCr, osUpCr=osUpCr, osLoCr=osLoCr, osLoDiag=osLoDiag, osUpDiag=osUpDiag)
 						
 						return(absolutePredictions)
 						
@@ -392,5 +416,55 @@ shinyServer(function(input, output) {
 
 						})
 					})
-			
+					
+					printMutations <- function(data) paste(LABELS[colnames(data)[which(data[1,]==1)]], collapse=", ")
+					
+					output$patientSummary <- renderText({
+								d <- getData()[, colnames(data)]
+								#x <- dataImputed()
+								bloodVariables <- c("BM_Blasts_100","PB_Blasts_100","wbc_100","LDH_1000","HB_10","platelet_100")
+								paste0( "Patient:           ", paste(c(na.omit(d[["AOD_10"]]*10), if(is.na(d[["AOD_10"]])) "" else "yr old ", c(`1`="male",`2`='female',`NA`="")[paste(d[["gender"]])]), collapse=""), "\n",
+										"Genomic variables: ", paste(printMutations(d[,crGroups %in% "Genetics", drop=FALSE]), 
+												printMutations(d[,crGroups %in% "Fusions", drop=FALSE]),
+												printMutations(d[,crGroups %in% "CNA", drop=FALSE]), collapse="; "),"\n",
+										"Blood counts:      ", paste((d[, bloodVariables] * SCALEFACTORS[bloodVariables])[!is.na(d[, bloodVariables])], sub("(.+) \\((.+)\\).+", "\\2 \\1",LABELS[bloodVariables][!is.na(d[, bloodVariables])], perl=TRUE), collapse=", "), "\n",
+										"Treatment:         ", if(!is.na(d[,'transplantRel'])) if(d[,"transplantRel"]) "HSCT after relapse" else if(d[,"transplantCR1"]) "HSCT in CR1" else if(d[,"transplantCR1"]==0 & d[,"transplantRel"]==0) "No HSCT")
+							})
+					
+					round100 <- function(x){
+						y <- floor(x)
+						d <- x-y
+						o <- order(d, decreasing=TRUE)
+						i <- 1
+						while(sum(y) < 100){
+							y[o[i]] <- y[o[i]] + 1
+							i <- i+1
+						}
+						return(y)
+					}
+					
+					printRisk <- function(x) paste0(paste0(c("|",rep("X", x)), collapse=""), " ",x, "%")
+					
+					output$absoluteRiskDiag <- renderText({
+								r <- computeAbsoluteProbabilities()[round(3*365.25)+1,,drop=FALSE]
+								p <- c((1-r[,"ncd"]),(1-r[,"nrsDiag"]),(1-r[,"rsDiag"]),(1-r[,"relDiag"] - (1-r[,"rsDiag"])),(r[,"osDiag"] -(1-r[,"relDiag"] - (1-r[,"rsDiag"])) - (r[,"cr"] - (1-r[,"ncd"]))  ),(r[,"cr"] - (1-r[,"ncd"]) ))
+								p <- round100(p*100)
+								paste0( "Death without remission: ", printRisk(p[1]), "\n",
+										"Death without relapse:   ", printRisk(p[2]),"\n",
+										"Death after relapse:     ", printRisk(p[3]),"\n",
+										"Alive after relapse:     ", printRisk(p[4]) ,"\n",
+										"Alive in CR1:            ", printRisk(p[5]),"\n",
+										"Alive without CR:        ", printRisk(p[6]),"\n")
+							})
+					
+					output$absoluteRiskCr <- renderText({
+								r <- computeAbsoluteProbabilities()[round(3*365.25)+1,,drop=FALSE]
+								p <- c((1-r[,"nrsCr"]),(1-r[,"rsCr"]),(1-r[,"relCr"] - (1-r[,"rsCr"])),(r[,"osCr"] -(1-r[,"relCr"] - (1-r[,"rsCr"])) ))
+								p <- round100(p*100)
+								paste0( "Death without relapse:   ", printRisk(p[1]),"\n",
+										"Death after relapse:     ", printRisk(p[2]),"\n",
+										"Alive after relapse:     ", printRisk(p[3]) ,"\n",
+										"Alive in CR1:            ", printRisk(p[4]),"\n")
+							})
+				
 		})

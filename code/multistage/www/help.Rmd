@@ -1,5 +1,3 @@
-# AML multistage predictions
-
 This webtool generates predictions according to the multistage random effects model presented in 
 _Personally tailored cancer management based on knowledge banks of genomic and clinical data_ (Gerstung et al., submitted manuscript).
 
