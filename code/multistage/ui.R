@@ -61,7 +61,7 @@ fluidPage(
 								tabPanel("Coefficients",
 										dataTableOutput("Tab")),
 								tabPanel("Help",
-										includeMarkdown("www/help.Rmd"))
+										includeHTML("www/help.html"))
 						))
 		
 		)
