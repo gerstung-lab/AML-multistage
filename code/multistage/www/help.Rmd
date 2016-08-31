@@ -11,7 +11,7 @@ Using genomic and clinical variables, the tool models the transitions from **ind
 
 Based on these rates the probability to be alive or die in either stage are computed for each patient, based on his individual genomic and clinical profile.
 
-![Screen shot](screenshot.png)
+<img src="screenshot.png" alt="Screenshot" style="width: 100%;"/>
 
 ### Sidebar
 The left navigation panel has the following elements:
