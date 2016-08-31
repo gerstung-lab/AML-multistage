@@ -9,12 +9,6 @@ fluidPage(
 				includeHTML("www/popup.html")
 		),
 		includeHTML("www/disclaimer.html"),
-		# Style
-		tags$header(tags$style(
-						type = 'text/css',
-						'.well .special { max-height: 400px; overflow-y: auto; }'
-				)
-		),
 
 		# Application title
 		titlePanel("AML multistage predictions (beta)"),

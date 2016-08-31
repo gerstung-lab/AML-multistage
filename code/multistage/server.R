@@ -170,28 +170,25 @@ shinyServer(function(input, output) {
 						list(wellPanel(	list(							
 												tags$b("Clinical variables"),
 												tags$hr(),
-												HTML('<div class="special">'),
 												tags$em(tags$b(crGroups[VARIABLES[1]])),
-												lapply(VARIABLES[crGroups[VARIABLES] %in% c("Clinical","Demographics")], makeMenu),
-												HTML("</div>")
-										)
+												lapply(VARIABLES[crGroups[VARIABLES] %in% c("Clinical","Demographics")], makeMenu)
+										),
+										style = "overflow-y:scroll; max-height: 400px; position:relative;"
 								),
 								wellPanel(	list(							
 												tags$b("Genomic variables"),
 												tags$hr(),
-												HTML('<div class="special">'),
 												#tags$em(tags$b(crGroups[VARIABLES[1]])),
-												lapply(VARIABLES[crGroups[VARIABLES] %in% c("Genetics","Fusions","CNA")], makeMenu),
-												HTML("</div>")
-										)
+												lapply(VARIABLES[crGroups[VARIABLES] %in% c("Genetics","Fusions","CNA")], makeMenu)
+										),
+										style = "overflow-y:scroll; max-height: 400px; position:relative;"
 								),
 								wellPanel(	list(							
 												tags$b("Treatment"),
 												#tags$hr(),
-												HTML('<div class="special">'),
-												lapply(VARIABLES[crGroups[VARIABLES] == "Treatment"], makeMenu),
-												HTML("</div>")
-										)
+												lapply(VARIABLES[crGroups[VARIABLES] == "Treatment"], makeMenu)
+										),
+										style = "overflow-y:scroll; max-height: 400px; position:relative;"
 								)
 						)
 					})
