@@ -640,8 +640,13 @@ clinicalSpline <- as.data.frame(sapply(dataFrame[groups %in% c("Clinical","Demog
 for(n in names(clinicalSpline)) if(!all(dataFrame[1:5,n] %in% 0:10))
 		plot(dataFrame[,n], clinicalSpline[,n], log='x', xlab=paste(n, '[observed]'), ylab = paste(n, '[spline]'))
 
-summary(coxph(os ~ ., data=clinicalSpline, subset=!trainIdx))$concordance
-summary(coxph(os ~ ., data=dataFrame[groups %in% c("Clinical","Demographics")]), subset=!trainIdx)$concordance
+#' Training set - accuracy
+summary(coxph(os ~ ., data=clinicalSpline, subset=trainIdx))$concordance
+summary(coxph(os ~ ., data=dataFrame[groups %in% c("Clinical","Demographics")]), subset=trainIdx)$concordance
+
+#' Test set - accuracy
+survConcordance(os[!trainIdx] ~ predict(coxph(os ~ ., data=clinicalSpline, subset=trainIdx), newdata = clinicalSpline[!trainIdx,]))
+survConcordance(os[!trainIdx] ~ predict(coxph(os ~ ., data=dataFrame[groups %in% c("Clinical","Demographics")], subset=trainIdx), newdata = dataFrame[!trainIdx,]))
 
 #' No measurable improvement over (scaled) linear terms thus. 
 #' 
@@ -2937,8 +2942,26 @@ for(i in 1:4){
 
 #' # Model comparison
 #' 
-#' We used cross-validation to evaluate the performance of different modelling strategies. The idea is to split the data
-#' into a training and a test set; the model is fitted on the training part and its prognostic accuracy evaluated on the test set.
+#' Choosing the optimal model needs to balance model complexity and statistical robustness. 
+#' Simple models cannot reproduce all details of the underlying data and thus are inevitably biased. However they tend to be more robust to fit, with little 
+#' variance between fits on different cohorts. More complex models have the potential to provide a more accurate fit, however ususally at the price of increased 
+#' variance when applied to different data sets presenting a risk of overfitting. Both type of errors (systematic bias and random variance) impact on overall model accurcay.
+#' In statistical terms the resulting antagonism is therefore often expressed as a _bias-variance-tradeoff_, in which the 
+#' overall model error is decomposed. The choice of a good model thus amounts to balance bias and variance. 
+#' 
+#' A key quantity to define model complexity are the degrees of freedom. In a basic linear model the degrees of freedom are the number of parameters (variables).
+#' If more parameters are to be fit, each with a given uncertainty, the overall uncertainty of the predictions increases since the uncertainties in each
+#' parameter estimate tend to add up. Hence two strategies can be employed to reduce the total variance: 
+#' First, one may reduce the total prediction variance by limiting the number of parameters (variable selection). 
+#' Alternatively, one may also reduce the variance of individual estimates by imposing a penalty on large values (shrinkage). For example the note the LASSO model, 
+#' underlying stability selection, achieves shrinkage (often to zero) with an $L_1$-penalty. The random effects model shrinks parameters estimates 
+#' using a quadratic penalty because the assumption that parameters share the same normal distribution implies that large absolute parameter values are less likely.
+#' It can be shown that this strategy also reduces the effective degrees of freedom of the model.
+#' 
+#' To assess which modeling strategy achieves the best balance between bias and variance we define different metrics for the model accuracy and employ 
+#' cross-validation to evaluate the performance of different modelling strategies. The idea is to split the data
+#' into a training and a test set; the model is fitted on the training part and its prognostic accuracy evaluated on the test set. This yields
+#' more reliable estimates of the overall model error.
 #' 
 #' 
 #' ## Random cross validation

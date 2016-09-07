@@ -2876,3 +2876,209 @@ i <- 0; for(c in levels(dpClass)){i <- 1+i
 par(cex=.8)
 rotatedLabel(b, labels=colnames(genotypesImputed)[o])
 dev.off()
+
+
+
+#' TCGA VC
+
+d <- ImputeMissing(dataFrame[whichRFXOsTDGG], newX=tcgaData[whichRFXOsTDGG])
+
+pdf("TCGA_VC.pdf", 3, 2, pointsize=8)
+fit <- coxRFXFitOsTDGGc
+fit$Z <- as.matrix(d[,colnames(fit$Z)])
+v <- VarianceComponents(fit, type='rowSums')[c(4,1,6,5,2,3,8,7)]
+v <- v/sum(v)
+PlotVarianceComponents(fit, col=colGroups, order=c(4,1,6,5,2,3,8,7), conf.int=TRUE, absolute=FALSE)
+v0 <- c(sum(v[1:4]), sum(v[5:7]),v[8])
+par(new=TRUE)
+pie(v0, col=NA, init.angle=90, radius=1, labels="")
+symbols(0,0, circles=0.5, inches=FALSE, bg='white', add=TRUE)
+dev.off()
+
+
+#' ELN prediction errors
+times <- round(seq(0,5,0.05)*365)
+
+eln <- factor( paste(clinicalData$M_Risk))
+ss <- sapply(levels(eln),function(e) summary(survfit(os ~ 1, subset=eln==e), times=times)$surv)
+ee <- sapply(times, function(t) ape(ss[times==t,eln], os, t))
+
+a <- sapply(times, function(t) ape(1-colSums(multiRfx5Loo[times == t,1:3,]), os, t))
+s <- summary(survfit(coxRFXFitOsTDGGc), times=times)
+b <- sapply(times, function(t) ape(s$surv[times==t]^exp(rfx5Loo[6,]), os, t))
+e <- sapply(times, function(t) ape(s$surv[times==t], os, t))
+for(i in 1:4){
+	plot(times/365.25, e[i,], type='l', xlab="Time (yr)", ylab=rownames(a)[i], col=set1[9])
+	lines(times/365.25, a[i,], col=set1[1])
+	lines(times/365.25, b[i,], col=set1[2])
+	lines(times/365.25, ee[i,], col=set1[3])
+	legend("bottomright",c("Kaplan-Meier","ELN","Multistage","RFX OS"), col=set1[c(9,3,1:2)], lty=1, bty="n")
+}
+
+
+x0 <- c(0,.25,1.5,2,3)
+x1 <- c(0,1,1.5,2.5,3)
+y0 <- c(.5,1,.5,1,.5)
+y1 <- c(0,1,0,1,0)
+
+
+symbols(c(0,1.5,3), c(1,1,1), circles=rep(.5,3), inches=FALSE, xlim=c(-1,4), ylim=c(-1,1.5))
+symbols(c(0,1.5,3), rep(-.5,3), squares=rep(1,3), inches=FALSE, add=TRUE)
+arrows(x0,y0,x1,y1, lwd=exp(2*(allStagesRisk[3,]-colMeans(allStagesRisk))))
+
+x0 <- c(0,0,1,1,2)
+x1 <- c(0,1,1,2,2)
+y0 <- c(1,1,1,1,1)
+y1 <- c(0,1,0,1,0)
+
+
+set.seed(42)
+nStars <- 32
+s <- sample(nrow(dataFrame),nStars^2) #1:(nStars^2)
+library(HilbertVis)
+l <- "coxRFXFitOsTDGGc"
+t <- os#get(l)$surv
+p <- PartialRisk(get(l),  newZ=dataFrame[, colnames(get(l)$Z)])
+p <- p[,colnames(p)!="Nuisance"]
+locations <- hilbertCurve(log2(nStars))+1 
+mat <- matrix(order(locations[,1], locations[,2]), ncol=nStars)
+h <- hclust(dist(p[s,]))
+layout(mat[nStars:1,])
+par(mar=c(0,0,0,0),+.5, bty="n")
+for(i in 1:nStars^2){ # Fitted predictions
+	plot(NA,NA, xlim=c(-.5,2.5), ylim=c(-.5,1.5), xaxt="n", yaxt="n", xlab="", ylab="")
+	w <- 2*exp((allStagesRisk[s[h$order[i]],]-colMeans(allStagesRisk)))
+	arrows(x0,y0,x1,y1, lwd=w/2, length=0.05, lend=1)}
+
+
+pdf("Mosaic_HSCT.pdf",3,3, pointsize=8)
+par(mar=c(3,5,3,1), mgp=c(2,.5,0), las=2)
+benefit <- multiRFX3TplLoo[,2]-multiRFX3TplLoo[,3]
+benefit4 <- cut(benefit, c(-Inf, 0, .05, .1, Inf), labels=c("<0%", "0-5%","5-10%",">10%"))
+eln <- factor(paste(clinicalData$M_Risk), levels=rev(c("NA","Adverse","Inter-1","Inter-2","Favorable")))
+w <- clinicalData$AOD < 60 & !is.na(clinicalData$CR_date) & !clinicalData$TPL_Phase %in% c("PR1","RD1")
+mosaicplot(table(`ELN risk group`=eln[w],`Mortality Reduction`=benefit4[w])[5:1,4:1], col=RColorBrewer::brewer.pal(7,"RdBu")[6:3], main="")
+dev.off()
+
+pdf("Mosaic_surv.pdf",3,3, pointsize=8)
+par(mar=c(3,5,3,1), mgp=c(2,.5,0), las=2)
+s <- 1-colSums(multiRfx5Loo[times == 3*365,1:3,])
+surv365Quantiles <- cut(s, seq(0,1,0.25), include.lowest=TRUE, labels=c("0-25%","25-50%","50-75%","75-100%"))
+t <- table(`ELN risk group`=eln,`3-year survival`=surv365Quantiles)[5:1,4:1]
+mosaicplot(t, col=RColorBrewer::brewer.pal(9,"Set1")[c(3,2,4,1,9)], dir=c("v","h"), main="")
+dev.off()
+
+x <- rev(table(eln))/length(eln)
+e <- summary(survfit(os ~ eln), time=3*365.25)$surv
+names(e) <- levels(eln)
+points(as.numeric(cumsum(x)-x/2),rev(e), pch="*")
+
+
+#' Backfitting
+trainIdx <- sample(c(TRUE,FALSE), nrow(dataFrame), replace=TRUE, prob=c(0.66,0.34))
+trainIdxOsTD <- trainIdx[tplSplitOs]
+Z <- as.data.frame(sapply(dataFrame[groups %in% c("Clinical","Demographics")], function(x)if(all(x[1:5] %in% 0:10)) return(x) else log(x+min(x)+1e-3)), simplify=FALSE)[,-13]
+c <- coxph(os ~ ., data=Z, subset=trainIdx)
+iter <- 50
+clinicalSpline <- array(0, dim=c(dim(Z), iter))
+clinicalSpline[,,1] <- (as.matrix(Z)  ) * rep(coef(c), each=nrow(Z))
+for(foo in 2:iter) for(n in 1:ncol(Z)){
+		{
+			y <- Z[,n]
+			d <- data.frame(y=y, p0=rowSums(clinicalSpline[,-n,foo-1]))
+			if(length(unique(y)) >= 10)
+				fit <- coxph(os ~ pspline(y, df=2) + offset(p0), data=d, subset=trainIdx)
+			else
+				fit <- coxph(os ~ y + offset(p0), data=d, subset=trainIdx)
+			clinicalSpline[,n,foo] <- 	predict(fit, newdata=data.frame(y=y, p0=0))
+		}
+	}
+colnames(clinicalSpline) <- colnames(Z)
+
+par(mfrow=c(3,3))
+for(n in colnames(clinicalSpline)) if(!all(dataFrame[1:5,n] %in% 0:10)){
+		x <- dataFrame[,n]
+		o <- order(x)
+		plot(x[o], clinicalSpline[o,n,2], log='x', xlab=paste(n, '[observed]'), ylab = paste(n, '[spline]'), type='l', col=rainbow(iter)[1])
+		for(j in 3:iter)
+			lines(x[o], clinicalSpline[o,n,j], col=rainbow(iter)[j])
+}
+			
+sapply(1:iter, function(foo){
+			d <- as.data.frame(clinicalSpline[,,foo])
+			survConcordance(os ~ predict(coxph(os ~ ., data=d, subset=trainIdx), newdata=d), subset=!trainIdx)$concordance
+		})
+
+
+
+#' Dendrogram
+t <- read.table("../data/Revised_Ulm_patient_classification.txt", header=TRUE, sep="\t")
+simpleClass <- t$Overall_classification
+s <- as.character(simpleClass)
+s[s %in% c("Ambiguous_classification","No_class","No_drivers")] <- "other"
+s <- factor(s)
+m <- sapply(split(dataFrame[groups %in% c("Genetics","Fusions","CNA")], s), colMeans)
+
+d <- dist(t(m[, colnames(m)!="other"]), 'manhattan')
+h <- hclust(d, "average")
+plot(h, hang=-1)
+library(phangorn)
+
+pdf("~/Desktop/summary.pdf", 7, 3, pointsize=8)
+layout(matrix(1:2, nrow=1), widths=c(1.2,4))
+par(mar=c(2,.1,.1,.1), bty="n")
+h <- hclust(d, "average")
+plot(as.phylo(h), cex=1)
+mtext(side=1, "other", at=3.3, line=.5)
+pic <- mg14:::human()
+t <- round(table(s)/1540 * 100)
+t["other"] <- t["other"] + 100 - sum(t)
+par(mar=rep(0,4), bty="n")
+plot(NA,NA, xlim=c(1,max(t)),ylim=c(0.5,12.5), xaxt="n", yaxt="n", xaxs="i", yaxs="i")
+col <- c("grey",brewer.pal(8,"Set1")[-6], brewer.pal(5,"Dark2"))
+srv <- summary(survfit(os ~ s), time=365.25*3)$surv * t
+names(srv) <- levels(s)
+for(i in 1:12){
+	c <- c("other",attr(d, "Labels")[h$order])[i]
+	for(j in 1:t[c])
+		grid.picture(pic, x=(j+10-.5)/(max(t)+15), y=(i-.5)/12, gpFUN=function(x){x$fill=ifelse(j <= round(srv[c]), col[i], "#000000"); x$lwd=0; x$col="#00000000"; x}, width=1/12, height=1/12 )
+	text(j*.8+1, y=i, paste0("survival=",round(srv[c] / t[c] * 100), "%"), pos=4)
+}
+dev.off()
+
+
+for(err in c(1e-3, 1e-4)){
+rho = 10^seq(-6,-1)
+rhoHat <- sapply(rho, function(r){
+			sapply(1:1000, function(i){
+						n = 30
+						X = rbetabinom(50, n, err, rho=r)
+						X = cbind(X, n-X)
+						Y = array(X, dim=c(50,1,2))
+						rHat <- deepSNV:::estimateRho(Y, Y/n, Y < 1000)[1,1]
+						pmax(err * 1/n ,rHat - 1/n) })
+		})
+par(bty="n", mgp = c(2,.5,0), mar=c(3,4,1,1)+.1,  tcl=-.33)
+plot(rho, type="l", log="y", xaxt="n", xlab="rho", ylab="rhoHat", xlim=c(0.5,6.5), lty=3)
+boxplot(t(rhoHat+ 1e-7) ~ rho, add=TRUE, col="#FFFFFFAA", pch=16, cex=.5, lty=1, staplewex=0)
+points(colMeans(rhoHat), pch="*", col="red", cex=2)
+title(main=paste0("Error=",err), line=0)
+}
+
+
+eln <- factor( sub("NA","Missing",paste(clinicalData$M_Risk)), levels=c("Favorable", "Inter-2","Inter-1","Adverse","Missing"))
+col1 <- set1[c(3,2,4,1,9)]
+
+pdf("ELNvM5.pdf", 6,4, pointsize=8)
+par(mfrow=c(2,3), mar=c(2.5,2.5,2,1)+.1, mgp=c(1.5,.5,0), bty='n', cex=1)
+i <- 1; for(e in levels(eln)) {
+	plot(NA,NA, ylim=0:1, xlim=c(0,5), xlab="Time", ylab="Survival", main=e, xaxs='i', yaxs='i', font.main=1, cex.main=1)
+	for(w in which(eln==e))
+		lines(times/365.25, 1-m5os[,w], col=mg14::colTrans(col1[i], f=2))
+	lines(survfit(osYr ~ 1, subset=eln==e), col=col1[i], xlim=c(0,5.5*365.25), conf.int=FALSE)
+	lines(times/365.25, 1-rowMeans(m5os[,eln==e]), col=col1[i], lwd=2)
+	#lines(times, 1-apply(m5os[,eln==e],1,median), col=set1[i]) 
+	i<-i+1}
+plot(NA,NA, xlim=0:1, ylim=0:1, xaxt="n", yaxt="n", xlab="", ylab=""); i <- 5
+legend("topleft", legend=c("KM estimate", "Multistage average","Multistage patient"), lty=rep(1,3),lwd=c(1,2,1), pch=c("+",NA,NA), col=c(rep(col1[i],2), mg14::colTrans(col1[i], f=2)))
+dev.off()
