@@ -1636,6 +1636,7 @@ lines(ksmooth(seq_along(o),t[o,2]==0, bandwidth=50))
 par(mar=c(3,5,3,1), mgp=c(2,.5,0), las=2)
 s <- 1-colSums(multiRfx5Loo[times == 3*365,1:3,])
 surv365Quantiles <- cut(s, seq(0,1,0.25), include.lowest=TRUE, labels=c("0-25%","25-50%","50-75%","75-100%"))
+eln <- factor( paste(clinicalData$M_Risk))
 t <- table(`ELN risk group`=eln,`3-year survival`=surv365Quantiles)[5:1,4:1]
 mosaicplot(t, col=RColorBrewer::brewer.pal(9,"Set1")[c(3,2,4,1,9)], dir=c("v","h"), main="")
 
@@ -1644,7 +1645,6 @@ mosaicplot(t, col=RColorBrewer::brewer.pal(9,"Set1")[c(3,2,4,1,9)], dir=c("v","h
 #' Plots of concordance and absolute prediction measures for baseline error, ELN, RFX and multistage models. 
 #+ errorsMultiRfxOsLoo, fig.width=2.5, fig.height=2.5
 multiRfx5C <- sapply(seq_along(times), function(i) survConcordance(os ~ colSums(multiRfx5Loo[i,1:3,]))$concordance[1])
-eln <- factor( paste(clinicalData$M_Risk))
 
 plot(times/365.25, multiRfx5C, type='l', xlab="Time", ylab="Concordance", ylim=c(0.5, 0.73), col=set1[1])
 abline(h=survConcordance(os ~ rfx5Loo[6,])$concordance, col=set1[2], lwd=1)
