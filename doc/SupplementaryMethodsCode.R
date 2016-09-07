@@ -1141,6 +1141,30 @@ text(locations[,1], locations[,2]+1,labels=paste(gsub(";","\n",genotype[patients
 #' We use a numerical approach similar to the one outlined above to compute the confidence intervals for overall survival measured from diagnosis.
 #' Note that it is in principle also possible to derive analytical confidence intervals analogous to [section 5.4.2.1](#analytical-confidence-intervals).
 #' 
+#' ## Measures of absolute prediction errors
+#' As mentioned above, one of the key advantages of the multistage model is that it calculates absolute probabilities at a particular time 
+#' rather than relative risks (hazards). While the canonical measure for assessing the predictive performance for survival models is the concordance $C$, which measures
+#' the agreement of the hazard and the survival times analogous to Kendall's $\tau$, it therefore is useful to also define measures of absolute prediction errors.
+#' 
+#' The basic idea is to quantify the difference between a prediction at time $t$, $P(X_t=1 | Z_i)$ and the observed status ($I(t < t_i) \in {0,1}$ here fore simplicity) at this time for each patient $i$. 
+#' In a perfect model $P(X_t=1 | Z_i)$ would change from 0 to 1 at exactly the time of the event $t_i$ for patient $i$. In reality, of course
+#' $P(X_t=1 | Z_i)$ will be a probability in the interval $[0,1]$ and we would expect that this probability accurately describes the distribution across patients. 
+#' 
+#' We can define different measures $D(P(X_t=1 | Z_i), I(t < t_i))$ for the agreement of probabilities and outcome. Choices are absolute error $D_1(x,y) = |x-y|$, squared error 
+#' D_2(x,y)=$(x-y)^2$ (equivalent to the Brier score), Bayes error $D_B(x,y) = I((x > 0.5)=y)$ and entropy $D_E(x,y) = y \log_2(y/x) + (1-y) \log_2((1-y)/(1-x))$. A measure for 
+#' the overall absolute prediction accuracy is then the average 
+#' $$A_t = 1/n \sum_i D(P(X_t=1 | Z_i), I(t < t_i)).$$
+#' 
+#' One challenge arises due to censoring of some observations. In this case we extrapolate the status from the state at which a patient was last seen using the
+#' population survival distribution $S(t) = 1 - P(X_t = 1)$, $\hat I_t = S(t)/S(t_i)$ for $t > t_i$ and $1$ otherwise. Here we choose the Kaplan-Meier estimator
+#' for $S(t)$.
+#' 
+#' The above absolute prediction error measure are implemented in `CoxHD::ape()`.
+#' 
+#' The squared error $D_2$ can be used to define a measure analogous to the fraction of explained variance, 
+#' $$R^2 = 1 - \frac{\sum_i D_2(P(X_t=1 | Z_i), I(t < t_i)}{D_2(P(X_t=1), I(t < t_i)},$$
+#' where $P(X_t=1) = 1-S(t)$ in the denominator is given by the Kaplan-Meier estimator and hence independent of the covariates $Z$ and identical for each patient $i$. 
+#' The measure $R^2$ quantifies how much the squared error is reduced compared to a constant survival prediction.
 
 #' ## Code
 #' 
@@ -2308,7 +2332,7 @@ text(1:3*3, 11, c("Best","Intermediate","Worst"), pos=3)
 #' Prototypical risk constellations
 prototypes <- sapply(levels(clinicalData$M_Risk)[c(2,4,3,1)], function(l) sapply(1:3, function(i){
 						#d <- dist(as.data.frame(coxRFXRelTD$Z[which(clinicalData$M_Risk[cirData$index]==l & quantileRiskCirTD==i &! is.na(clinicalData$CR_date[cirData$index])), ])) 
-						w <- which(clinicalData$M_Risk[relData$index]==l & quantileRiskOsCR==i &! is.na(clinicalData$CR_date[relData$index]))
+						w <- which(clinicalData$M_Risk[osData$index]==l & quantileRiskOsCR==i &! is.na(clinicalData$CR_date[osData$index]))
 						d <- dist(t(t(coxRFXOsCR$Z[w, ]) ))
 						osData$index[w][which.min(rowMeans(as.matrix(d), na.rm=TRUE))]
 					}))
