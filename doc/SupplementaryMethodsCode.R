@@ -1139,9 +1139,10 @@ text(locations[,1], locations[,2]+1,labels=paste(gsub(";","\n",genotype[patients
 #' ### Overall survival from diagnosis
 #' 
 #' We use a numerical approach similar to the one outlined above to compute the confidence intervals for overall survival measured from diagnosis.
-#' Note that it is in principle also possible to derive analytical confidence intervals analogous to [section 5.4.2.1](#analytical-confidence-intervals).
+#' Note that it is in principle also possible to derive analytical confidence intervals analogous to [section 3.4.2.1](#analytical-confidence-intervals).
 #' 
 #' ## Measures of absolute prediction errors
+#' 
 #' As mentioned above, one of the key advantages of the multistage model is that it calculates absolute probabilities at a particular time 
 #' rather than relative risks (hazards). While the canonical measure for assessing the predictive performance for survival models is the concordance $C$, which measures
 #' the agreement of the hazard and the survival times analogous to Kendall's $\tau$, it therefore is useful to also define measures of absolute prediction errors.
@@ -1165,7 +1166,7 @@ text(locations[,1], locations[,2]+1,labels=paste(gsub(";","\n",genotype[patients
 #' $$R^2 = 1 - \frac{\sum_i D_2(P(X_t=1 | Z_i), I(t < t_i)}{D_2(P(X_t=1), I(t < t_i)},$$
 #' where $P(X_t=1) = 1-S(t)$ in the denominator is given by the Kaplan-Meier estimator and hence independent of the covariates $Z$ and identical for each patient $i$. 
 #' The measure $R^2$ quantifies how much the squared error is reduced compared to a constant survival prediction.
-
+#' 
 #' ## Code
 #' 
 #' ### Static multistage model
@@ -1291,7 +1292,7 @@ title(main="Non-relapse deaths")
 PlotVarianceComponents(coxRFXPrdTD, col=colGroups, order=o)
 title(main="Post-relapse deaths")
 
-#' #### Figure 2E
+#' #### Figure 2F
 #' As barplot
 #+ allVarCompBar, fig.width=2, fig.height=2
 par(mar=c(4,3,1,5))
@@ -1666,7 +1667,7 @@ mosaicplot(t, col=RColorBrewer::brewer.pal(9,"Set1")[c(3,2,4,1,9)], dir=c("v","h
 
 
 #' #### Figure 1B
-#' Plots of concordance and absolute prediction measures for baseline error, ELN, RFX and multistage models. 
+#' Plots of concordance and [absolute prediction errors](#measures-of-absolute-prediction-errors) for baseline error, ELN, RFX and multistage models. 
 #+ errorsMultiRfxOsLoo, fig.width=2.5, fig.height=2.5
 multiRfx5C <- sapply(seq_along(times), function(i) survConcordance(os ~ colSums(multiRfx5Loo[i,1:3,]))$concordance[1])
 
@@ -1710,7 +1711,7 @@ allDataTpl$transplantCR1 <- rep(c(0,1,0), nrow(dataFrame))
 allDataTpl$transplantRel <- rep(c(0,0,1), nrow(dataFrame))
 
 
-#' #### Figure 4A-F
+#' #### Figure 4
 #' Here we show survival predictions for three selected patients
 #+ threePatientsAllo, fig.width=7.5, fig.height=7.5
 xmax=2000
@@ -3690,6 +3691,8 @@ legend("bottomright",c("ELN","RFX OS","RFX Multistage"), col=set1[3:1], lty=1, b
 
 
 #' #### Figure 1C
+#' Here we calculate the [absolute prediction errors and coefficient of determination](#measures-of-absolute-prediction-errors) based on predictions
+#' derived from the AMLSG cohort and evaluated on the TCGA data set.
 #+ tcgaMultistageError, fig.width=2.5, fig.height=2.5
 times <- seq(1,2000,10)
 ss <- sapply(levels(eln),function(e) summary(survfit(os ~ 1, subset=eln==e), times=times)$surv)
@@ -3902,7 +3905,7 @@ legend(par("usr")[1],1.5, fill=clr[1:nrow(r)], legend=1:nrow(r), bty="n", border
 #' ## Code
 
 #' ### Interpolations
-#' #### Figure 6B
+#' #### Figure 6A
 #' Subsampling patients
 #+ subsetPatients, cache=TRUE
 library(survivalROC)
