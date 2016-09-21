@@ -167,26 +167,35 @@ shinyServer(function(input, output) {
 							h <- if(NEWGRP[x]) list(tags$em(tags$b(crGroups[x]))) else NULL
 							list(h,f)}
 						
-						list(wellPanel(	list(							
-												tags$b("Clinical variables"),
-												tags$hr(),
-												tags$em(tags$b(crGroups[VARIABLES[1]])),
-												lapply(VARIABLES[crGroups[VARIABLES] %in% c("Clinical","Demographics")], makeMenu)
+						list(wellPanel(	list(	actionLink("showClinical", 					
+														tags$b("Clinical variables")
+												),
+												conditionalPanel(condition = 'input.showClinical % 2',
+														tags$hr(),
+														tags$em(tags$b(crGroups[VARIABLES[1]])),
+														lapply(VARIABLES[crGroups[VARIABLES] %in% c("Clinical","Demographics")], makeMenu)
+												)
 										),
 										style = "overflow-y:scroll; max-height: 400px; position:relative;"
 								),
-								wellPanel(	list(							
-												tags$b("Genomic variables"),
-												tags$hr(),
-												#tags$em(tags$b(crGroups[VARIABLES[1]])),
-												lapply(VARIABLES[crGroups[VARIABLES] %in% c("Genetics","Fusions","CNA")], makeMenu)
+								wellPanel(	list(	actionLink("showDrivers", 					
+														tags$b("Driver mutations")
+												),
+												conditionalPanel(condition = 'input.showDrivers % 2',
+														tags$hr(),
+														#tags$em(tags$b(crGroups[VARIABLES[1]])),
+														lapply(VARIABLES[crGroups[VARIABLES] %in% c("Genetics","Fusions","CNA")], makeMenu)
+												)
 										),
 										style = "overflow-y:scroll; max-height: 400px; position:relative;"
 								),
-								wellPanel(	list(							
-												tags$b("Treatment"),
-												#tags$hr(),
-												lapply(VARIABLES[crGroups[VARIABLES] == "Treatment"], makeMenu)
+								wellPanel(	list(	actionLink("showTreatment", 					
+														tags$b("Treatment")
+												),
+												conditionalPanel(condition = 'input.showTreatment % 2',
+														#tags$hr(),
+														lapply(VARIABLES[crGroups[VARIABLES] == "Treatment"], makeMenu)
+												)
 										),
 										style = "overflow-y:scroll; max-height: 400px; position:relative;"
 								)
@@ -420,12 +429,12 @@ shinyServer(function(input, output) {
 								d <- getData()[, colnames(data)]
 								#x <- dataImputed()
 								bloodVariables <- c("BM_Blasts_100","PB_Blasts_100","wbc_100","LDH_1000","HB_10","platelet_100")
-								paste0( "Patient:           ", paste(c(na.omit(d[["AOD_10"]]*10), if(is.na(d[["AOD_10"]])) "" else "yr old ", c(`1`="male",`2`='female',`NA`="")[paste(d[["gender"]])]), collapse=""), "\n",
-										"Genomic variables: ", paste(printMutations(d[,crGroups %in% "Genetics", drop=FALSE]), 
+								paste0( "<table><tr><td style='width:20%'><b>Patient:</b></td><td> ", paste(c(na.omit(d[["AOD_10"]]*10), if(is.na(d[["AOD_10"]])) "" else "yr old ", c(`1`="male",`2`='female',`NA`="")[paste(d[["gender"]])]), collapse=""), "</td></tr>",
+										"<tr><td><b>Genomic variables:</b></td><td> ", paste(printMutations(d[,crGroups %in% "Genetics", drop=FALSE]), 
 												printMutations(d[,crGroups %in% "Fusions", drop=FALSE]),
-												printMutations(d[,crGroups %in% "CNA", drop=FALSE]), collapse="; "),"\n",
-										"Blood counts:      ", paste((d[, bloodVariables] * SCALEFACTORS[bloodVariables])[!is.na(d[, bloodVariables])], sub("(.+) \\((.+)\\).+", "\\2 \\1",LABELS[bloodVariables][!is.na(d[, bloodVariables])], perl=TRUE), collapse=", "), "\n",
-										"Treatment:         ", if(!is.na(d[,'transplantRel'])) if(d[,"transplantRel"]) "HSCT after relapse" else if(d[,"transplantCR1"]) "HSCT in CR1" else if(d[,"transplantCR1"]==0 & d[,"transplantRel"]==0) "No HSCT")
+												printMutations(d[,crGroups %in% "CNA", drop=FALSE]), collapse="; "),"<br>",
+										"<tr><td><b>Blood counts:</b></td><td> ", paste((d[, bloodVariables] * SCALEFACTORS[bloodVariables])[!is.na(d[, bloodVariables])], sub("(.+) \\((.+)\\).+", "\\2 \\1",LABELS[bloodVariables][!is.na(d[, bloodVariables])], perl=TRUE), collapse=", "), "</td></tr>",
+										"<tr><td><b>Treatment:</b></td><td> ", if(!is.na(d[,'transplantRel'])) if(d[,"transplantRel"]) "HSCT after relapse" else if(d[,"transplantCR1"]) "HSCT in CR1" else if(d[,"transplantCR1"]==0 & d[,"transplantRel"]==0) "No HSCT", "</td></tr></table>")
 							})
 					
 					round100 <- function(x){
@@ -440,28 +449,32 @@ shinyServer(function(input, output) {
 						return(y)
 					}
 					
-					printRisk <- function(x) paste0(paste0(c("|",rep("X", x)), collapse=""), " ",x, "%")
+					printRisk <- function(x, img="human.svg") paste0(paste0(c("",rep(paste0("<img src=\"",img,"\" alt=\"%\" width=\"8\"></img>"), x)), collapse=""), " ",x, "%")
+					#printRisk <- function(x, img="human.svg") paste0(paste0(c("<style type=\"text/css\">.st0{fill:#A9C1D9;}</style>",rep(paste0("<object type=\"image/svg+xml\" data=\"",img,"\" alt=\"%\" width=\"8\"></object>"), x)), collapse=""), " ",x, "%")
+
 					
 					output$absoluteRiskDiag <- renderText({
 								r <- computeAbsoluteProbabilities()[round(3*365.25)+1,,drop=FALSE]
 								p <- c((1-r[,"ncd"]),(1-r[,"nrsDiag"]),(1-r[,"rsDiag"]),(1-r[,"relDiag"] - (1-r[,"rsDiag"])),(r[,"osDiag"] -(1-r[,"relDiag"] - (1-r[,"rsDiag"])) - (r[,"cr"] - (1-r[,"ncd"]))  ),(r[,"cr"] - (1-r[,"ncd"]) ))
 								p <- round100(p*100)
-								paste0( "Death without remission: ", printRisk(p[1]), "\n",
-										"Death without relapse:   ", printRisk(p[2]),"\n",
-										"Death after relapse:     ", printRisk(p[3]),"\n",
-										"Alive after relapse:     ", printRisk(p[4]) ,"\n",
-										"Alive in CR1:            ", printRisk(p[5]),"\n",
-										"Alive without CR:        ", printRisk(p[6]),"\n")
-							})
+								paste0( '<div class="table-responsive"><table style="width:60%"><tr><td style="width:20%"><b>Death without remission</b></td><td style="width:80%">', printRisk(p[1], "human-rose.svg"), "</td></tr>",
+										"<tr><td><b>Death without relapse<b></td><td>", printRisk(p[2], "human-blue.svg"),"</td></tr>",
+										"<tr><td><b>Death after relapse<b></td><td>", printRisk(p[3], "human-green.svg"),"</td></tr>",
+										"<tr><td><b>Alive after relapse<b></td><td>", printRisk(p[4], "human-yellow.svg") ,"</td></tr>",
+										"<tr><td><b>Alive in CR1<b></td><td>", printRisk(p[5], "human-violet.svg"),"</td></tr>",
+										"<tr><td><b>Alive without CR<b></td><td>", printRisk(p[6], "human-grey.svg"),"</td></tr></table></div>")
+#								data.frame(paste("<b>",c("Death without remission","Death without relapse","Death after relapse","Alive after relapse","Alive in CR1","Alive without CR"),"</b>"),
+#										sapply(p, printRisk))
+							})#, include.colnames=FALSE, include.rownames=FALSE)
 					
 					output$absoluteRiskCr <- renderText({
 								r <- computeAbsoluteProbabilities()[round(3*365.25)+1,,drop=FALSE]
 								p <- c((1-r[,"nrsCr"]),(1-r[,"rsCr"]),(1-r[,"relCr"] - (1-r[,"rsCr"])),(r[,"osCr"] -(1-r[,"relCr"] - (1-r[,"rsCr"])) ))
 								p <- round100(p*100)
-								paste0( "Death without relapse:   ", printRisk(p[1]),"\n",
-										"Death after relapse:     ", printRisk(p[2]),"\n",
-										"Alive after relapse:     ", printRisk(p[3]) ,"\n",
-										"Alive in CR1:            ", printRisk(p[4]),"\n")
+								paste0( "<table  style='width:100%'><tr><td style='width:20%'><b>Death without relapse</b></td><td style='width:80%'>", printRisk(p[1], "human-blue.svg"),"</td></tr>",
+										"<tr><td><b>Death after relapse<b></td><td>", printRisk(p[2], "human-green.svg"),"</td></tr>",
+										"<tr><td><b>Alive after relapse<b></td><td>", printRisk(p[3], "human-yellow.svg") ,"</td></tr>",
+										"<tr><td><b>Alive in CR1<b></td><td>", printRisk(p[4], "human-violet.svg"),"</td></tr></table>")
 							})
 				
 		})

@@ -1,9 +1,11 @@
 library(shiny)
+library(shinyBS)
 library(CoxHD)
 load("multistage.RData", envir=globalenv())
 
 
 # Define UI for application that plots random distributions 
+#shinybootstrap2::withBootstrap2({
 fluidPage(
 		tags$head(
 				includeHTML("www/popup.html")
@@ -11,25 +13,28 @@ fluidPage(
 		includeHTML("www/disclaimer.html"),
 
 		# Application title
-		titlePanel("AML multistage predictions (beta)"),
-		div(HTML('<h4 style="color:red;""> For research use only</h4>')),
+		titlePanel("AML multistage predictions (research only)"),
+		#div(HTML('<h4 style="color:red;""> For research use only</h4>')),
 		
 		
 		fluidRow(
 				# Sidebar with a slider input for number of observations
 				column(3, 
 						wellPanel(
-								tags$b("Select sample"),
-								tags$em(tags$small("Data may be rounded for privacy reasons.")),								
+								actionButton("compute", "Compute survival")
+								),
+						wellPanel(
+								tags$b("1. Select sample"),								
 								selectizeInput(inputId="pdid", label="", choices=c("reset",rownames(data)[order(as.numeric(gsub("[A-z]","", rownames(data))))]),  multiple=FALSE, 
 										options = list(maxOptions = nrow(data)+1,
 												placeholder = 'Please select',
 												onInitialize = I('function() { this.setValue(""); }'))),
-								#tags$hr(),
-								tags$br(),
-								actionButton("compute", "Compute survival")
+								tags$em(tags$small("Data may be rounded for privacy reasons."))
+								
 						),
+						#bsCollapse(#"2. Enter/change variables",
 								uiOutput("ui"),
+						#),
 						wellPanel(
 								radioButtons("ciType", tags$b("Confidence intervals"), choices=c("analytical (fast, CR only)"="analytical","simulated (slow)"="simulated"), selected = "analytical"), ## CI type
 								#tags$hr(),
@@ -38,17 +43,17 @@ fluidPage(
 				),
 				
 				# Show a plot of the generated distribution
-				column(8,
+				column(9,
 						tabsetPanel(
 								tabPanel('Results',
 										tags$h4("Patient summary"),
-										textOutput(outputId="patientSummary", container=pre),
+										htmlOutput(outputId="patientSummary"),
 										tags$h4("Multistage probabilities"),
 										plotOutput(outputId="KM",height="300px"),
-										tags$h4("3-year post diagnosis risk estimates"),
-										textOutput(outputId="absoluteRiskDiag", container=pre),
-										tags$h4("3-year post CR risk estimates"),
-										textOutput(outputId="absoluteRiskCr", container=pre)),
+										tags$h4("Outcome 3 years after diagnosis"),
+										htmlOutput(outputId="absoluteRiskDiag"),
+										tags$h4("Outcome 3 years after remission"),
+										htmlOutput(outputId="absoluteRiskCr")),
 								
 								tabPanel('Log hazard',
 										dataTableOutput("Risk")),
@@ -60,4 +65,4 @@ fluidPage(
 		
 		)
 )
-
+#})
