@@ -96,6 +96,9 @@ addGrid <- function(scale=1) {
 	abline(v=seq(0,2000,365.25)/scale, lty=3)
 }
 
+wellStyle <- "background-color:rgb(255, 255, 255); border-color:rgb(204, 205, 205); padding-bottom:9px; padding-top:9px;"
+
+
 # Define server logic required to generate and plot a random distribution
 shinyServer(function(input, output) {
 			getData <- reactive({
@@ -125,8 +128,8 @@ shinyServer(function(input, output) {
 					})
 			output$ui <- renderUI({
 						pdid <- input[["pdid"]]
-						if(is.null(pdid)) pdid <- "reset"
-						if( pdid=="reset"){
+						if(is.null(pdid)) pdid <- "reset all variables"
+						if( pdid=="reset all variables"){
 							#cat("reset\n")
 							defaults <- data[1,]
 							defaults[] <- NA
@@ -167,41 +170,59 @@ shinyServer(function(input, output) {
 							h <- if(NEWGRP[x]) list(tags$em(tags$b(crGroups[x]))) else NULL
 							list(h,f)}
 						
-						list(wellPanel(	list(	actionLink("showClinical", 					
-														tags$b("Clinical variables")
-												),
+						list(wellPanel(	list(	tags$b("2. or enter/amend variables"),	
+												#tags$em(tags$small("Click to see a list of variables")),
+												#tags$hr(),
+												wellPanel(
+														actionLink("showClinical", 					
+																tags$div("Clinical variables", HTML("&#9662;")),
+																style = "color:rgb(0,0,0);"
+														),
+														style = wellStyle),
 												conditionalPanel(condition = 'input.showClinical % 2',
-														tags$hr(),
-														tags$em(tags$b(crGroups[VARIABLES[1]])),
-														lapply(VARIABLES[crGroups[VARIABLES] %in% c("Clinical","Demographics")], makeMenu)
-												)
-										),
-										style = "overflow-y:scroll; max-height: 400px; position:relative;"
-								),
-								wellPanel(	list(	actionLink("showDrivers", 					
-														tags$b("Driver mutations")
+														wellPanel(
+																tags$em(tags$b(crGroups[VARIABLES[1]])),
+																lapply(VARIABLES[crGroups[VARIABLES] %in% c("Clinical","Demographics")], makeMenu),
+																style = paste(wellStyle,"margin-top:-20px; overflow-y:scroll; max-height: 400px; position:relative; 2px 1px 1px rgba(0, 0, 0, 0.05) inset")
+														)
 												),
+												#tags$hr(),
+#												conditionalPanel(condition = 'input.showClinical % 2', tags$hr()),
+#										)
+#								),
+#								wellPanel(	list(
+												wellPanel(
+														actionLink("showDrivers", 					
+																tags$div("Driver mutations", HTML("&#9662;")),
+																style = "color:rgb(0,0,0);"
+														),
+														style = wellStyle),
+												
 												conditionalPanel(condition = 'input.showDrivers % 2',
-														tags$hr(),
-														#tags$em(tags$b(crGroups[VARIABLES[1]])),
-														lapply(VARIABLES[crGroups[VARIABLES] %in% c("Genetics","Fusions","CNA")], makeMenu)
-												)
-										),
-										style = "overflow-y:scroll; max-height: 400px; position:relative;"
-								),
-								wellPanel(	list(	actionLink("showTreatment", 					
-														tags$b("Treatment")
+														wellPanel(
+																lapply(VARIABLES[crGroups[VARIABLES] %in% c("Genetics","Fusions","CNA")], makeMenu),
+																tags$hr(),
+																style = paste(wellStyle,"margin-top:-20px; overflow-y:scroll; max-height: 400px; position:relative; 2px 1px 1px rgba(0, 0, 0, 0.05) inset")
+														)
 												),
+												wellPanel(
+														actionLink("showTreatment", 					
+																tags$div("Treatment", HTML("&#9662;")),
+																style = "color:rgb(0,0,0);"
+														),
+														style = paste(wellStyle, "margin-bottom: 0px")),
 												conditionalPanel(condition = 'input.showTreatment % 2',
-														#tags$hr(),
-														lapply(VARIABLES[crGroups[VARIABLES] == "Treatment"], makeMenu)
+														wellPanel(
+																lapply(VARIABLES[crGroups[VARIABLES] == "Treatment"], makeMenu),
+																style = paste(wellStyle,"margin-bottom:0px; overflow-y:scroll; max-height: 400px; position:relative; 2px 1px 1px rgba(0, 0, 0, 0.05) inset")
+														)
 												)
-										),
-										style = "overflow-y:scroll; max-height: 400px; position:relative;"
+										)
 								)
 						)
 					})
-			x <- 0:2000
+			
+			x <- seq(0,2000,1)#0:2000
 			
 			computeIncidence <- function(coxRFX, r, x) {
 				#r=PredictRiskMissing(coxRFX, data, var="var2")
@@ -430,7 +451,7 @@ shinyServer(function(input, output) {
 								#x <- dataImputed()
 								bloodVariables <- c("BM_Blasts_100","PB_Blasts_100","wbc_100","LDH_1000","HB_10","platelet_100")
 								paste0( "<table><tr><td style='width:20%'><b>Patient:</b></td><td> ", paste(c(na.omit(d[["AOD_10"]]*10), if(is.na(d[["AOD_10"]])) "" else "yr old ", c(`1`="male",`2`='female',`NA`="")[paste(d[["gender"]])]), collapse=""), "</td></tr>",
-										"<tr><td><b>Genomic variables:</b></td><td> ", paste(printMutations(d[,crGroups %in% "Genetics", drop=FALSE]), 
+										"<tr><td><b>Driver mutations:</b></td><td> ", paste(printMutations(d[,crGroups %in% "Genetics", drop=FALSE]), 
 												printMutations(d[,crGroups %in% "Fusions", drop=FALSE]),
 												printMutations(d[,crGroups %in% "CNA", drop=FALSE]), collapse="; "),"<br>",
 										"<tr><td><b>Blood counts:</b></td><td> ", paste((d[, bloodVariables] * SCALEFACTORS[bloodVariables])[!is.na(d[, bloodVariables])], sub("(.+) \\((.+)\\).+", "\\2 \\1",LABELS[bloodVariables][!is.na(d[, bloodVariables])], perl=TRUE), collapse=", "), "</td></tr>",
@@ -454,10 +475,11 @@ shinyServer(function(input, output) {
 
 					
 					output$absoluteRiskDiag <- renderText({
-								r <- computeAbsoluteProbabilities()[round(3*365.25)+1,,drop=FALSE]
+								r <- computeAbsoluteProbabilities()
+								r <- r[which.min(abs(round(3*365.25)-r$x)),,drop=FALSE]
 								p <- c((1-r[,"ncd"]),(1-r[,"nrsDiag"]),(1-r[,"rsDiag"]),(1-r[,"relDiag"] - (1-r[,"rsDiag"])),(r[,"osDiag"] -(1-r[,"relDiag"] - (1-r[,"rsDiag"])) - (r[,"cr"] - (1-r[,"ncd"]))  ),(r[,"cr"] - (1-r[,"ncd"]) ))
 								p <- round100(p*100)
-								paste0( '<div class="table-responsive"><table style="width:60%"><tr><td style="width:20%"><b>Death without remission</b></td><td style="width:80%">', printRisk(p[1], "human-rose.svg"), "</td></tr>",
+								paste0( '<div class="table-responsive"><table style="width:100%"><tr><td style="width:20%"><b>Death without remission</b></td><td style="width:80%">', printRisk(p[1], "human-rose.svg"), "</td></tr>",
 										"<tr><td><b>Death without relapse<b></td><td>", printRisk(p[2], "human-blue.svg"),"</td></tr>",
 										"<tr><td><b>Death after relapse<b></td><td>", printRisk(p[3], "human-green.svg"),"</td></tr>",
 										"<tr><td><b>Alive after relapse<b></td><td>", printRisk(p[4], "human-yellow.svg") ,"</td></tr>",
@@ -468,7 +490,8 @@ shinyServer(function(input, output) {
 							})#, include.colnames=FALSE, include.rownames=FALSE)
 					
 					output$absoluteRiskCr <- renderText({
-								r <- computeAbsoluteProbabilities()[round(3*365.25)+1,,drop=FALSE]
+								r <- computeAbsoluteProbabilities()
+								r <- r[which.min(abs(round(3*365.25)-r$x)),,drop=FALSE]
 								p <- c((1-r[,"nrsCr"]),(1-r[,"rsCr"]),(1-r[,"relCr"] - (1-r[,"rsCr"])),(r[,"osCr"] -(1-r[,"relCr"] - (1-r[,"rsCr"])) ))
 								p <- round100(p*100)
 								paste0( "<table  style='width:100%'><tr><td style='width:20%'><b>Death without relapse</b></td><td style='width:80%'>", printRisk(p[1], "human-blue.svg"),"</td></tr>",

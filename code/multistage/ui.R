@@ -3,6 +3,8 @@ library(shinyBS)
 library(CoxHD)
 load("multistage.RData", envir=globalenv())
 
+wellStyle <- "background-color:rgb(255, 255, 255); border-color:rgb(204, 205, 205); padding-bottom:9px; padding-top:9px;"
+
 
 # Define UI for application that plots random distributions 
 #shinybootstrap2::withBootstrap2({
@@ -21,11 +23,8 @@ fluidPage(
 				# Sidebar with a slider input for number of observations
 				column(3, 
 						wellPanel(
-								actionButton("compute", "Compute survival")
-								),
-						wellPanel(
 								tags$b("1. Select sample"),								
-								selectizeInput(inputId="pdid", label="", choices=c("reset",rownames(data)[order(as.numeric(gsub("[A-z]","", rownames(data))))]),  multiple=FALSE, 
+								selectizeInput(inputId="pdid", label="", choices=c("reset all variables",rownames(data)[order(as.numeric(gsub("[A-z]","", rownames(data))))]),  multiple=FALSE, 
 										options = list(maxOptions = nrow(data)+1,
 												placeholder = 'Please select',
 												onInitialize = I('function() { this.setValue(""); }'))),
@@ -33,13 +32,25 @@ fluidPage(
 								
 						),
 						#bsCollapse(#"2. Enter/change variables",
+						
 								uiOutput("ui"),
 						#),
 						wellPanel(
-								radioButtons("ciType", tags$b("Confidence intervals"), choices=c("analytical (fast, CR only)"="analytical","simulated (slow)"="simulated"), selected = "analytical"), ## CI type
-								#tags$hr(),
-								#div(HTML('<b><a href="help.html">Help</a></b>')),
-							    div(HTML('<b><a id="disclaimer">Disclaimer</a></b>')))
+								actionButton("compute", tags$b("3. Compute outcome"), class="btn btn-primary", style = "margin-bottom:20px"),
+								tags$br(),
+								wellPanel(
+										actionLink("showOptions", 					
+												tags$div("Options", HTML("&#9662;")),
+												style = "color:rgb(0,0,0);"
+										),
+										conditionalPanel(condition = 'input.showOptions % 2',
+												#tags$hr(),
+												radioButtons("ciType", tags$b("Confidence intervals"), choices=c("analytical (fast, CR only)"="analytical","simulated (slow)"="simulated"), selected = "analytical"), ## CI type
+												style = "overflow-y:scroll; max-height: 400px; position:relative"
+										),
+										style = paste(wellStyle, "margin-bottom:0px")
+								)
+						)
 				),
 				
 				# Show a plot of the generated distribution

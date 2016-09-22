@@ -930,7 +930,7 @@ text(locations[,1], locations[,2]+1,labels=paste(gsub(";","\n",genotype[patients
 #' To estimate the population average transition probabilities and absolute incidence of each each individual stage we use the `msSurv` R package [@FergusonJOSS2012]. 
 #' The resulting time-dependent joint distribution $P(X_t)$ is shown in Figure 2B.
 #' 
-#' ## Multistage random effects modelling
+#' ## Hierarchical Bayesian multistage model
 #' 
 #' To estimate how each transition $T$ depends on the set of variables $Z$ introduced in section [variables](transitions), we use a random effects model for each transition to
 #' obtain $f(T\mid Z)$. Competing events are considered to be censored. We apply a separate random effects model to estimate all five terms in Eq.$\eqref{eq:joint-density}$.
