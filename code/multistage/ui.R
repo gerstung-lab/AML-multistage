@@ -48,7 +48,8 @@ fluidPage(
 												style = "overflow-y:scroll; max-height: 400px; position:relative"
 										),
 										style = paste(wellStyle, "margin-bottom:0px")
-								)
+								),
+								uiOutput("check")
 						)
 				),
 				

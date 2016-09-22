@@ -1,4 +1,5 @@
 library(shiny)
+library(xtable)
 library(RColorBrewer)
 library(CoxHD)
 library(Rcpp)
@@ -40,6 +41,9 @@ LABELS <- sapply(VARIABLES, function(x){
 			i <- paste0(" [",r[1],"-",r[2],"]")
 			paste0(sub(paste0("_",SCALEFACTORS[x],"$"),"",x), ifelse(is.null(CATEGORIES[[x]]),i,""))
 		})
+
+LIMITS <- sapply(VARIABLES, function(x){
+			r <- round(range(data[,x], na.rm=TRUE),1)})
 
 LABELS["AOD_10"] <- sub("AOD", "Age at diagnosis (yr)", LABELS["AOD_10"])
 LABELS["LDH_1000"] <- sub("LDH", "Lactic Acid Dehydrogenase (units/l)", LABELS["LDH_1000"])
@@ -126,6 +130,31 @@ shinyServer(function(input, output) {
 									return(out)
 								})
 					})
+			
+			output$check <- renderUI({
+						g <- as.numeric(getData()[VARIABLES])
+						cond <- g < LIMITS[1,] | g > LIMITS[2,]
+						if(any(na.omit(cond))){
+							list(tags$div(HTML('<div class="modal fade" id="warningModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header" style="background-color:rgb(242,222,222);color:rgb(169,68,66);border-top-left-radius:6px; border-top-right-radius:6px">
+        <h4 class="modal-title" id="myModalLabel">Warning</h4>
+      </div>
+      <div class="modal-body">
+<b>The following values are out of range:</b>'), 
+renderTable(data.frame(Variable=LABELS[VARIABLES[which(cond)]], `Entered value`=(g * SCALEFACTORS[VARIABLES])[which(cond)], check.names=FALSE), include.rownames=FALSE),
+HTML('This is likely to lead to uncontrolled behaviour of the predictions.</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Dismiss</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>$(\'#warningModal\').modal(\'show\')</script>')))
+}
+					})
+			
 			output$ui <- renderUI({
 						pdid <- input[["pdid"]]
 						if(is.null(pdid)) pdid <- "reset all variables"
