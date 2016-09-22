@@ -1,5 +1,4 @@
 library(shiny)
-library(shinyBS)
 library(CoxHD)
 load("multistage.RData", envir=globalenv())
 
