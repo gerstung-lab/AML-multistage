@@ -131,28 +131,32 @@ shinyServer(function(input, output) {
 								})
 					})
 			
+			makeWarning <- function(title="Warning", message=HTML(""), id="#warningModal") {
+				list(tags$div(HTML('<div class="modal fade" id="warningModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+												<div class="modal-dialog" role="document">
+												<div class="modal-content">
+												<div class="modal-header" style="background-color:rgb(242,222,222);color:rgb(169,68,66);border-top-left-radius:6px; border-top-right-radius:6px">
+												<h4 class="modal-title" id="myModalLabel">',title,'</h4>
+												</div>
+												<div class="modal-body">'), message,
+								HTML('This is likely to lead to uncontrolled behaviour of the predictions.</div>
+												<div class="modal-footer">
+												<button type="button" class="btn btn-default" data-dismiss="modal">Dismiss</button>
+												</div>
+												</div>
+												</div>
+												</div>
+												<script>$(\'#warningModal\').modal(\'show\')</script>')))
+			}
+			
 			output$check <- renderUI({
 						g <- as.numeric(getData()[VARIABLES])
 						cond <- g < LIMITS[1,] | g > LIMITS[2,]
 						if(any(na.omit(cond))){
-							list(tags$div(HTML('<div class="modal fade" id="warningModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header" style="background-color:rgb(242,222,222);color:rgb(169,68,66);border-top-left-radius:6px; border-top-right-radius:6px">
-        <h4 class="modal-title" id="myModalLabel">Warning</h4>
-      </div>
-      <div class="modal-body">
-<b>The following values are out of range:</b>'), 
-renderTable(data.frame(Variable=LABELS[VARIABLES[which(cond)]], `Entered value`=(g * SCALEFACTORS[VARIABLES])[which(cond)], check.names=FALSE), include.rownames=FALSE),
-HTML('This is likely to lead to uncontrolled behaviour of the predictions.</div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-default" data-dismiss="modal">Dismiss</button>
-      </div>
-    </div>
-  </div>
-</div>
-<script>$(\'#warningModal\').modal(\'show\')</script>')))
-}
+							makeWarning(message=list(HTML('<h5>The following values are out of range:</h5>'),
+											renderTable(data.frame(Variable=LABELS[VARIABLES[which(cond)]], `Entered value`=(g * SCALEFACTORS[VARIABLES])[which(cond)], check.names=FALSE), include.rownames=FALSE)
+									))
+						}
 					})
 			
 			output$ui <- renderUI({
