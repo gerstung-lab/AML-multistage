@@ -507,16 +507,16 @@ shinyServer(function(input, output) {
 							})
 					
 					
-					printMutations <- function(data) paste(LABELS[colnames(data)[which(data[1,]==1)]], collapse=", ")
+					printMutations <- function(data) {res <- paste(LABELS[colnames(data)[which(data[1,]==1)]], collapse=", "); if(res=="") NULL else res}
 					
 					output$patientSummary <- renderText({
 								d <- getData()[, colnames(data)]
 								#x <- dataImputed()
 								bloodVariables <- c("BM_Blasts_100","PB_Blasts_100","wbc_100","LDH_1000","HB_10","platelet_100")
 								paste0( "<table><tr><td style='width:20%'><b>Patient:</b></td><td> ", paste(c(na.omit(d[["AOD_10"]]*10), if(is.na(d[["AOD_10"]])) "" else "yr old ", c(`1`="male",`2`='female',`NA`="")[paste(d[["gender"]])]), collapse=""), "</td></tr>",
-										"<tr><td><b>Driver mutations:</b></td><td> ", paste(printMutations(d[,crGroups %in% "Genetics", drop=FALSE]), 
+										"<tr><td><b>Driver mutations:</b></td><td> ", paste(c(printMutations(d[,crGroups %in% "Genetics", drop=FALSE]), 
 												printMutations(d[,crGroups %in% "Fusions", drop=FALSE]),
-												printMutations(d[,crGroups %in% "CNA", drop=FALSE]), collapse="; "),"<br>",
+												printMutations(d[,crGroups %in% "CNA", drop=FALSE])), collapse="; "),"<br>",
 										"<tr><td><b>Blood counts:</b></td><td> ", paste((d[, bloodVariables] * SCALEFACTORS[bloodVariables])[!is.na(d[, bloodVariables])], sub("(.+) \\((.+)\\).+", "\\2 \\1",LABELS[bloodVariables][!is.na(d[, bloodVariables])], perl=TRUE), collapse=", "), "</td></tr>",
 										"<tr><td><b>Treatment:</b></td><td> ", if(!is.na(d[,'transplantRel'])) if(d[,"transplantRel"]) "HSCT after relapse" else if(d[,"transplantCR1"]) "HSCT in CR1" else if(d[,"transplantCR1"]==0 & d[,"transplantRel"]==0) "No HSCT", "</td></tr></table>")
 							})
