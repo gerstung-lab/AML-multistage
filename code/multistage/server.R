@@ -204,7 +204,7 @@ shinyServer(function(input, output) {
 							h <- if(NEWGRP[x]) list(tags$em(tags$b(crGroups[x]))) else NULL
 							list(h,f)}
 						
-						list(wellPanel(	list(	tags$b("2. or enter/amend variables"),	
+						list(wellPanel(	list(	tags$b("2. Enter/amend variables"),	
 												#tags$em(tags$small("Click to see a list of variables")),
 												#tags$hr(),
 												wellPanel(

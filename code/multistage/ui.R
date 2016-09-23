@@ -22,7 +22,7 @@ fluidPage(
 				# Sidebar with a slider input for number of observations
 				column(3, 
 						wellPanel(
-								tags$b("1. Select sample"),								
+								tags$b("1. Select sample (or enter new patient's variables below)"),								
 								selectizeInput(inputId="pdid", label="", choices=c("reset all variables",rownames(data)[order(as.numeric(gsub("[A-z]","", rownames(data))))]),  multiple=FALSE, 
 										options = list(maxOptions = nrow(data)+1,
 												placeholder = 'Please select',
