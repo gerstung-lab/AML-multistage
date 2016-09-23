@@ -31,8 +31,31 @@ fluidPage(
 								
 						),
 						#bsCollapse(#"2. Enter/change variables",
-						
-								uiOutput("ui"),
+						wellPanel(tags$b("2. Enter/amend variables"),	
+												wellPanel(
+														actionLink("showClinical", 					
+																tags$div("Clinical variables", HTML("&#9662;")),
+																style = "color:rgb(0,0,0);"
+														),
+														style = wellStyle),
+												uiOutput("expandClinical"),
+												wellPanel(
+														actionLink("showDrivers", 					
+																tags$div("Driver mutations", HTML("&#9662;")),
+																style = "color:rgb(0,0,0);"
+														),
+														style = wellStyle),
+												
+												uiOutput("expandDrivers"),
+												wellPanel(
+														actionLink("showTreatment", 					
+																tags$div("Treatment", HTML("&#9662;")),
+																style = "color:rgb(0,0,0);"
+														),
+														style = paste(wellStyle, "margin-bottom: 0px")),
+												uiOutput("expandTreatment")
+												),
+
 						#),
 						wellPanel(
 								actionButton("compute", tags$b("3. Compute outcome"), class="btn btn-primary", style = "margin-bottom:20px"),

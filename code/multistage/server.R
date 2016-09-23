@@ -160,11 +160,10 @@ shinyServer(function(input, output) {
 						}
 					})
 			
-			output$ui <- renderUI({
+			setDefaults <- reactive({						
 						pdid <- input[["pdid"]]
 						if(is.null(pdid)) pdid <- "reset all variables"
 						if( pdid=="reset all variables"){
-							#cat("reset\n")
 							defaults <- data[1,]
 							defaults[] <- NA
 						}else
@@ -177,85 +176,63 @@ shinyServer(function(input, output) {
 						
 						names(defaults) <- colnames(data)
 						defaults[VARIABLES] <- defaults[VARIABLES] * SCALEFACTORS
-						#cat(defaults,"\n")
-						
-						makeMenu <- function(x) {
-							d <- defaults[x]
-							f <- if(x %in% unlist(COMPVAR)){
-										if(!COMPIDX[x]) return(NULL)
-										s <- defaults[COMPVAR[[VAR2COMP[x]]][-1]]
-										w <- if(any(is.na(s))) 'N/A' else if(all(s==0)) 1 else if(any(!s %in% c(0,1))) 'N/A' else which(s==1)+1
-										c <- c(COMPVAR[[VAR2COMP[x]]], "N/A"="NA")
-										radioButtons(VAR2COMP[x], label=VAR2COMP[x], choices=c, selected=c[w], inline=FALSE)
-									}else if(crGroups[x] %in% c("Genetics","CNA","Fusions","Treatment")){
-										if(!d %in% c(0,1)) d <- NA
-										d <- paste(d)
-										radioButtons(x, label=if(crGroups[x]=="Genetics") tags$em(LABELS[x]) else LABELS[x], choices=c("present"= "1", "absent"="0", "N/A"="NA"), selected=d, inline=TRUE)
-									}else{
-										r <- round(quantile(data[,x]*SCALEFACTORS[x], c(0.05,0.95), na.rm=TRUE),1)
-										if(is.null(CATEGORIES[[x]]))
-											numericInput(inputId=x, label=LABELS[x], value=d, min=r[1], max=r[2], step = if(round(min(data[,x]*SCALEFACTORS[x], na.rm=TRUE),1) %% 1 ==0) 1 else 0.1)
-										else{
-											if(!d %in% 0:10) d <- NA
-											d <- paste(d)
-											radioButtons(x, label=LABELS[x], choices=c(CATEGORIES[[x]],"N/A"="NA"), selected=d, inline=TRUE)
-										}
-									}
-							h <- if(NEWGRP[x]) list(tags$em(tags$b(crGroups[x]))) else NULL
-							list(h,f)}
-						
-						list(wellPanel(	list(	tags$b("2. Enter/amend variables"),	
-												#tags$em(tags$small("Click to see a list of variables")),
-												#tags$hr(),
-												wellPanel(
-														actionLink("showClinical", 					
-																tags$div("Clinical variables", HTML("&#9662;")),
-																style = "color:rgb(0,0,0);"
-														),
-														style = wellStyle),
-												conditionalPanel(condition = 'input.showClinical % 2',
-														wellPanel(
-																tags$em(tags$b(crGroups[VARIABLES[1]])),
-																lapply(VARIABLES[crGroups[VARIABLES] %in% c("Clinical","Demographics")], makeMenu),
-																style = paste(wellStyle,"margin-top:-20px; overflow-y:scroll; max-height: 400px; position:relative; 2px 1px 1px rgba(0, 0, 0, 0.05) inset")
-														)
-												),
-												#tags$hr(),
-#												conditionalPanel(condition = 'input.showClinical % 2', tags$hr()),
-#										)
-#								),
-#								wellPanel(	list(
-												wellPanel(
-														actionLink("showDrivers", 					
-																tags$div("Driver mutations", HTML("&#9662;")),
-																style = "color:rgb(0,0,0);"
-														),
-														style = wellStyle),
-												
-												conditionalPanel(condition = 'input.showDrivers % 2',
-														wellPanel(
-																lapply(VARIABLES[crGroups[VARIABLES] %in% c("Genetics","Fusions","CNA")], makeMenu),
-																tags$hr(),
-																style = paste(wellStyle,"margin-top:-20px; overflow-y:scroll; max-height: 400px; position:relative; 2px 1px 1px rgba(0, 0, 0, 0.05) inset")
-														)
-												),
-												wellPanel(
-														actionLink("showTreatment", 					
-																tags$div("Treatment", HTML("&#9662;")),
-																style = "color:rgb(0,0,0);"
-														),
-														style = paste(wellStyle, "margin-bottom: 0px")),
-												conditionalPanel(condition = 'input.showTreatment % 2',
-														wellPanel(
-																lapply(VARIABLES[crGroups[VARIABLES] == "Treatment"], makeMenu),
-																style = paste(wellStyle,"margin-bottom:0px; overflow-y:scroll; max-height: 400px; position:relative; 2px 1px 1px rgba(0, 0, 0, 0.05) inset")
-														)
-												)
-										)
-								)
-						)
 					})
 			
+			makeMenu <- function(x) {
+				defaults <- setDefaults()
+				d <- defaults[x]
+				f <- if(x %in% unlist(COMPVAR)){
+							if(!COMPIDX[x]) return(NULL)
+							s <- defaults[COMPVAR[[VAR2COMP[x]]][-1]]
+							w <- if(any(is.na(s))) 'N/A' else if(all(s==0)) 1 else if(any(!s %in% c(0,1))) 'N/A' else which(s==1)+1
+							c <- c(COMPVAR[[VAR2COMP[x]]], "N/A"="NA")
+							radioButtons(VAR2COMP[x], label=VAR2COMP[x], choices=c, selected=c[w], inline=FALSE)
+						}else if(crGroups[x] %in% c("Genetics","CNA","Fusions","Treatment")){
+							if(!d %in% c(0,1)) d <- NA
+							d <- paste(d)
+							radioButtons(x, label=if(crGroups[x]=="Genetics") tags$em(LABELS[x]) else LABELS[x], choices=c("present"= "1", "absent"="0", "N/A"="NA"), selected=d, inline=TRUE)
+						}else{
+							r <- round(quantile(data[,x]*SCALEFACTORS[x], c(0.05,0.95), na.rm=TRUE),1)
+							if(is.null(CATEGORIES[[x]]))
+								numericInput(inputId=x, label=LABELS[x], value=d, min=r[1], max=r[2], step = if(round(min(data[,x]*SCALEFACTORS[x], na.rm=TRUE),1) %% 1 ==0) 1 else 0.1)
+							else{
+								if(!d %in% 0:10) d <- NA
+								d <- paste(d)
+								radioButtons(x, label=LABELS[x], choices=c(CATEGORIES[[x]],"N/A"="NA"), selected=d, inline=TRUE)
+							}
+						}
+				h <- if(NEWGRP[x]) list(tags$em(tags$b(crGroups[x]))) else NULL
+				list(h,f)}
+			
+			dynamicWellExpand <- function(condition, variables, style="", before=NULL){
+				conditionalPanel(condition = condition,
+						wellPanel(
+								before,
+								lapply(variables, makeMenu),
+								style = style
+						)
+				)
+			}
+			
+			output$expandClinical <- renderUI({
+						dynamicWellExpand('input.showClinical % 2', 
+								variables=VARIABLES[crGroups[VARIABLES] %in% c("Clinical","Demographics")], 
+								before=tags$em(tags$b(crGroups[VARIABLES[1]])),
+								style = paste(wellStyle,"margin-top:-20px; overflow-y:scroll; max-height: 400px; position:relative; 2px 1px 1px rgba(0, 0, 0, 0.05) inset"))
+					})
+			output$expandDrivers <- renderUI({
+						dynamicWellExpand('input.showDrivers % 2', 
+								variables = VARIABLES[crGroups[VARIABLES] %in% c("Genetics","Fusions","CNA")],
+								style = paste(wellStyle,"margin-top:-20px; overflow-y:scroll; max-height: 400px; position:relative; 2px 1px 1px rgba(0, 0, 0, 0.05) inset")
+						)
+					})
+			output$expandTreatment <- renderUI({
+						dynamicWellExpand('input.showTreatment % 2', 
+								variables=VARIABLES[crGroups[VARIABLES] == "Treatment"],
+								style = paste(wellStyle,"margin-bottom:0px; overflow-y:scroll; max-height: 400px; position:relative; 2px 1px 1px rgba(0, 0, 0, 0.05) inset")
+						)
+					})
+
 			x <- seq(0,2000,1)#0:2000
 			
 			computeIncidence <- function(coxRFX, r, x) {
