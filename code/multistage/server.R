@@ -139,7 +139,7 @@ shinyServer(function(input, output) {
 												<h4 class="modal-title" id="myModalLabel">',title,'</h4>
 												</div>
 												<div class="modal-body">')), message,
-								HTML(paste0('This is likely to lead to uncontrolled behaviour of the predictions.</div>
+								HTML(paste0('</div>
 												<div class="modal-footer">
 												<button type="button" class="btn btn-default" data-dismiss="modal">Dismiss</button>
 												</div>
@@ -154,7 +154,8 @@ shinyServer(function(input, output) {
 						cond <- g < LIMITS[1,] | g > LIMITS[2,]
 						if(any(na.omit(cond))){
 							makeWarning(message=list(HTML('<h5>The following values are out of range:</h5>'),
-											renderTable(data.frame(Variable=LABELS[VARIABLES[which(cond)]], `Entered value`=(g * SCALEFACTORS[VARIABLES])[which(cond)], check.names=FALSE), include.rownames=FALSE)
+											renderTable(data.frame(Variable=LABELS[VARIABLES[which(cond)]], `Entered value`=(g * SCALEFACTORS[VARIABLES])[which(cond)], check.names=FALSE), include.rownames=FALSE),
+											HTML('This is likely to lead to uncontrolled behaviour of the predictions.')
 									), id='warningInput')
 						}
 					})
@@ -409,11 +410,11 @@ shinyServer(function(input, output) {
 						
 					})
 			
-#			output$multistageCheck <- renderUI({
-#						if(any(is.na(computeAbsoluteProbabilities())))
-#							makeWarning(title="Error", message=HTML('An error has occurred in calculating the multistage probabilities. Please check your input values.'), 
-#									id = 'warningMultistage')
-#					})
+			output$multistageCheck <- renderUI({
+						if(any(is.na(computeAbsoluteProbabilities()[,1:11])))
+							makeWarning(title="Error", message=HTML('An error has occurred in calculating the multistage probabilities. Please check your input values.'), 
+									id = 'warningMultistage')
+					})
 					
 			output$multistageDiag <- renderPlot({
 						par(bty="n", mar=c(3,3,1,1), mgp=c(2,0.5,0), tcl=-.25, xaxs="i", yaxs="i")
