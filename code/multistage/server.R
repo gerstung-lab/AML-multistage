@@ -519,12 +519,12 @@ shinyServer(function(input, output) {
 								r <- r[which.min(abs(round(3*365.25)-r$x)),,drop=FALSE]
 								p <- c((1-r[,"ncd"]),(1-r[,"nrsDiag"]),(1-r[,"rsDiag"]),(1-r[,"relDiag"] - (1-r[,"rsDiag"])),(r[,"osDiag"] -(1-r[,"relDiag"] - (1-r[,"rsDiag"])) - (r[,"cr"] - (1-r[,"ncd"]))  ),(r[,"cr"] - (1-r[,"ncd"]) ))
 								p <- round100(p*100)
-								paste0( '<div class="table-responsive"><table style="width:100%"><tr><td style="width:20%">Death without remission</td><td style="width:80%">', printRisk(p[1], "human-rose.svg"), "</td></tr>",
+								paste0( '<table style="width:100%"><tr><td style="width:20%">Death without remission</td><td style="width:80%">', printRisk(p[1], "human-rose.svg"), "</td></tr>",
 										"<tr><td>Death without relapse</td><td>", printRisk(p[2], "human-blue.svg"),"</td></tr>",
 										"<tr><td>Death after relapse</td><td>", printRisk(p[3], "human-green.svg"),"</td></tr>",
 										"<tr><td>Alive after relapse</td><td>", printRisk(p[4], "human-yellow.svg") ,"</td></tr>",
 										"<tr><td>Alive in CR1</td><td>", printRisk(p[5], "human-violet.svg"),"</td></tr>",
-										"<tr><td>Alive without CR</td><td>", printRisk(p[6], "human-grey.svg"),"</td></tr></table></div>")
+										"<tr><td>Alive without CR</td><td>", printRisk(p[6], "human-grey.svg"),"</td></tr></table>")
 #								data.frame(paste("<b>",c("Death without remission","Death without relapse","Death after relapse","Alive after relapse","Alive in CR1","Alive without CR"),"</b>"),
 #										sapply(p, printRisk))
 							})#, include.colnames=FALSE, include.rownames=FALSE)
