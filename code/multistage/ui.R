@@ -49,7 +49,9 @@ fluidPage(
 										),
 										style = paste(wellStyle, "margin-bottom:0px")
 								),
-								uiOutput("check")
+								uiOutput("inputCheck"),
+								uiOutput("multistageCheck")
+
 						)
 				),
 				

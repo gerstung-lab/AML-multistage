@@ -131,8 +131,8 @@ shinyServer(function(input, output) {
 								})
 					})
 			
-			makeWarning <- function(title="Warning", message=HTML(""), id="#warningModal") {
-				list(tags$div(HTML('<div class="modal fade" id="warningModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+			makeWarning <- function(title="Warning", message=HTML(""), id="warningModal") {
+				list(tags$div(HTML('<div class="modal fade" id="',id,'" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
 												<div class="modal-dialog" role="document">
 												<div class="modal-content">
 												<div class="modal-header" style="background-color:rgb(242,222,222);color:rgb(169,68,66);border-top-left-radius:6px; border-top-right-radius:6px">
@@ -146,16 +146,16 @@ shinyServer(function(input, output) {
 												</div>
 												</div>
 												</div>
-												<script>$(\'#warningModal\').modal(\'show\')</script>')))
+												<script>$(\'#',id,'\').modal(\'show\')</script>')))
 			}
 			
-			output$check <- renderUI({
+			output$inputCheck <- renderUI({
 						g <- as.numeric(getData()[VARIABLES])
 						cond <- g < LIMITS[1,] | g > LIMITS[2,]
 						if(any(na.omit(cond))){
 							makeWarning(message=list(HTML('<h5>The following values are out of range:</h5>'),
 											renderTable(data.frame(Variable=LABELS[VARIABLES[which(cond)]], `Entered value`=(g * SCALEFACTORS[VARIABLES])[which(cond)], check.names=FALSE), include.rownames=FALSE)
-									))
+									), id='warningInput')
 						}
 					})
 			
@@ -409,6 +409,12 @@ shinyServer(function(input, output) {
 						
 					})
 			
+			output$multistageCheck <- renderUI({
+						if(any(is.na(computeAbsoluteProbabilities())))
+							makeWarning(title="Error", message=HTML('An error has occurred in calculating the multistage probabilities. Please check your input values.'), 
+									id = 'warningMultistage')
+					})
+					
 			output$multistageDiag <- renderPlot({
 						par(bty="n", mar=c(3,3,1,1), mgp=c(2,0.5,0), tcl=-.25, xaxs="i", yaxs="i")
 						layout(matrix(1:2, ncol=2), widths=c(1,0.33))
