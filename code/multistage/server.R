@@ -48,7 +48,7 @@ LIMITS <- sapply(VARIABLES, function(x){
 LABELS["AOD_10"] <- sub("AOD", "Age at diagnosis (yr)", LABELS["AOD_10"])
 LABELS["LDH_1000"] <- sub("LDH", "Lactic Acid Dehydrogenase (units/l)", LABELS["LDH_1000"])
 LABELS["wbc_100"] <- sub("wbc", "White cell count (1e-9/l)", LABELS["wbc_100"])
-LABELS["HB_10"] <- sub("HB", "Hemoglobin (g/l)", LABELS["HB_10"])
+LABELS["HB_10"] <- sub("HB", "Hemoglobin (g/dl)", LABELS["HB_10"])
 LABELS["BM_Blasts_100"] <- sub("BM_Blasts", "Bone marrow blasts (%)", LABELS["BM_Blasts_100"])
 LABELS["PB_Blasts_100"] <- sub("PB_Blasts", "Peripheral blood blasts (%)", LABELS["PB_Blasts_100"])
 LABELS["platelet_100"] <- sub("platelet", "Platelet count (1e-9/l)", LABELS["platelet_100"])
