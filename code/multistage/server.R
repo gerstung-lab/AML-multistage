@@ -405,9 +405,9 @@ HTML('This is likely to lead to uncontrolled behaviour of the predictions.</div>
 						
 					})
 			
-			output$KM <- renderPlot({
-						par(bty="n", mar=c(3,3,2,1), mgp=c(2,0.5,0), tcl=-.25, xaxs="i", yaxs="i")
-						layout(matrix(1:3, ncol=3), widths=c(1,1,0.5))
+			output$multistageDiag <- renderPlot({
+						par(bty="n", mar=c(3,3,1,1), mgp=c(2,0.5,0), tcl=-.25, xaxs="i", yaxs="i")
+						layout(matrix(1:2, ncol=2), widths=c(1,0.33))
 						par(cex=1)
 						
 						with(computeAbsoluteProbabilities(),{
@@ -418,7 +418,7 @@ HTML('This is likely to lead to uncontrolled behaviour of the predictions.</div>
 						xScaled <- x/scale
 						
 						## Plot probabilities
-						plot(xScaled, 1-(1-ncd)-(1-osDiag), type="l", xlab="Months from diagnosis", ylab="Probability", main="Outcome after diagnosis", ylim=c(0,1), lwd=3, lty=0) 
+						plot(xScaled, 1-(1-ncd)-(1-osDiag), type="l", xlab="Months from diagnosis", ylab="Probability", ylim=c(0,1), lwd=3, lty=0) 
 						y0 <- 1
 						y <- ncd
 						polygon(c(xScaled, xScaled[xLen]), c(y,y0), border=NA, col=pastel1[1])
@@ -447,31 +447,54 @@ HTML('This is likely to lead to uncontrolled behaviour of the predictions.</div>
 						lines(xScaled, osUpDiag, col=1, lty=2)
 						lines(xScaled, osLoDiag, col=1, lty=2)
 
-						## Plot outcome after remission
-						plot(NA,NA, xlab="Months from remission", ylab="Probability",  xlim=c(0,2000)/scale, ylim=c(0,1), lty=2)
-						polygon(c(xScaled, xScaled[xLen]), c(nrsCr,1)  , border=NA, col=pastel1[2])
-						polygon(c(xScaled, rev(xScaled)), c(nrsCr, rev(osCr)),  border=NA, col=pastel1[3])
-						polygon(c(xScaled, rev(xScaled)), c(osCr, rev(1-(1-nrsCr)-(1-relCr))),  border=NA, col=pastel1[5])
-						polygon(c(xScaled, rev(xScaled)), c(1-(1-nrsCr)-(1-relCr), rep(0,length(xScaled))),  border=NA, col=pastel1[4])
-						addGrid(scale)
-						lines(xScaled, osCr, col=1, lwd=3)
-						title("Outcome after remission")
-						
-						y <- (osCr)[z+1]
-						points(z/scale,y, pch=16, col=1)
-						text(z/scale, y, labels=round(y,2), pos=1)
-
-						## CI
-						lines(xScaled, osUpCr, col=1, lty=2)
-						lines(xScaled, osLoCr, col=1, lty=2)
-
-						
+						## Legend
 						par(mar=c(0,0,0,0))
 						plot(NA,NA, xlab="",ylab="", xaxt="n", yaxt="n", xlim=c(0,1), ylim=c(0,1))
 						legend(x=0,y=1, col=c(NA,NA,NA,NA,NA,NA,"black","black"), lty=c(NA,NA,NA,NA,NA,NA,1,4), fill=c(pastel1[c(1,2,3,5,4)],"#DDDDDD",NA,NA), border=c(1,1,1,1,1,1,NA,NA), lwd=c(NA,NA,NA,NA,NA,NA,3,1), y.intersp = 1.5, c("Death without \nremission","Death without \nrelapse","Death after \nrelapse","Alive after \nrelapse","Alive in CR1", "Alive in \ninduction", "Overall survival", "95% C.I."), box.lwd = 0,  bg="#FFFFFF88", seg.len=1)
-
+						
 						})
 					})
+					
+					output$multistageCR <- renderPlot({
+								par(bty="n", mar=c(3,3,1,1), mgp=c(2,0.5,0), tcl=-.25, xaxs="i", yaxs="i")
+								layout(matrix(1:2, ncol=2), widths=c(1,0.33))
+								par(cex=1)
+								
+								with(computeAbsoluteProbabilities(),{
+											
+											xLen <- length(x)
+											
+											scale <- 365.25/12
+											xScaled <- x/scale
+																			
+											z <- round(c(365.25,3*365.25))
+											
+											## Plot outcome after remission
+											plot(NA,NA, xlab="Months from remission", ylab="Probability",  xlim=c(0,2000)/scale, ylim=c(0,1), lty=2)
+											polygon(c(xScaled, xScaled[xLen]), c(nrsCr,1)  , border=NA, col=pastel1[2])
+											polygon(c(xScaled, rev(xScaled)), c(nrsCr, rev(osCr)),  border=NA, col=pastel1[3])
+											polygon(c(xScaled, rev(xScaled)), c(osCr, rev(1-(1-nrsCr)-(1-relCr))),  border=NA, col=pastel1[5])
+											polygon(c(xScaled, rev(xScaled)), c(1-(1-nrsCr)-(1-relCr), rep(0,length(xScaled))),  border=NA, col=pastel1[4])
+											addGrid(scale)
+											lines(xScaled, osCr, col=1, lwd=3)
+											#title("Outcome after remission")
+											
+											y <- (osCr)[z+1]
+											points(z/scale,y, pch=16, col=1)
+											text(z/scale, y, labels=round(y,2), pos=1)
+											
+											## CI
+											lines(xScaled, osUpCr, col=1, lty=2)
+											lines(xScaled, osLoCr, col=1, lty=2)
+											
+											## Legend
+											par(mar=c(0,0,0,0))
+											plot(NA,NA, xlab="",ylab="", xaxt="n", yaxt="n", xlim=c(0,1), ylim=c(0,1))
+											legend(x=0,y=1, col=c(NA,NA,NA,NA,"black","black"), lty=c(NA,NA,NA,NA,1,4), fill=c(pastel1[c(2,3,5,4)],NA,NA), border=c(1,1,1,1,NA,NA), lwd=c(NA,NA,NA,NA,3,1), y.intersp = 1.5, c("Death without \nrelapse","Death after \nrelapse","Alive after \nrelapse","Alive in CR1", "Overall survival", "95% C.I."), box.lwd = 0,  bg="#FFFFFF88", seg.len=1)
+											
+										})
+							})
+					
 					
 					printMutations <- function(data) paste(LABELS[colnames(data)[which(data[1,]==1)]], collapse=", ")
 					
@@ -508,12 +531,12 @@ HTML('This is likely to lead to uncontrolled behaviour of the predictions.</div>
 								r <- r[which.min(abs(round(3*365.25)-r$x)),,drop=FALSE]
 								p <- c((1-r[,"ncd"]),(1-r[,"nrsDiag"]),(1-r[,"rsDiag"]),(1-r[,"relDiag"] - (1-r[,"rsDiag"])),(r[,"osDiag"] -(1-r[,"relDiag"] - (1-r[,"rsDiag"])) - (r[,"cr"] - (1-r[,"ncd"]))  ),(r[,"cr"] - (1-r[,"ncd"]) ))
 								p <- round100(p*100)
-								paste0( '<div class="table-responsive"><table style="width:100%"><tr><td style="width:20%"><b>Death without remission</b></td><td style="width:80%">', printRisk(p[1], "human-rose.svg"), "</td></tr>",
-										"<tr><td><b>Death without relapse<b></td><td>", printRisk(p[2], "human-blue.svg"),"</td></tr>",
-										"<tr><td><b>Death after relapse<b></td><td>", printRisk(p[3], "human-green.svg"),"</td></tr>",
-										"<tr><td><b>Alive after relapse<b></td><td>", printRisk(p[4], "human-yellow.svg") ,"</td></tr>",
-										"<tr><td><b>Alive in CR1<b></td><td>", printRisk(p[5], "human-violet.svg"),"</td></tr>",
-										"<tr><td><b>Alive without CR<b></td><td>", printRisk(p[6], "human-grey.svg"),"</td></tr></table></div>")
+								paste0( '<div class="table-responsive"><table style="width:100%"><tr><td style="width:20%">Death without remission</td><td style="width:80%">', printRisk(p[1], "human-rose.svg"), "</td></tr>",
+										"<tr><td>Death without relapse</td><td>", printRisk(p[2], "human-blue.svg"),"</td></tr>",
+										"<tr><td>Death after relapse</td><td>", printRisk(p[3], "human-green.svg"),"</td></tr>",
+										"<tr><td>Alive after relapse</td><td>", printRisk(p[4], "human-yellow.svg") ,"</td></tr>",
+										"<tr><td>Alive in CR1</td><td>", printRisk(p[5], "human-violet.svg"),"</td></tr>",
+										"<tr><td>Alive without CR</td><td>", printRisk(p[6], "human-grey.svg"),"</td></tr></table></div>")
 #								data.frame(paste("<b>",c("Death without remission","Death without relapse","Death after relapse","Alive after relapse","Alive in CR1","Alive without CR"),"</b>"),
 #										sapply(p, printRisk))
 							})#, include.colnames=FALSE, include.rownames=FALSE)
@@ -523,10 +546,10 @@ HTML('This is likely to lead to uncontrolled behaviour of the predictions.</div>
 								r <- r[which.min(abs(round(3*365.25)-r$x)),,drop=FALSE]
 								p <- c((1-r[,"nrsCr"]),(1-r[,"rsCr"]),(1-r[,"relCr"] - (1-r[,"rsCr"])),(r[,"osCr"] -(1-r[,"relCr"] - (1-r[,"rsCr"])) ))
 								p <- round100(p*100)
-								paste0( "<table  style='width:100%'><tr><td style='width:20%'><b>Death without relapse</b></td><td style='width:80%'>", printRisk(p[1], "human-blue.svg"),"</td></tr>",
-										"<tr><td><b>Death after relapse<b></td><td>", printRisk(p[2], "human-green.svg"),"</td></tr>",
-										"<tr><td><b>Alive after relapse<b></td><td>", printRisk(p[3], "human-yellow.svg") ,"</td></tr>",
-										"<tr><td><b>Alive in CR1<b></td><td>", printRisk(p[4], "human-violet.svg"),"</td></tr></table>")
+								paste0( "<table  style='width:100%'><tr><td style='width:20%'>Death without relapse</td><td style='width:80%'>", printRisk(p[1], "human-blue.svg"),"</td></tr>",
+										"<tr><td>Death after relapse</td><td>", printRisk(p[2], "human-green.svg"),"</td></tr>",
+										"<tr><td>Alive after relapse</td><td>", printRisk(p[3], "human-yellow.svg") ,"</td></tr>",
+										"<tr><td>Alive in CR1</td><td>", printRisk(p[4], "human-violet.svg"),"</td></tr></table>")
 							})
 				
 		})
