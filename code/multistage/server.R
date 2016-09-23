@@ -132,21 +132,21 @@ shinyServer(function(input, output) {
 					})
 			
 			makeWarning <- function(title="Warning", message=HTML(""), id="warningModal") {
-				list(tags$div(HTML('<div class="modal fade" id="',id,'" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+				list(tags$div(HTML(paste0('<div class="modal fade" id="',id,'" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
 												<div class="modal-dialog" role="document">
 												<div class="modal-content">
 												<div class="modal-header" style="background-color:rgb(242,222,222);color:rgb(169,68,66);border-top-left-radius:6px; border-top-right-radius:6px">
 												<h4 class="modal-title" id="myModalLabel">',title,'</h4>
 												</div>
-												<div class="modal-body">'), message,
-								HTML('This is likely to lead to uncontrolled behaviour of the predictions.</div>
+												<div class="modal-body">')), message,
+								HTML(paste0('This is likely to lead to uncontrolled behaviour of the predictions.</div>
 												<div class="modal-footer">
 												<button type="button" class="btn btn-default" data-dismiss="modal">Dismiss</button>
 												</div>
 												</div>
 												</div>
 												</div>
-												<script>$(\'#',id,'\').modal(\'show\')</script>')))
+												<script>$(\'#',id,'\').modal(\'show\')</script>'))))
 			}
 			
 			output$inputCheck <- renderUI({
@@ -409,11 +409,11 @@ shinyServer(function(input, output) {
 						
 					})
 			
-			output$multistageCheck <- renderUI({
-						if(any(is.na(computeAbsoluteProbabilities())))
-							makeWarning(title="Error", message=HTML('An error has occurred in calculating the multistage probabilities. Please check your input values.'), 
-									id = 'warningMultistage')
-					})
+#			output$multistageCheck <- renderUI({
+#						if(any(is.na(computeAbsoluteProbabilities())))
+#							makeWarning(title="Error", message=HTML('An error has occurred in calculating the multistage probabilities. Please check your input values.'), 
+#									id = 'warningMultistage')
+#					})
 					
 			output$multistageDiag <- renderPlot({
 						par(bty="n", mar=c(3,3,1,1), mgp=c(2,0.5,0), tcl=-.25, xaxs="i", yaxs="i")
