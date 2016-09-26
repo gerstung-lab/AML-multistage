@@ -2,6 +2,7 @@ library(shiny)
 library(CoxHD)
 load("multistage.RData", envir=globalenv())
 
+gitLog <- system("git log --pretty=format:'Revision %h, commited by %an on %ai' -n 1", intern=TRUE)
 wellStyle <- "background-color:rgb(255, 255, 255); border-color:rgb(204, 205, 205); padding-bottom:9px; padding-top:9px;"
 
 
@@ -100,7 +101,9 @@ fluidPage(
 								tabPanel("Coefficients",
 										dataTableOutput("Tab")),
 								tabPanel("Help",
-										includeHTML("www/help.html"))
+										includeHTML("www/help.html"),
+										tags$h4("Version info"),
+										tags$code(gitLog))
 						))
 		
 		)

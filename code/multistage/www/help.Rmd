@@ -83,6 +83,3 @@ The first graph displays the time-dependent probability to be in each of the 4 p
  Below you see a graphical 
 representation of the probabilities of being in a particular state three years after remission. Each 
 symbol denotes 1/100 patients with the given risk factors.
-
-
-Version 0.0.6 (2016-09-23)
