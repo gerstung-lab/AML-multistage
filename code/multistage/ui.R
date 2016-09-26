@@ -15,7 +15,7 @@ fluidPage(
 		includeHTML("www/disclaimer.html"),
 
 		# Application title
-		titlePanel("AML multistage predictions (research only)"),
+		titlePanel(HTML("AML multistage predictions <small>research only</small>"), windowTitle = "AML multistage predictions"),
 		#div(HTML('<h4 style="color:red;""> For research use only</h4>')),
 		
 		
