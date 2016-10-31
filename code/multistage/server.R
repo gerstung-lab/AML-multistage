@@ -240,10 +240,14 @@ shinyServer(function(input, output) {
 				if(!is.null(coxRFX$na.action))
 					coxRFX$Z <- coxRFX$Z[-coxRFX$na.action,]
 				#r <- PredictRiskMissing(coxRFX, data, var="var2")
-				H0 <- basehaz(coxRFX, centered = FALSE)
-				hazardDist <- splinefun(H0$time, H0$hazard, method="monoH.FC")
-				lambda0 <- hazardDist(x)
+
+				H0 <- summary(survfit(coxRFX,se.fit = FALSE),times = x)
+				hazardDist <- splinefun(H0$time, -log(H0$surv), method="monoH.FC")
 				r0 <- coxRFX$means %*% coef(coxRFX)
+				lambda0 <- -log(H0$surv)*exp(-r0)
+				if(length(lambda0) < length(x)){
+					lambda0 <- c(lambda0, hazardDist(x[(length(lambda0)+1):length(x)]))
+				}
 				inc <- exp(-lambda0* exp(r[,1]))
 				ciup2 <- exp(-lambda0*exp( rep(r[,1] + 2*sqrt(r[,2]) * c(1), each=length(x))))
 				cilo2 <- exp(-lambda0*exp( rep(r[,1] + 2*sqrt(r[,2]) * c(-1), each=length(x))))
