@@ -8,4 +8,4 @@ The main code can be found in `doc/SupplementaryMethodsCode.R`. It was run in `R
 
    > rmarkdown::render("SupplementaryMethodsCode.R")
    
-Additional code chunks can be found in `code`, mainly for parallelising some heavy computations in an LSF environment. Code for the multistage calculator can be found in `code/multistage`. Data is located in the `data` subfolder.
+Additional code chunks can be found in `code`, mainly for parallelising some heavy computations in an LSF environment. Code for the multistage calculator can be found in `aml-multistage`. Data is located in the `data` subfolder.
