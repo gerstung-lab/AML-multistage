@@ -2,7 +2,8 @@ library(shiny)
 library(CoxHD)
 load("multistage.RData", envir=globalenv())
 
-gitLog <- system("git log --pretty=format:'Revision %h, commited by %an on %ai' -n 1", intern=TRUE)
+gitLog <- "Revision 6d784a6, committed by Moritz Gerstung on 2016-11-17 10:47:01 +0000"
+try(gitLog <- system("git log --pretty=format:'Revision %h, committed by %an on %ai' -n 1", intern=TRUE))
 wellStyle <- "background-color:rgb(255, 255, 255); border-color:rgb(204, 205, 205); padding-bottom:9px; padding-top:9px;"
 
 
