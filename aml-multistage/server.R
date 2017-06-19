@@ -64,7 +64,7 @@ LABELS <- sub("(_|/)*other"," (other)", LABELS)
 LABELS <- sub("_([0-9a-zA-Z]+)"," (\\1)", LABELS)
 
 
-COMPVAR <- list(`Allogeneic HSCT`=c(none="none", `in first CR`="transplantCR1", `after relapse`="transplantRel"), `AML type`=c(primary='AML', secondary='sAML',tertiary='tAML',other='oAML')) ## Compound variables (factors)
+COMPVAR <- list(`Allogeneic HSCT`=c(none="none", `in first CR`="transplantCR1", `after relapse`="transplantRel"), `AML type`=c(primary='AML', secondary='sAML',`therapy-related`='tAML',other='oAML')) ## Compound variables (factors)
 COMPIDX <- numeric(length(VARIABLES))
 names(COMPIDX) <- VARIABLES
 COMPIDX[c("transplantRel","oAML")] <- 1 ## Index of last elements for display
