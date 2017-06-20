@@ -1,7 +1,8 @@
 ### Background
 
 This webtool generates predictions according to the multistage random effects model presented in 
-_Personally tailored cancer management based on knowledge banks of genomic and clinical data_ (Gerstung et al., submitted manuscript).
+<a href="http://dx.doi.org/10.1038/ng.3756">M. Gerstung et al., Precision oncology for acute myeloid leukemia using a knowledge bank approach. Nature Genetics, 49:332-340, 2017</a>.
+
 
 Using genomic and clinical variables, the tool models the transitions from **induction** to either:
  
